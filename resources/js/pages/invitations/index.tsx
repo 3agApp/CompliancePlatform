@@ -27,11 +27,9 @@ export default function InvitationsIndex({ invitations }: Props) {
         <>
             <Head title="Invitations" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="min-w-0 space-y-2">
-                    <h1 className="text-3xl font-semibold tracking-tight">
-                        Invitations
-                    </h1>
+            <div className="workspace-page">
+                <div className="page-heading">
+                    <h1 className="page-title">Invitations</h1>
                     <p className="text-muted-foreground text-sm">
                         Accept or decline the organizations you have been
                         invited to join.
@@ -44,7 +42,7 @@ export default function InvitationsIndex({ invitations }: Props) {
                             <li
                                 key={invitation.code}
                                 data-test="pending-invitation-row"
-                                className="bg-card flex flex-wrap items-center justify-between gap-4 rounded-xl border p-5 shadow-sm"
+                                className="bg-card flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-xs"
                             >
                                 <div className="min-w-0 space-y-1">
                                     <p className="font-medium break-words">
@@ -88,7 +86,7 @@ export default function InvitationsIndex({ invitations }: Props) {
                         ))}
                     </ul>
                 ) : (
-                    <div className="bg-card flex flex-col items-center justify-center gap-3 rounded-xl border px-6 py-16 text-center shadow-sm">
+                    <div className="bg-card flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-xs">
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <MailOpen className="text-muted-foreground size-6" />
                         </div>

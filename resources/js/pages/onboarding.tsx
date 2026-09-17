@@ -15,10 +15,10 @@ export default function Onboarding() {
         <>
             <Head title="Create your first organization" />
 
-            <div className="flex h-full flex-1 flex-col p-4">
+            <div className="workspace-page">
                 <div className="mx-auto w-full max-w-xl space-y-6">
-                    <div className="min-w-0 space-y-2">
-                        <h1 className="text-3xl font-semibold tracking-tight">
+                    <div className="page-heading">
+                        <h1 className="page-title">
                             Create your first organization
                         </h1>
                         <p className="text-muted-foreground text-sm">
@@ -31,7 +31,7 @@ export default function Onboarding() {
                     {pendingInvitationsCount > 0 ? (
                         <div
                             data-test="onboarding-invitations"
-                            className="bg-card flex flex-wrap items-center justify-between gap-4 rounded-xl border p-5 shadow-sm"
+                            className="bg-card flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-xs"
                         >
                             <div className="flex min-w-0 items-center gap-3">
                                 <div className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
@@ -53,7 +53,7 @@ export default function Onboarding() {
 
                     <Form
                         {...store.form()}
-                        className="bg-card space-y-6 rounded-xl border p-6 shadow-sm"
+                        className="bg-card space-y-6 rounded-2xl border p-6 shadow-xs"
                     >
                         {({ errors, processing }) => (
                             <>

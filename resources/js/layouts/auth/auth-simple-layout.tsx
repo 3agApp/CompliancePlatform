@@ -104,7 +104,7 @@ export default function AuthSimpleLayout({
                     >
                         <ArrowLeft className="size-4" /> Back to {name}
                     </Link>
-                    <div className="bg-card rounded-xl border p-6 shadow-sm sm:p-8">
+                    <div className="workspace-panel p-6 sm:p-8">
                         <div className="mb-8 space-y-3">
                             <div className="bg-primary text-primary-foreground mb-6 flex size-10 items-center justify-center rounded-xl lg:hidden">
                                 <AppLogoIcon className="size-6" />

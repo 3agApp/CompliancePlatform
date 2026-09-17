@@ -124,7 +124,7 @@ export default function Welcome() {
                         {features.map((feature) => (
                             <div
                                 key={feature.title}
-                                className="bg-card rounded-xl border p-6 shadow-sm"
+                                className="workspace-panel p-6"
                             >
                                 <div className="bg-muted mb-4 flex size-10 items-center justify-center rounded-lg">
                                     <feature.icon className="size-5" />

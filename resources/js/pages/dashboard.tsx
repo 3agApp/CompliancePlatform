@@ -7,19 +7,30 @@ export default function Dashboard() {
     return (
         <>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">
-                <div className="bg-card flex flex-1 flex-col items-center justify-center rounded-xl border px-6 py-16 text-center shadow-sm">
-                    <div className="bg-muted mb-4 flex size-12 items-center justify-center rounded-xl">
-                        <Building2 className="size-6" />
-                    </div>
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        Welcome to {name}
-                    </h1>
-                    <p className="text-muted-foreground mt-2 max-w-md text-sm leading-relaxed">
+            <div className="workspace-page">
+                <div className="page-heading">
+                    <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
+                        Organization overview
+                    </p>
+                    <h1 className="page-title">Dashboard</h1>
+                    <p className="text-muted-foreground text-sm">
                         {currentOrganization
-                            ? `You're working in ${currentOrganization.name}. Compliance tools will show up here as you build them out.`
+                            ? `You're working in ${currentOrganization.name}.`
                             : 'Select or create an organization to get started.'}
                     </p>
+                </div>
+
+                <div className="workspace-panel flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+                    <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                        <Building2 className="text-muted-foreground size-6" />
+                    </div>
+                    <div className="space-y-1">
+                        <h2 className="font-medium">Welcome to {name}</h2>
+                        <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+                            Compliance tools will show up here as you build them
+                            out.
+                        </p>
+                    </div>
                 </div>
             </div>
         </>
