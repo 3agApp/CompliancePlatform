@@ -4,7 +4,6 @@ import { useState } from 'react';
 import CreateOrganizationModal from '@/components/create-organization-modal';
 import Heading from '@/components/heading';
 import LeaveOrganizationModal from '@/components/leave-organization-modal';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -20,8 +19,10 @@ type Props = {
 };
 
 export default function OrganizationsIndex({ organizations }: Props) {
-    const [leaveOrganizationDialogOpen, setLeaveOrganizationDialogOpen] = useState(false);
-    const [organizationLeaving, setOrganizationLeaving] = useState<Organization | null>(null);
+    const [leaveOrganizationDialogOpen, setLeaveOrganizationDialogOpen] =
+        useState(false);
+    const [organizationLeaving, setOrganizationLeaving] =
+        useState<Organization | null>(null);
 
     const openLeaveOrganizationDialog = (organization: Organization) => {
         setOrganizationLeaving(organization);
@@ -52,7 +53,7 @@ export default function OrganizationsIndex({ organizations }: Props) {
                 <div className="space-y-3">
                     {organizations.map((organization) => {
                         const canLeaveOrganization =
-                            !organization.isPersonal && organization.role !== 'owner';
+                            organization.role !== 'owner';
 
                         return (
                             <div
@@ -66,11 +67,6 @@ export default function OrganizationsIndex({ organizations }: Props) {
                                             <span className="font-medium">
                                                 {organization.name}
                                             </span>
-                                            {organization.isPersonal ? (
-                                                <Badge variant="secondary">
-                                                    Personal
-                                                </Badge>
-                                            ) : null}
                                         </div>
                                         <span className="text-muted-foreground text-sm">
                                             {organization.roleLabel}
@@ -101,52 +97,37 @@ export default function OrganizationsIndex({ organizations }: Props) {
                                                 </TooltipContent>
                                             </Tooltip>
                                         ) : null}
-
-                                        {organization.role === 'member' ? (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        data-test="organization-view-button"
-                                                        asChild
-                                                    >
-                                                        <Link
-                                                            href={edit(
-                                                                organization.slug,
-                                                            )}
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>View organization</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        ) : (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    asChild
+                                                >
+                                                    <Link
+                                                        href={edit(
+                                                            organization.slug,
+                                                        )}
                                                         data-test="organization-edit-button"
-                                                        asChild
                                                     >
-                                                        <Link
-                                                            href={edit(
-                                                                organization.slug,
-                                                            )}
-                                                        >
+                                                        {organization.role ===
+                                                        'owner' ? (
                                                             <Pencil className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Edit organization</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )}
+                                                        ) : (
+                                                            <Eye className="h-4 w-4" />
+                                                        )}
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>
+                                                    {organization.role ===
+                                                    'owner'
+                                                        ? 'Edit organization'
+                                                        : 'View organization'}
+                                                </p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     </div>
                                 </TooltipProvider>
                             </div>
@@ -154,18 +135,22 @@ export default function OrganizationsIndex({ organizations }: Props) {
                     })}
 
                     {organizations.length === 0 ? (
-                        <p className="text-muted-foreground py-8 text-center">
-                            You don't belong to any organizations yet.
-                        </p>
+                        <div className="rounded-lg border border-dashed p-8 text-center">
+                            <p className="text-muted-foreground text-sm">
+                                You don&apos;t belong to any organizations yet.
+                            </p>
+                        </div>
                     ) : null}
                 </div>
             </div>
 
-            <LeaveOrganizationModal
-                organization={organizationLeaving}
-                open={leaveOrganizationDialogOpen}
-                onOpenChange={setLeaveOrganizationDialogOpen}
-            />
+            {organizationLeaving ? (
+                <LeaveOrganizationModal
+                    organization={organizationLeaving}
+                    open={leaveOrganizationDialogOpen}
+                    onOpenChange={setLeaveOrganizationDialogOpen}
+                />
+            ) : null}
         </>
     );
 }

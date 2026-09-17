@@ -320,7 +320,7 @@ export default function OrganizationEdit({
                     </div>
                 ) : null}
 
-                {permissions.canDeleteOrganization && !organization.isPersonal ? (
+                {permissions.canDeleteOrganization ? (
                     <div className="space-y-6">
                         <Heading
                             variant="small"
@@ -370,7 +370,7 @@ export default function OrganizationEdit({
                 onOpenChange={setCancelInvitationDialogOpen}
             />
 
-            {permissions.canDeleteOrganization && !organization.isPersonal ? (
+            {permissions.canDeleteOrganization ? (
                 <DeleteOrganizationModal
                     organization={organization}
                     open={deleteDialogOpen}

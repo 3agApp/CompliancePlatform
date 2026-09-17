@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Button } from '@/components/ui/button';
-import { dashboard, home, login, register } from '@/routes';
+import { dashboard, home, login, onboarding, register } from '@/routes';
 
 const features = [
     {
@@ -48,7 +48,7 @@ export default function Welcome() {
     const { auth, currentOrganization, name } = usePage().props;
     const dashboardUrl = currentOrganization
         ? dashboard(currentOrganization.slug)
-        : '/';
+        : onboarding();
 
     return (
         <>
