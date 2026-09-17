@@ -1,11 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "sourovcodes/compliance-platform",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "CompliancePlatform helps organizations manage compliance work across teams and members.",
     "keywords": [
         "laravel",
-        "framework"
+        "compliance",
+        "organizations"
     ],
     "license": "MIT",
     "require": {

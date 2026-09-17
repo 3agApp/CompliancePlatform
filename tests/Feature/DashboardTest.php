@@ -28,7 +28,7 @@ test('authenticated users can visit the dashboard', function () {
 test('dashboard includes pending invitations for the authenticated user', function () {
     $owner = User::factory()->create(['name' => 'Taylor Otwell']);
     $invitedUser = User::factory()->create(['email' => 'invited@example.com']);
-    $organization = Organization::factory()->create(['name' => 'Laravel Organization']);
+    $organization = Organization::factory()->create(['name' => 'Acme Organization']);
 
     $organization->members()->attach($owner, ['role' => OrganizationRole::Owner->value]);
 
@@ -48,7 +48,7 @@ test('dashboard includes pending invitations for the authenticated user', functi
         ->has('pendingInvitations', 1)
         ->where('pendingInvitations.0.code', $invitation->code)
         ->where('pendingInvitations.0.inviterName', 'Taylor Otwell')
-        ->where('pendingInvitations.0.organization.name', 'Laravel Organization')
+        ->where('pendingInvitations.0.organization.name', 'Acme Organization')
         ->where('pendingInvitations.0.organization.slug', $organization->slug)
         ->missing('pendingInvitations.0.organizationName'),
     );

@@ -14,7 +14,7 @@ test('registration screen can be rendered', function () {
 
 test('registration screen includes organization invitation context', function () {
     $owner = User::factory()->create();
-    $organization = Organization::factory()->create(['name' => 'Laravel Organization']);
+    $organization = Organization::factory()->create(['name' => 'Acme Organization']);
     $organization->members()->attach($owner, ['role' => OrganizationRole::Owner->value]);
 
     $invitation = OrganizationInvitation::factory()->create([
@@ -29,7 +29,7 @@ test('registration screen includes organization invitation context', function ()
     $response->assertInertia(fn (Assert $page) => $page
         ->component('auth/register')
         ->where('organizationInvitation.code', $invitation->code)
-        ->where('organizationInvitation.organizationName', 'Laravel Organization'),
+        ->where('organizationInvitation.organizationName', 'Acme Organization'),
     );
 });
 
