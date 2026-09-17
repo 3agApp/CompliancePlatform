@@ -90,7 +90,8 @@ export default function Welcome() {
                             Compliance management for organizations
                         </div>
                         <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                            Keep compliance work clear across every organization.
+                            Keep compliance work clear across every
+                            organization.
                         </h1>
                         <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-base text-balance sm:text-lg">
                             {name} gives your team one place to manage
@@ -214,7 +215,7 @@ function DashboardPreview() {
                                 key={member.email}
                                 className="border-b last:border-0"
                             >
-                                <td className="px-4 py-3 whitespace-nowrap font-medium">
+                                <td className="px-4 py-3 font-medium whitespace-nowrap">
                                     {member.name}
                                 </td>
                                 <td className="px-4 py-3">

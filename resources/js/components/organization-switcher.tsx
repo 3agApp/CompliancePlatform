@@ -25,7 +25,10 @@ export function OrganizationSwitcher() {
 
         router.visit(switchMethod(organization.slug), {
             onFinish: () => {
-                if (!previousOrganizationSlug || typeof window === 'undefined') {
+                if (
+                    !previousOrganizationSlug ||
+                    typeof window === 'undefined'
+                ) {
                     router.reload();
 
                     return;

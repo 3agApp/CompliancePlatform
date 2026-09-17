@@ -16,7 +16,10 @@ type Props = {
     organizationInvitation?: OrganizationInvitationContext | null;
 };
 
-export default function Register({ passwordRules, organizationInvitation }: Props) {
+export default function Register({
+    passwordRules,
+    organizationInvitation,
+}: Props) {
     return (
         <>
             <Head title="Register" />

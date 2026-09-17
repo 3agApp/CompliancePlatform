@@ -17,7 +17,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { store } from '@/routes/organizations';
 
-export default function CreateOrganizationModal({ children }: PropsWithChildren) {
+export default function CreateOrganizationModal({
+    children,
+}: PropsWithChildren) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -33,10 +35,12 @@ export default function CreateOrganizationModal({ children }: PropsWithChildren)
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Create a new organization</DialogTitle>
+                                <DialogTitle>
+                                    Create a new organization
+                                </DialogTitle>
                                 <DialogDescription>
-                                    Create a new organization to collaborate with
-                                    others.
+                                    Create a new organization to collaborate
+                                    with others.
                                 </DialogDescription>
                             </DialogHeader>
 
