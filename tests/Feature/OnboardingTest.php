@@ -63,7 +63,7 @@ test('creating a first organization makes it the current organization', function
     $user = User::factory()->withoutOrganization()->create();
 
     $this->actingAs($user)
-        ->post(route('organizations.store'), ['name' => 'First Organization'])
+        ->post(route('organizations.store'), ['name' => 'First Organization', 'type' => 'distributor'])
         ->assertRedirect(route('organizations.edit', ['organization' => 'first-organization']));
 
     $organization = Organization::where('name', 'First Organization')->firstOrFail();

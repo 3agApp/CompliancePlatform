@@ -18,8 +18,9 @@ export default function OrganizationInvitationAlert({
         >
             <InfoIcon />
             <AlertDescription className="text-blue-900 dark:text-blue-100">
-                {action} to join the "{invitation.organizationName}"
-                organization.
+                {invitation.kind === 'supplier_connection'
+                    ? `${action} to connect with "${invitation.organizationName}" as their supplier.`
+                    : `${action} to join the "${invitation.organizationName}" organization.`}
             </AlertDescription>
         </Alert>
     );

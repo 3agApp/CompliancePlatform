@@ -8,6 +8,7 @@ use App\Http\Requests\Organizations\CreateOrganizationInvitationRequest;
 use App\Http\Requests\Organizations\RespondToOrganizationInvitationRequest;
 use App\Models\Organization;
 use App\Models\OrganizationInvitation;
+use App\Models\SupplierConnection;
 use App\Notifications\Organizations\OrganizationInvitation as OrganizationInvitationNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,18 @@ class OrganizationInvitationController extends Controller
                         'name' => $invitation->organization->name,
                         'slug' => $invitation->organization->slug,
                     ],
+                ]),
+            'connections' => SupplierConnection::query()
+                ->pendingFor($request->user()->email)
+                ->with(['inviter', 'distributorOrganization'])
+                ->latest()
+                ->get()
+                ->map(fn (SupplierConnection $connection) => [
+                    'code' => $connection->code,
+                    'inviterName' => $connection->inviter->name,
+                    'companyName' => $connection->company_name,
+                    'expiresAt' => $connection->expires_at?->toIso8601String(),
+                    'distributorName' => $connection->distributorOrganization->name,
                 ]),
         ]);
     }

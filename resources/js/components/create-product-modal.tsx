@@ -14,16 +14,18 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { store } from '@/routes/products';
-import type { CountryOption } from '@/types';
+import type { CountryOption, SupplierConnectionOption } from '@/types';
 
 type Props = PropsWithChildren<{
     organizationSlug: string;
     availableCountries: CountryOption[];
+    availableConnections: SupplierConnectionOption[];
 }>;
 
 export default function CreateProductModal({
     organizationSlug,
     availableCountries,
+    availableConnections,
     children,
 }: Props) {
     const [open, setOpen] = useState(false);
@@ -51,6 +53,8 @@ export default function CreateProductModal({
                             <ProductFormFields
                                 errors={errors}
                                 availableCountries={availableCountries}
+                                availableConnections={availableConnections}
+                                viewerType="distributor"
                                 idPrefix="create-product"
                             />
 

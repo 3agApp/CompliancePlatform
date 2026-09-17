@@ -5,18 +5,28 @@ import DeleteProductModal from '@/components/delete-product-modal';
 import ProductFormFields from '@/components/product-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, update } from '@/routes/products';
-import type { CountryOption, Product, ProductPermissions } from '@/types';
+import type {
+    CountryOption,
+    OrganizationType,
+    Product,
+    ProductPermissions,
+    SupplierConnectionOption,
+} from '@/types';
 
 type Props = {
     product: Product;
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    availableConnections: SupplierConnectionOption[];
+    viewerType: OrganizationType;
 };
 
 export default function ProductEdit({
     product,
     permissions,
     availableCountries,
+    availableConnections,
+    viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
@@ -43,6 +53,16 @@ export default function ProductEdit({
                         <h1 className="page-title break-words">
                             {product.name}
                         </h1>
+                        {product.counterparty ? (
+                            <p className="text-muted-foreground text-sm">
+                                {viewerType === 'supplier'
+                                    ? 'Assigned by '
+                                    : 'Supplied by '}
+                                <span className="text-foreground font-medium">
+                                    {product.counterparty}
+                                </span>
+                            </p>
+                        ) : null}
                     </div>
 
                     {permissions.canDeleteProduct ? (
@@ -67,6 +87,8 @@ export default function ProductEdit({
                                 <ProductFormFields
                                     errors={errors}
                                     availableCountries={availableCountries}
+                                    availableConnections={availableConnections}
+                                    viewerType={viewerType}
                                     product={product}
                                     disabled={!permissions.canUpdateProduct}
                                     idPrefix="edit-product"

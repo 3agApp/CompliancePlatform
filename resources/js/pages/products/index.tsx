@@ -3,6 +3,7 @@ import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import CreateProductModal from '@/components/create-product-modal';
 import DeleteProductModal from '@/components/delete-product-modal';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -10,21 +11,43 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { edit } from '@/routes/products';
-import type { CountryOption, Product, ProductPermissions } from '@/types';
+import { index as suppliersIndex } from '@/routes/suppliers';
+import type {
+    CountryOption,
+    OrganizationType,
+    Product,
+    ProductPermissions,
+    SupplierConnectionOption,
+} from '@/types';
 
 type Props = {
     products: Product[];
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    availableConnections: SupplierConnectionOption[];
+    viewerType: OrganizationType;
 };
 
 export default function ProductsIndex({
     products,
     permissions,
     availableCountries,
+    availableConnections,
+    viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
+
+    const isSupplier = viewerType === 'supplier';
+    const counterpartyLabel = isSupplier ? 'Distributor' : 'Supplier';
+
+    /**
+     * Every product needs a supplier, so a distributor with no suppliers yet
+     * is pointed at the suppliers page rather than at a form they cannot
+     * submit.
+     */
+    const canAddProducts =
+        permissions.canCreateProduct && availableConnections.length > 0;
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(
@@ -44,24 +67,37 @@ export default function ProductsIndex({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
                         <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                            Organization catalog
+                            {isSupplier
+                                ? 'Assigned to you'
+                                : 'Organization catalog'}
                         </p>
                         <h1 className="page-title">Products</h1>
                         <p className="text-muted-foreground text-sm">
-                            The products {currentOrganization?.name} is
-                            responsible for.
+                            {isSupplier
+                                ? `Products distributors have assigned to ${currentOrganization?.name}.`
+                                : `The products ${currentOrganization?.name} is responsible for.`}
                         </p>
                     </div>
 
-                    {permissions.canCreateProduct ? (
+                    {canAddProducts ? (
                         <CreateProductModal
                             organizationSlug={organizationSlug}
                             availableCountries={availableCountries}
+                            availableConnections={availableConnections}
                         >
                             <Button data-test="products-new-product-button">
                                 <Plus /> New product
                             </Button>
                         </CreateProductModal>
+                    ) : permissions.canCreateProduct ? (
+                        <Button variant="outline" asChild>
+                            <Link
+                                href={suppliersIndex(organizationSlug)}
+                                data-test="products-invite-supplier-button"
+                            >
+                                <Plus /> Invite a supplier
+                            </Link>
+                        </Button>
                     ) : null}
                 </div>
 
@@ -79,6 +115,9 @@ export default function ProductsIndex({
                                         </th>
                                         <th className="px-6 font-medium">
                                             Country of origin
+                                        </th>
+                                        <th className="px-6 font-medium">
+                                            {counterpartyLabel}
                                         </th>
                                         <th className="px-6 font-medium">
                                             <span className="sr-only">
@@ -103,6 +142,29 @@ export default function ProductsIndex({
                                             <td className="text-muted-foreground px-6">
                                                 {product.country_of_origin_label ??
                                                     '—'}
+                                            </td>
+                                            <td
+                                                className="px-6"
+                                                data-test="product-counterparty"
+                                            >
+                                                <span className="text-muted-foreground">
+                                                    {product.counterparty ??
+                                                        '—'}
+                                                </span>
+                                                {!isSupplier &&
+                                                product.connection_status &&
+                                                product.connection_status !==
+                                                    'active' ? (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="ml-2"
+                                                    >
+                                                        {product.connection_status ===
+                                                        'pending'
+                                                            ? 'Pending'
+                                                            : 'Revoked'}
+                                                    </Badge>
+                                                ) : null}
                                             </td>
                                             <td className="px-6">
                                                 <div className="flex items-center justify-end gap-2">
@@ -184,9 +246,13 @@ export default function ProductsIndex({
                         <div className="space-y-1">
                             <h2 className="font-medium">No products yet</h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {permissions.canCreateProduct
-                                    ? 'Add your first product to start tracking it.'
-                                    : 'Products added to this organization will show up here.'}
+                                {isSupplier
+                                    ? 'Products a distributor assigns to you will show up here.'
+                                    : canAddProducts
+                                      ? 'Add your first product to start tracking it.'
+                                      : permissions.canCreateProduct
+                                        ? 'Invite a supplier first — every product is assigned to one.'
+                                        : 'Products added to this organization will show up here.'}
                             </p>
                         </div>
                     </div>

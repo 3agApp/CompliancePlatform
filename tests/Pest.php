@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\OrganizationType;
 use App\Models\Organization;
+use App\Models\SupplierConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -63,4 +65,33 @@ function newOrganizationMember(OrganizationRole $role = OrganizationRole::Owner,
     $user->switchOrganization($organization);
 
     return [$user, $organization];
+}
+
+/**
+ * Create a user that owns a supplier organization.
+ *
+ * @return array{0: User, 1: Organization}
+ */
+function newSupplierMember(OrganizationRole $role = OrganizationRole::Owner): array
+{
+    return newOrganizationMember($role, ['type' => OrganizationType::Supplier]);
+}
+
+/**
+ * Create a connection from the given distributor.
+ *
+ * Passing a supplier organization creates a connection that has already been
+ * claimed and is live; leaving it out creates one still waiting to be claimed.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function newSupplierConnection(Organization $distributor, ?Organization $supplier = null, array $attributes = []): SupplierConnection
+{
+    $factory = SupplierConnection::factory()->for($distributor, 'distributorOrganization');
+
+    if ($supplier instanceof Organization) {
+        $factory = $factory->active($supplier);
+    }
+
+    return $factory->create($attributes);
 }

@@ -11,6 +11,9 @@ export type Product = {
     ean: string | null;
     country_of_origin: CountryOfOrigin | null;
     country_of_origin_label: string | null;
+    supplier_connection_id: number | null;
+    counterparty: string | null;
+    connection_status: string | null;
     created_at: string | null;
 };
 

@@ -1,7 +1,8 @@
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import OrganizationTypeField from '@/components/organization-type-field';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -21,6 +22,7 @@ export default function CreateOrganizationModal({
     children,
 }: PropsWithChildren) {
     const [open, setOpen] = useState(false);
+    const { organizationTypes } = usePage().props;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -55,6 +57,12 @@ export default function CreateOrganizationModal({
                                 />
                                 <InputError message={errors.name} />
                             </div>
+
+                            <OrganizationTypeField
+                                options={organizationTypes}
+                                error={errors.type}
+                                idPrefix="create-organization-type"
+                            />
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>

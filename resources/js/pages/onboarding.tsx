@@ -1,6 +1,7 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Mail } from 'lucide-react';
 import InputError from '@/components/input-error';
+import OrganizationTypeField from '@/components/organization-type-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { index as invitationsIndex } from '@/routes/invitations';
 import { store } from '@/routes/organizations';
 
 export default function Onboarding() {
-    const { pendingInvitationsCount } = usePage().props;
+    const { pendingInvitationsCount, organizationTypes } = usePage().props;
 
     return (
         <>
@@ -71,6 +72,12 @@ export default function Onboarding() {
                                     />
                                     <InputError message={errors.name} />
                                 </div>
+
+                                <OrganizationTypeField
+                                    options={organizationTypes}
+                                    error={errors.type}
+                                    idPrefix="onboarding-type"
+                                />
 
                                 <Button
                                     type="submit"

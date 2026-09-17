@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Concerns\ResolvesRouteOrganization;
 use App\Enums\OrganizationRole;
 use App\Models\Organization;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureOrganizationMembership
 {
+    use ResolvesRouteOrganization;
+
     /**
      * Handle an incoming request.
      *
@@ -18,7 +21,7 @@ class EnsureOrganizationMembership
      */
     public function handle(Request $request, Closure $next, ?string $minimumRole = null): Response
     {
-        [$user, $organization] = [$request->user(), $this->organization($request)];
+        [$user, $organization] = [$request->user(), $this->routeOrganization($request)];
 
         abort_if(! $user || ! $organization || ! $user->belongsToOrganization($organization), 403);
 
@@ -50,19 +53,5 @@ class EnsureOrganizationMembership
             ! $role->isAtLeast($requiredRole),
             403,
         );
-    }
-
-    /**
-     * Get the organization associated with the request.
-     */
-    protected function organization(Request $request): ?Organization
-    {
-        $organization = $request->route('current_organization') ?? $request->route('organization');
-
-        if (is_string($organization)) {
-            $organization = Organization::where('slug', $organization)->first();
-        }
-
-        return $organization;
     }
 }

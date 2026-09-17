@@ -1,5 +1,8 @@
 import type { Auth } from '@/types/auth';
-import type { Organization } from '@/types/organizations';
+import type {
+    Organization,
+    OrganizationTypeOption,
+} from '@/types/organizations';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -15,6 +18,7 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             currentOrganization: Organization | null;
             organizations: Organization[];
+            organizationTypes: OrganizationTypeOption[];
             pendingInvitationsCount: number;
             [key: string]: unknown;
         };

@@ -22,6 +22,7 @@ test('organizations can be created', function () {
         ->actingAs($user)
         ->post(route('organizations.store'), [
             'name' => 'Test Organization',
+            'type' => 'distributor',
         ]);
 
     $response->assertRedirect();
@@ -42,6 +43,7 @@ test('organization slug uses next available suffix', function () {
         ->actingAs($user)
         ->post(route('organizations.store'), [
             'name' => 'Acme',
+            'type' => 'distributor',
         ]);
 
     $this->assertDatabaseHas('organizations', [

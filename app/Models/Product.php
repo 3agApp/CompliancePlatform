@@ -15,14 +15,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property string $uuid
  * @property int $organization_id
+ * @property int|null $supplier_connection_id
  * @property string $name
  * @property string|null $ean
  * @property CountryOfOrigin|null $country_of_origin
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
+ * @property-read SupplierConnection|null $supplierConnection
  */
-#[Fillable(['name', 'ean', 'country_of_origin'])]
+#[Fillable(['name', 'ean', 'country_of_origin', 'supplier_connection_id'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -61,6 +63,20 @@ class Product extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Get the connection this product is assigned to.
+     *
+     * A product is assigned to the connection rather than directly to the
+     * supplier organization, so it can be assigned before the supplier has
+     * claimed their invitation.
+     *
+     * @return BelongsTo<SupplierConnection, $this>
+     */
+    public function supplierConnection(): BelongsTo
+    {
+        return $this->belongsTo(SupplierConnection::class);
     }
 
     /**

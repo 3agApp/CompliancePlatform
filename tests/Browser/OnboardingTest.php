@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\OrganizationType;
 use App\Models\Organization;
 use App\Models\User;
 
@@ -38,4 +39,20 @@ test('the onboarding form shows the validation message for a reserved organizati
         ->assertNoJavaScriptErrors();
 
     $this->assertDatabaseCount('organizations', 0);
+});
+
+test('a new user chooses the supplier organization type during onboarding', function () {
+    $user = User::factory()->withoutOrganization()->create();
+
+    $this->actingAs($user);
+
+    visit(route('onboarding'))
+        ->fill('@onboarding-organization-name', 'Acme Supplies AG')
+        ->click('@organization-type-supplier')
+        ->click('@onboarding-organization-submit')
+        ->assertNoJavaScriptErrors();
+
+    expect(Organization::sole())
+        ->name->toBe('Acme Supplies AG')
+        ->type->toBe(OrganizationType::Supplier);
 });
