@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use App\Enums\CountryOfOrigin;
+use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -18,8 +18,8 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string|null $ean
  * @property CountryOfOrigin|null $country_of_origin
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
  */
 #[Fillable(['name', 'ean', 'country_of_origin'])]
