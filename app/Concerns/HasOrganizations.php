@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Data\OrganizationPermissions;
+use App\Data\ProductPermissions;
 use App\Data\UserOrganization;
 use App\Enums\OrganizationPermission;
 use App\Enums\OrganizationRole;
@@ -180,6 +181,20 @@ trait HasOrganizations
             canRemoveMember: $role?->hasPermission(OrganizationPermission::RemoveMember) ?? false,
             canCreateInvitation: $role?->hasPermission(OrganizationPermission::CreateInvitation) ?? false,
             canCancelInvitation: $role?->hasPermission(OrganizationPermission::CancelInvitation) ?? false,
+        );
+    }
+
+    /**
+     * Get the product permissions for an organization as a ProductPermissions object.
+     */
+    public function toProductPermissions(Organization $organization): ProductPermissions
+    {
+        $role = $this->organizationRole($organization);
+
+        return new ProductPermissions(
+            canCreateProduct: $role?->hasPermission(OrganizationPermission::CreateProduct) ?? false,
+            canUpdateProduct: $role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false,
+            canDeleteProduct: $role?->hasPermission(OrganizationPermission::DeleteProduct) ?? false,
         );
     }
 

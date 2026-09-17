@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Mail, Settings2 } from 'lucide-react';
+import { LayoutGrid, Mail, Package, Settings2 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -16,6 +16,7 @@ import {
 import { dashboard, onboarding } from '@/routes';
 import { index as invitationsIndex } from '@/routes/invitations';
 import { edit as editOrganization } from '@/routes/organizations';
+import { index as productsIndex } from '@/routes/products';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
@@ -33,6 +34,12 @@ export function AppSidebar() {
     ];
 
     if (currentOrganization) {
+        mainNavItems.push({
+            title: 'Products',
+            href: productsIndex(currentOrganization.slug),
+            icon: Package,
+        });
+
         mainNavItems.push({
             title: 'Organization settings',
             href: editOrganization(currentOrganization.slug),

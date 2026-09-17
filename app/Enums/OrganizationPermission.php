@@ -13,4 +13,9 @@ enum OrganizationPermission: string
 
     case CreateInvitation = 'invitation:create';
     case CancelInvitation = 'invitation:cancel';
+
+    case ViewProduct = 'product:view';
+    case CreateProduct = 'product:create';
+    case UpdateProduct = 'product:update';
+    case DeleteProduct = 'product:delete';
 }

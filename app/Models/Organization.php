@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read Collection<int, OrganizationInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
+ * @property-read Collection<int, Product> $products
  * @property-read Collection<int, User> $members
  */
 #[Fillable(['name', 'slug'])]
@@ -82,6 +83,16 @@ class Organization extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(Membership::class);
+    }
+
+    /**
+     * Get all products for this organization.
+     *
+     * @return HasMany<Product, $this>
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
     }
 
     /**

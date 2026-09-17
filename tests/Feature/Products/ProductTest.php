@@ -1,0 +1,307 @@
+<?php
+
+use App\Enums\CountryOfOrigin;
+use App\Enums\OrganizationRole;
+use App\Models\Organization;
+use App\Models\Product;
+use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
+
+function organizationMember(OrganizationRole $role = OrganizationRole::Owner): array
+{
+    $user = User::factory()->withoutOrganization()->create();
+    $organization = Organization::factory()->create();
+
+    $organization->members()->attach($user, ['role' => $role->value]);
+    $user->switchOrganization($organization);
+
+    return [$user, $organization];
+}
+
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function productPayload(array $overrides = []): array
+{
+    return [
+        'name' => 'Organic Oat Milk',
+        'ean' => '4006381333931',
+        'country_of_origin' => 'DE',
+        ...$overrides,
+    ];
+}
+
+test('the products index page lists the products of the current organization', function () {
+    [$user, $organization] = organizationMember();
+
+    $product = Product::factory()->for($organization)->create(['name' => 'Organic Oat Milk']);
+    Product::factory()->create(['name' => 'Someone Else Product']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', ['current_organization' => $organization->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('products/index')
+            ->has('products', 1)
+            ->where('products.0.uuid', $product->uuid)
+            ->where('products.0.name', 'Organic Oat Milk')
+            ->where('permissions.canCreateProduct', true),
+        );
+});
+
+test('products can be created', function () {
+    [$user, $organization] = organizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload())
+        ->assertRedirect(route('products.index', ['current_organization' => $organization->slug]));
+
+    $this->assertDatabaseHas('products', [
+        'organization_id' => $organization->id,
+        'name' => 'Organic Oat Milk',
+        'ean' => '4006381333931',
+        'country_of_origin' => 'DE',
+    ]);
+});
+
+test('products are created with a uuid', function () {
+    [$user, $organization] = organizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload());
+
+    expect(Str::isUuid(Product::sole()->uuid))->toBeTrue();
+});
+
+test('products can be created without a barcode', function () {
+    [$user, $organization] = organizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload(['ean' => null]))
+        ->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('products', [
+        'name' => 'Organic Oat Milk',
+        'ean' => null,
+    ]);
+});
+
+test('products can be created without a country of origin', function () {
+    [$user, $organization] = organizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload([
+            'country_of_origin' => null,
+        ]))
+        ->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('products', [
+        'name' => 'Organic Oat Milk',
+        'country_of_origin' => null,
+    ]);
+});
+
+test('a country of origin can be removed by submitting an empty value', function () {
+    [$user, $organization] = organizationMember();
+
+    $product = Product::factory()->for($organization)->create([
+        'country_of_origin' => CountryOfOrigin::Germany,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload([
+            'country_of_origin' => '',
+        ]))
+        ->assertSessionHasNoErrors();
+
+    expect($product->fresh()->country_of_origin)->toBeNull();
+});
+
+test('a product name is required', function () {
+    [$user, $organization] = organizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload(['name' => '']))
+        ->assertSessionHasErrors('name');
+
+    $this->assertDatabaseCount('products', 0);
+});
+
+test('a barcode must be a valid ean length', function (string $ean, bool $valid) {
+    [$user, $organization] = organizationMember();
+
+    $response = $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload(['ean' => $ean]));
+
+    $valid
+        ? $response->assertSessionHasNoErrors()
+        : $response->assertSessionHasErrors('ean');
+})->with([
+    ['40063813', true],
+    ['400638133393', true],
+    ['4006381333931', true],
+    ['40063813339312', true],
+    ['4006381', false],
+    ['400638133393123', false],
+    ['400638133393A', false],
+]);
+
+test('the country of origin is limited to germany and switzerland', function (?string $country, bool $valid) {
+    [$user, $organization] = organizationMember();
+
+    $response = $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload([
+            'country_of_origin' => $country,
+        ]));
+
+    $valid
+        ? $response->assertSessionHasNoErrors()
+        : $response->assertSessionHasErrors('country_of_origin');
+})->with([
+    ['DE', true],
+    ['CH', true],
+    [null, true],
+    ['', true],
+    ['AT', false],
+    ['Germany', false],
+    ['de', false],
+]);
+
+test('the available countries of origin are shared with the product pages', function () {
+    [$user, $organization] = organizationMember();
+
+    $product = Product::factory()->for($organization)->create([
+        'country_of_origin' => CountryOfOrigin::Switzerland,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', ['current_organization' => $organization->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.0.country_of_origin', 'CH')
+            ->where('products.0.country_of_origin_label', 'Switzerland')
+            ->where('availableCountries', [
+                ['value' => 'DE', 'label' => 'Germany'],
+                ['value' => 'CH', 'label' => 'Switzerland'],
+            ]),
+        );
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('product.country_of_origin', 'CH')
+            ->has('availableCountries', 2),
+        );
+});
+
+test('products can be updated', function () {
+    [$user, $organization] = organizationMember();
+
+    $product = Product::factory()->for($organization)->create(['name' => 'Oat Milk']);
+
+    $this
+        ->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload())
+        ->assertRedirect(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]));
+
+    expect($product->fresh())
+        ->name->toBe('Organic Oat Milk')
+        ->ean->toBe('4006381333931')
+        ->country_of_origin->toBe(CountryOfOrigin::Germany);
+});
+
+test('products can be deleted', function () {
+    [$user, $organization] = organizationMember();
+
+    $product = Product::factory()->for($organization)->create();
+
+    $this
+        ->actingAs($user)
+        ->delete(route('products.destroy', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->assertRedirect(route('products.index', ['current_organization' => $organization->slug]));
+
+    $this->assertDatabaseMissing('products', ['id' => $product->id]);
+});
+
+test('products of another organization cannot be reached through the current organization', function () {
+    [$user, $organization] = organizationMember();
+
+    $otherProduct = Product::factory()->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $otherProduct->uuid]))
+        ->assertNotFound();
+});
+
+test('users who do not belong to the organization cannot list its products', function () {
+    [, $organization] = organizationMember();
+
+    $stranger = User::factory()->create();
+
+    $this
+        ->actingAs($stranger)
+        ->get(route('products.index', ['current_organization' => $organization->slug]))
+        ->assertForbidden();
+});
+
+test('members can view products but cannot create, update or delete them', function () {
+    [$user, $organization] = organizationMember(OrganizationRole::Member);
+
+    $product = Product::factory()->for($organization)->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', ['current_organization' => $organization->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('permissions.canCreateProduct', false)
+            ->where('permissions.canUpdateProduct', false)
+            ->where('permissions.canDeleteProduct', false),
+        );
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload())
+        ->assertForbidden();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload())
+        ->assertForbidden();
+
+    $this
+        ->actingAs($user)
+        ->delete(route('products.destroy', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->assertForbidden();
+});
+
+test('admins can manage products', function () {
+    [$user, $organization] = organizationMember(OrganizationRole::Admin);
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload())
+        ->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('products', ['organization_id' => $organization->id, 'name' => 'Organic Oat Milk']);
+});
+
+test('guests are redirected to the login page', function () {
+    $organization = Organization::factory()->create();
+
+    $this
+        ->get(route('products.index', ['current_organization' => $organization->slug]))
+        ->assertRedirect(route('login'));
+});
