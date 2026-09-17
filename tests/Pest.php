@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\OrganizationRole;
+use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +19,7 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Browser');
 
 /*
 |--------------------------------------------------------------------------
@@ -44,7 +47,20 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Create a user that belongs to a fresh organization with the given role,
+ * with that organization already selected as their current one.
+ *
+ * @param  array<string, mixed>  $organizationAttributes
+ * @return array{0: User, 1: Organization}
+ */
+function newOrganizationMember(OrganizationRole $role = OrganizationRole::Owner, array $organizationAttributes = []): array
 {
-    // ..
+    $user = User::factory()->withoutOrganization()->create();
+    $organization = Organization::factory()->create($organizationAttributes);
+
+    $organization->members()->attach($user, ['role' => $role->value]);
+    $user->switchOrganization($organization);
+
+    return [$user, $organization];
 }
