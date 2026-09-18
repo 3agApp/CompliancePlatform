@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Data\OrganizationPermissions;
+use App\Data\ProductCategoryPermissions;
 use App\Data\ProductPermissions;
 use App\Data\SupplierConnectionPermissions;
 use App\Data\UserOrganization;
@@ -233,6 +234,24 @@ trait HasOrganizations
     /**
      * Determine if the user has the given permission on the organization.
      */
+    /**
+     * Get what the user may do with the organization's category list.
+     *
+     * Only a distributor keeps a list, which gates the whole screen the same
+     * way ProductCategoryPolicy does.
+     */
+    public function toProductCategoryPermissions(Organization $organization): ProductCategoryPermissions
+    {
+        $role = $this->organizationRole($organization);
+        $keepsCategories = $organization->isDistributor();
+
+        return new ProductCategoryPermissions(
+            canCreateCategory: $keepsCategories && ($role?->hasPermission(OrganizationPermission::CreateProductCategory) ?? false),
+            canUpdateCategory: $keepsCategories && ($role?->hasPermission(OrganizationPermission::UpdateProductCategory) ?? false),
+            canDeleteCategory: $keepsCategories && ($role?->hasPermission(OrganizationPermission::DeleteProductCategory) ?? false),
+        );
+    }
+
     public function hasOrganizationPermission(Organization $organization, OrganizationPermission $permission): bool
     {
         return $this->organizationRole($organization)?->hasPermission($permission) ?? false;

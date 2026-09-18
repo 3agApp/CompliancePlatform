@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
+use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
@@ -30,6 +31,11 @@ Route::prefix('{current_organization}')
             Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
             Route::middleware(EnsureOrganizationType::class.':distributor')->group(function () {
+                Route::get('categories', [ProductCategoryController::class, 'index'])->name('categories.index');
+                Route::post('categories', [ProductCategoryController::class, 'store'])->name('categories.store');
+                Route::patch('categories/{product_category}', [ProductCategoryController::class, 'update'])->name('categories.update');
+                Route::delete('categories/{product_category}', [ProductCategoryController::class, 'destroy'])->name('categories.destroy');
+
                 Route::get('suppliers', [SupplierConnectionController::class, 'index'])->name('suppliers.index');
                 Route::post('suppliers', [SupplierConnectionController::class, 'store'])->name('suppliers.store');
                 Route::post('suppliers/{supplier_connection}/resend', [SupplierConnectionController::class, 'resend'])->name('suppliers.resend');
