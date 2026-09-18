@@ -48,6 +48,7 @@ export type ProductPermissions = {
 
 export type ProductFilters = {
     connection: number | null;
+    category: number | null;
     search: string | null;
 };
 

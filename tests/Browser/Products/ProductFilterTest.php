@@ -47,6 +47,38 @@ test('the product list offers to clear the filters when nothing matches', functi
         ->assertNoJavaScriptErrors();
 });
 
+test('a distributor narrows the product list with the category filter', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
+
+    $magnetic = $distributor->productCategories()->where('name', 'Magnetic toy')->sole();
+    $filter = $distributor->productCategories()->where('name', 'Filter')->sole();
+
+    Product::factory()->for($distributor)->inCategory($magnetic)->create([
+        'name' => 'Magna-Tiles 32',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->inCategory($filter)->create([
+        'name' => 'Water Filter Cartridge',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.index', ['current_organization' => $distributor->slug]));
+
+    $page->assertSee('Magna-Tiles 32')
+        ->assertSee('Water Filter Cartridge')
+        ->click('@product-filter-category')
+        ->click('[role="option"]:has-text("Magnetic toy")')
+        ->assertSee('Magna-Tiles 32')
+        ->assertDontSee('Water Filter Cartridge')
+        ->click('@product-filter-clear')
+        ->assertSee('Water Filter Cartridge')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the product list is searched by an article number', function () {
     [$user, $distributor] = newOrganizationMember();
 

@@ -107,6 +107,20 @@ class Product extends Model
     }
 
     /**
+     * Scope the query to the products filed under one category.
+     *
+     * Applied on top of a query that is already scoped to the viewer, so a
+     * category id from another organization's list matches nothing rather
+     * than needing a check of its own.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeInCategory(Builder $query, int $categoryId): void
+    {
+        $query->where('products.product_category_id', $categoryId);
+    }
+
+    /**
      * Scope the query to products whose name, barcode or either side's
      * article number contains the term.
      *

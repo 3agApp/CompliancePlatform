@@ -12,13 +12,17 @@ import {
 } from '@/components/ui/select';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { index as productsIndex } from '@/routes/products';
-import type { ProductCounterparty, ProductFilters } from '@/types';
+import type {
+    ProductCategoryOption,
+    ProductCounterparty,
+    ProductFilters,
+} from '@/types';
 
 /**
  * Radix refuses an empty string as an item value, so "no filter" travels as a
  * sentinel here and leaves as an absent query parameter.
  */
-const ALL_COUNTERPARTIES = 'all';
+const NO_FILTER = 'all';
 
 /**
  * Only the list and the state describing it are re-fetched. The permissions,
@@ -27,11 +31,18 @@ const ALL_COUNTERPARTIES = 'all';
  */
 const ONLY = ['products', 'filters', 'hasProducts'];
 
+type Query = {
+    connection?: string;
+    category?: string;
+    search?: string;
+};
+
 type Props = {
     organizationSlug: string;
     filters: ProductFilters;
     counterparties: ProductCounterparty[];
     counterpartyLabel: string;
+    filterableCategories: ProductCategoryOption[];
 };
 
 export default function ProductFilterBar({
@@ -39,6 +50,7 @@ export default function ProductFilterBar({
     filters,
     counterparties,
     counterpartyLabel,
+    filterableCategories,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebouncedValue(search);
@@ -48,7 +60,7 @@ export default function ProductFilterBar({
      * local state. mergeQuery keeps the two controls independent: changing
      * one leaves whatever the other put in the query string alone.
      */
-    const visit = (query: { connection?: string; search?: string }) => {
+    const visit = (query: Query) => {
         router.get(
             productsIndex(organizationSlug, { mergeQuery: query }),
             {},
@@ -78,7 +90,11 @@ export default function ProductFilterBar({
 
     const clear = () => {
         setSearch('');
-        visit({ connection: undefined, search: undefined });
+        visit({
+            connection: undefined,
+            category: undefined,
+            search: undefined,
+        });
     };
 
     const lowerLabel = counterpartyLabel.toLowerCase();
@@ -102,15 +118,12 @@ export default function ProductFilterBar({
                 <Select
                     value={
                         filters.connection === null
-                            ? ALL_COUNTERPARTIES
+                            ? NO_FILTER
                             : String(filters.connection)
                     }
                     onValueChange={(value) =>
                         visit({
-                            connection:
-                                value === ALL_COUNTERPARTIES
-                                    ? undefined
-                                    : value,
+                            connection: value === NO_FILTER ? undefined : value,
                         })
                     }
                 >
@@ -122,7 +135,7 @@ export default function ProductFilterBar({
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value={ALL_COUNTERPARTIES}>
+                        <SelectItem value={NO_FILTER}>
                             All {lowerLabel}s
                         </SelectItem>
                         {counterparties.map((counterparty) => (
@@ -137,7 +150,45 @@ export default function ProductFilterBar({
                 </Select>
             ) : null}
 
-            {filters.connection !== null || filters.search !== null ? (
+            {filterableCategories.length > 0 ? (
+                <Select
+                    value={
+                        filters.category === null
+                            ? NO_FILTER
+                            : String(filters.category)
+                    }
+                    onValueChange={(value) =>
+                        visit({
+                            category: value === NO_FILTER ? undefined : value,
+                        })
+                    }
+                >
+                    <SelectTrigger
+                        data-test="product-filter-category"
+                        aria-label="Filter by category"
+                        className="w-full sm:w-56"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value={NO_FILTER}>
+                            All categories
+                        </SelectItem>
+                        {filterableCategories.map((category) => (
+                            <SelectItem
+                                key={category.id}
+                                value={String(category.id)}
+                            >
+                                {category.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            ) : null}
+
+            {filters.connection !== null ||
+            filters.category !== null ||
+            filters.search !== null ? (
                 <Button
                     variant="ghost"
                     size="sm"
