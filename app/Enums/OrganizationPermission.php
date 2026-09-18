@@ -21,4 +21,9 @@ enum OrganizationPermission: string
     case CreateProduct = 'product:create';
     case UpdateProduct = 'product:update';
     case DeleteProduct = 'product:delete';
+
+    case ViewProductCategory = 'product_category:view';
+    case CreateProductCategory = 'product_category:create';
+    case UpdateProductCategory = 'product_category:update';
+    case DeleteProductCategory = 'product_category:delete';
 }

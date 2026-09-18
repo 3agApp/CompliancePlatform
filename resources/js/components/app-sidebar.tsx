@@ -5,6 +5,7 @@ import {
     Mail,
     Package,
     Settings2,
+    Tags,
     Truck,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -23,6 +24,7 @@ import {
 import { dashboard, onboarding } from '@/routes';
 import { index as invitationsIndex } from '@/routes/invitations';
 import { edit as editOrganization } from '@/routes/organizations';
+import { index as categoriesIndex } from '@/routes/categories';
 import { index as distributorsIndex } from '@/routes/distributors';
 import { index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
@@ -50,6 +52,14 @@ export function AppSidebar() {
             href: productsIndex(currentOrganization.slug),
             icon: Package,
         });
+
+        if (!isSupplier) {
+            mainNavItems.push({
+                title: 'Categories',
+                href: categoriesIndex(currentOrganization.slug),
+                icon: Tags,
+            });
+        }
 
         mainNavItems.push(
             isSupplier
