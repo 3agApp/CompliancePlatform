@@ -1,4 +1,4 @@
-import { Form, Head, usePage } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Factory, Plus, RotateCcw, Send, Unplug } from 'lucide-react';
 import { useState } from 'react';
 import InviteSupplierModal from '@/components/invite-supplier-modal';
@@ -10,6 +10,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { index as productsIndex } from '@/routes/products';
 import { resend, restore } from '@/routes/suppliers';
 import type {
     SupplierConnection,
@@ -95,7 +96,21 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                             className="border-t"
                                         >
                                             <td className="px-6 font-medium break-words">
-                                                {connection.companyName}
+                                                <Link
+                                                    href={productsIndex(
+                                                        organizationSlug,
+                                                        {
+                                                            query: {
+                                                                connection:
+                                                                    connection.uuid,
+                                                            },
+                                                        },
+                                                    )}
+                                                    className="hover:text-primary underline-offset-4 hover:underline"
+                                                    data-test="supplier-products-link"
+                                                >
+                                                    {connection.companyName}
+                                                </Link>
                                             </td>
                                             <td className="text-muted-foreground px-6 break-all">
                                                 {connection.contactEmail}

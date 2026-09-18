@@ -1,5 +1,6 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Truck } from 'lucide-react';
+import { index as productsIndex } from '@/routes/products';
 import type { DistributorConnection } from '@/types';
 
 type Props = {
@@ -8,21 +9,24 @@ type Props = {
 
 export default function DistributorsIndex({ connections }: Props) {
     const { currentOrganization } = usePage().props;
+    const organizationSlug = currentOrganization?.slug ?? '';
 
     return (
         <>
             <Head title="Distributors" />
 
             <div className="workspace-page">
-                <div className="page-heading">
-                    <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                        Supply chain
-                    </p>
-                    <h1 className="page-title">Distributors</h1>
-                    <p className="text-muted-foreground text-sm">
-                        The companies {currentOrganization?.name} supplies
-                        products to.
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="page-heading">
+                        <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
+                            Supply chain
+                        </p>
+                        <h1 className="page-title">Distributors</h1>
+                        <p className="text-muted-foreground text-sm">
+                            The companies {currentOrganization?.name} supplies
+                            products to.
+                        </p>
+                    </div>
                 </div>
 
                 {connections.length > 0 ? (
@@ -47,7 +51,21 @@ export default function DistributorsIndex({ connections }: Props) {
                                             className="border-t"
                                         >
                                             <td className="px-6 font-medium break-words">
-                                                {connection.distributorName}
+                                                <Link
+                                                    href={productsIndex(
+                                                        organizationSlug,
+                                                        {
+                                                            query: {
+                                                                connection:
+                                                                    connection.uuid,
+                                                            },
+                                                        },
+                                                    )}
+                                                    className="hover:text-primary underline-offset-4 hover:underline"
+                                                    data-test="distributor-products-link"
+                                                >
+                                                    {connection.distributorName}
+                                                </Link>
                                             </td>
                                             <td className="text-muted-foreground px-6">
                                                 {connection.productsCount}
