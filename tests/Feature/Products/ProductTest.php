@@ -68,7 +68,7 @@ test('the products index page lists the products of the current organization', f
         ->assertInertia(fn (Assert $page) => $page
             ->component('products/index')
             ->has('products', 1)
-            ->where('products.0.uuid', $product->uuid)
+            ->where('products.0.id', $product->id)
             ->where('products.0.name', 'Organic Oat Milk')
             ->where('permissions.canCreateProduct', true),
         );
@@ -126,7 +126,7 @@ test('an identification field can be cleared by submitting an empty value', func
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection, [
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection, [
             $field => '',
         ]))
         ->assertSessionHasNoErrors();
@@ -203,7 +203,7 @@ test('a supplier files a product under one of the owning distributor families', 
      */
     $this
         ->actingAs($supplierUser)
-        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('availableCategories', 3)
@@ -212,7 +212,7 @@ test('a supplier files a product under one of the owning distributor families', 
 
     $this
         ->actingAs($supplierUser)
-        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->uuid]), [
+        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => $product->name,
             'product_category_id' => $family->id,
         ])
@@ -244,7 +244,7 @@ test('the legal families are shared with the product pages', function () {
 
     $this
         ->actingAs($user)
-        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('product.product_category_id', legalFamily($organization, 'Magnetic toy')->id)
@@ -265,19 +265,9 @@ test('a product survives the deletion of its category', function () {
 
     $this
         ->actingAs($user)
-        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('product.category_label', null));
-});
-
-test('products are created with a uuid', function () {
-    [$user, $organization, $connection] = distributorWithSupplier();
-
-    $this
-        ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection));
-
-    expect(Str::isUuid(Product::sole()->uuid))->toBeTrue();
 });
 
 test('products can be created without a barcode', function () {
@@ -319,7 +309,7 @@ test('a country of origin can be removed by submitting an empty value', function
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection, [
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection, [
             'country_of_origin' => '',
         ]))
         ->assertSessionHasNoErrors();
@@ -401,7 +391,7 @@ test('the available countries of origin are shared with the product pages', func
 
     $this
         ->actingAs($user)
-        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('product.country_of_origin', 'CH')
             ->has('availableCountries', 2),
@@ -415,8 +405,8 @@ test('products can be updated', function () {
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection))
-        ->assertRedirect(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]));
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection))
+        ->assertRedirect(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]));
 
     expect($product->fresh())
         ->name->toBe('Organic Oat Milk')
@@ -436,7 +426,7 @@ test('products can be deleted', function () {
 
     $this
         ->actingAs($user)
-        ->delete(route('products.destroy', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->delete(route('products.destroy', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertRedirect(route('products.index', ['current_organization' => $organization->slug]));
 
     $this->assertDatabaseMissing('products', ['id' => $product->id]);
@@ -449,7 +439,7 @@ test('products of another organization cannot be reached through the current org
 
     $this
         ->actingAs($user)
-        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $otherProduct->uuid]))
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $otherProduct->id]))
         ->assertNotFound();
 });
 
@@ -486,12 +476,12 @@ test('members can view products but cannot create, update or delete them', funct
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection))
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection))
         ->assertForbidden();
 
     $this
         ->actingAs($user)
-        ->delete(route('products.destroy', ['current_organization' => $organization->slug, 'product' => $product->uuid]))
+        ->delete(route('products.destroy', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertForbidden();
 });
 

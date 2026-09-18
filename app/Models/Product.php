@@ -7,14 +7,12 @@ use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
- * @property string $uuid
  * @property int $organization_id
  * @property int|null $supplier_connection_id
  * @property string $name
@@ -45,20 +43,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
-    use HasFactory, HasUuids;
-
-    /**
-     * Get the columns that should receive a unique identifier.
-     *
-     * The auto-incrementing key is kept as the internal identifier, while the
-     * UUID is the public one used in URLs.
-     *
-     * @return array<int, string>
-     */
-    public function uniqueIds(): array
-    {
-        return ['uuid'];
-    }
+    use HasFactory;
 
     /**
      * Get the attributes that should be cast.
@@ -109,17 +94,16 @@ class Product extends Model
     /**
      * Scope the query to the products assigned to one connection.
      *
-     * The connection is matched by its public uuid so the filter can live in
-     * a URL, and as an EXISTS clause so it composes onto a query that is
-     * already scoped to the viewing organization. A uuid belonging to someone
-     * else therefore matches no candidate row rather than needing a second
-     * authorization check, and the viewer learns nothing about it.
+     * Written as an EXISTS clause so it composes onto a query that is already
+     * scoped to the viewing organization. A connection id belonging to
+     * someone else therefore matches no candidate row rather than needing a
+     * second authorization check, and the viewer learns nothing about it.
      *
      * @param  Builder<Product>  $query
      */
-    public function scopeAssignedTo(Builder $query, string $connectionUuid): void
+    public function scopeAssignedTo(Builder $query, int $connectionId): void
     {
-        $query->whereRelation('supplierConnection', 'supplier_connections.uuid', $connectionUuid);
+        $query->whereRelation('supplierConnection', 'supplier_connections.id', $connectionId);
     }
 
     /**
@@ -146,13 +130,5 @@ class Product extends Model
             ->orWhereLike('products.ean', "%{$term}%")
             ->orWhereLike('products.internal_article_number', "%{$term}%")
             ->orWhereLike('products.supplier_article_number', "%{$term}%"));
-    }
-
-    /**
-     * Get the route key for the model.
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'uuid';
     }
 }

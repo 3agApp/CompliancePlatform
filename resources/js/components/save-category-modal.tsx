@@ -38,7 +38,7 @@ export default function SaveCategoryModal({
     const isEditing = category !== undefined;
 
     const form = isEditing
-        ? update.form([organizationSlug, category.uuid])
+        ? update.form([organizationSlug, category.id])
         : store.form(organizationSlug);
 
     return (
@@ -49,7 +49,7 @@ export default function SaveCategoryModal({
 
             <DialogContent>
                 <Form
-                    key={`${category?.uuid ?? 'new'}-${String(open)}`}
+                    key={`${category?.id ?? 'new'}-${String(open)}`}
                     {...form}
                     className="space-y-6"
                     onSuccess={() => onOpenChange(false)}

@@ -167,14 +167,14 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{uuid: string, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
         $supplier = $connection->supplierOrganization;
 
         return [
-            'uuid' => $connection->uuid,
+            'id' => $connection->id,
             'companyName' => $supplier !== null ? $supplier->name : $connection->company_name,
             'contactEmail' => $connection->contact_email,
             'status' => $connection->status->value,

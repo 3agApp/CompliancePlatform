@@ -29,13 +29,13 @@ test('a distributor filters the product list by one of its suppliers', function 
     Product::factory()->for($distributor)->create(['name' => 'Rice Milk', 'supplier_connection_id' => $acme->id]);
     Product::factory()->for($distributor)->create(['name' => 'Soy Milk', 'supplier_connection_id' => $other->id]);
 
-    filteredProducts($user, $distributor, ['connection' => $acme->uuid])
+    filteredProducts($user, $distributor, ['connection' => $acme->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('products', 2)
             ->where('products.0.name', 'Oat Milk')
             ->where('products.1.name', 'Rice Milk')
-            ->where('filters.connection', $acme->uuid),
+            ->where('filters.connection', $acme->id),
         );
 });
 
@@ -50,7 +50,7 @@ test('a supplier filters the product list by one of its distributors', function 
     Product::factory()->for($distributorA)->create(['name' => 'Oat Milk', 'supplier_connection_id' => $connectionA->id]);
     Product::factory()->for($distributorB)->create(['name' => 'Rice Milk', 'supplier_connection_id' => $connectionB->id]);
 
-    filteredProducts($supplierUser, $supplier, ['connection' => $connectionA->uuid])
+    filteredProducts($supplierUser, $supplier, ['connection' => $connectionA->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('products', 1)
@@ -183,7 +183,7 @@ test('the product search never reaches another organization products', function 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('products', 1)
-            ->where('products.0.uuid', $own->uuid),
+            ->where('products.0.id', $own->id),
         );
 
     // Only the other distributor's barcode matches. An ungrouped OR in the
@@ -227,7 +227,7 @@ test('a distributor filtering by another distributor connection sees no products
     Product::factory()->for($distributor)->create(['supplier_connection_id' => $connection->id]);
     Product::factory()->for($otherDistributor)->create(['supplier_connection_id' => $foreignConnection->id]);
 
-    filteredProducts($user, $distributor, ['connection' => $foreignConnection->uuid])
+    filteredProducts($user, $distributor, ['connection' => $foreignConnection->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->has('products', 0));
 });
@@ -244,7 +244,7 @@ test('a supplier filtering by a connection it does not hold sees no products', f
     Product::factory()->for($distributor)->create(['supplier_connection_id' => $connection->id]);
     Product::factory()->for($otherDistributor)->create(['supplier_connection_id' => $foreignConnection->id]);
 
-    filteredProducts($supplierUser, $supplier, ['connection' => $foreignConnection->uuid])
+    filteredProducts($supplierUser, $supplier, ['connection' => $foreignConnection->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->has('products', 0));
 });
@@ -288,12 +288,12 @@ test('a distributor can filter by a revoked connection that still holds products
 
     $connection->update(['status' => SupplierConnectionStatus::Revoked]);
 
-    filteredProducts($user, $distributor, ['connection' => $connection->uuid])
+    filteredProducts($user, $distributor, ['connection' => $connection->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('products', 1)
             ->has('counterparties', 1)
-            ->where('counterparties.0.uuid', $connection->uuid),
+            ->where('counterparties.0.id', $connection->id),
         );
 });
 

@@ -50,7 +50,7 @@ test('the categories page lists the organization categories with their product c
             ->where('categories.0.products_count', 0)
             ->where('categories.2.name', 'Toy')
             ->where('categories.2.products_count', 2)
-            ->where('categories.2.uuid', $toy->uuid)
+            ->where('categories.2.id', $toy->id)
             ->where('permissions.canCreateCategory', true),
         );
 });
@@ -130,7 +130,7 @@ test('categories can be renamed', function () {
 
     $this
         ->actingAs($user)
-        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $category->uuid]), [
+        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $category->id]), [
             'name' => 'Toy (EN 71)',
         ])
         ->assertRedirect(route('categories.index', ['current_organization' => $distributor->slug]));
@@ -145,7 +145,7 @@ test('a category keeps its own name when it is saved unchanged', function () {
 
     $this
         ->actingAs($user)
-        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $category->uuid]), [
+        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $category->id]), [
             'name' => 'Toy',
         ])
         ->assertSessionHasNoErrors();
@@ -160,7 +160,7 @@ test('an unused category can be deleted', function () {
 
     $this
         ->actingAs($user)
-        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $category->uuid]))
+        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $category->id]))
         ->assertRedirect(route('categories.index', ['current_organization' => $distributor->slug]));
 
     $this->assertModelMissing($category);
@@ -178,7 +178,7 @@ test('a category still used by products is kept, and says how many', function ()
 
     $this
         ->actingAs($user)
-        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $category->uuid]))
+        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $category->id]))
         ->assertRedirect(route('categories.index', ['current_organization' => $distributor->slug]));
 
     $this->assertModelExists($category);
@@ -194,14 +194,14 @@ test('a category of another organization cannot be reached through the current o
 
     $this
         ->actingAs($user)
-        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $foreign->uuid]), [
+        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $foreign->id]), [
             'name' => 'Renamed from outside',
         ])
         ->assertNotFound();
 
     $this
         ->actingAs($user)
-        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $foreign->uuid]))
+        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $foreign->id]))
         ->assertNotFound();
 
     expect($foreign->fresh()->name)->toBe('Toy');
@@ -233,12 +233,12 @@ test('members can view categories but cannot create, rename or delete them', fun
 
     $this
         ->actingAs($user)
-        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $category->uuid]), ['name' => 'Renamed'])
+        ->patch(route('categories.update', ['current_organization' => $distributor->slug, 'product_category' => $category->id]), ['name' => 'Renamed'])
         ->assertForbidden();
 
     $this
         ->actingAs($user)
-        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $category->uuid]))
+        ->delete(route('categories.destroy', ['current_organization' => $distributor->slug, 'product_category' => $category->id]))
         ->assertForbidden();
 });
 

@@ -101,7 +101,7 @@ class ProductCategoryController extends Controller
      * category is holding, and the delete dialog can explain itself before
      * the request that would be refused is ever sent.
      *
-     * @return array<array{uuid: string, name: string, products_count: int}>
+     * @return array<array{id: int, name: string, products_count: int}>
      */
     protected function categories(Organization $organization): array
     {
@@ -110,7 +110,7 @@ class ProductCategoryController extends Controller
             ->orderBy('name')
             ->get()
             ->map(fn (ProductCategory $category) => [
-                'uuid' => $category->uuid,
+                'id' => $category->id,
                 'name' => $category->name,
                 'products_count' => (int) $category->products_count,
             ])

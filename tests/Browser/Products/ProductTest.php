@@ -64,7 +64,7 @@ test('the identification details of a product are edited on its own page', funct
 
     $page = visit(route('products.edit', [
         'current_organization' => $organization->slug,
-        'product' => $product->uuid,
+        'product' => $product->id,
     ]));
 
     $page->fill('@product-brand', 'Magna-Tiles')

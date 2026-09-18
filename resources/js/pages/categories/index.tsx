@@ -93,7 +93,7 @@ export default function CategoriesIndex({ categories, permissions }: Props) {
                                 <tbody>
                                     {categories.map((category) => (
                                         <tr
-                                            key={category.uuid}
+                                            key={category.id}
                                             data-test="category-row"
                                             className="border-t"
                                         >

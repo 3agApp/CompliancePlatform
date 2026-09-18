@@ -100,7 +100,11 @@ export default function ProductFilterBar({
 
             {counterparties.length > 0 ? (
                 <Select
-                    value={filters.connection ?? ALL_COUNTERPARTIES}
+                    value={
+                        filters.connection === null
+                            ? ALL_COUNTERPARTIES
+                            : String(filters.connection)
+                    }
                     onValueChange={(value) =>
                         visit({
                             connection:
@@ -123,8 +127,8 @@ export default function ProductFilterBar({
                         </SelectItem>
                         {counterparties.map((counterparty) => (
                             <SelectItem
-                                key={counterparty.uuid}
-                                value={counterparty.uuid}
+                                key={counterparty.id}
+                                value={String(counterparty.id)}
                             >
                                 {counterparty.label}
                             </SelectItem>

@@ -91,7 +91,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                 <tbody>
                                     {connections.map((connection) => (
                                         <tr
-                                            key={connection.uuid}
+                                            key={connection.id}
                                             data-test="supplier-row"
                                             className="border-t"
                                         >
@@ -102,7 +102,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                         {
                                                             query: {
                                                                 connection:
-                                                                    connection.uuid,
+                                                                    connection.id,
                                                             },
                                                         },
                                                     )}
@@ -137,7 +137,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                         <Form
                                                             {...resend.form([
                                                                 organizationSlug,
-                                                                connection.uuid,
+                                                                connection.id,
                                                             ])}
                                                         >
                                                             <Tooltip>
@@ -174,7 +174,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                         <Form
                                                             {...restore.form([
                                                                 organizationSlug,
-                                                                connection.uuid,
+                                                                connection.id,
                                                             ])}
                                                         >
                                                             <Tooltip>
