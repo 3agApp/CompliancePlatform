@@ -78,12 +78,19 @@ class SupplierConnectionController extends Controller
 
     /**
      * Send the claim link again with a fresh token.
+     *
+     * A connection revoked before anybody claimed it is re-opened the same
+     * way, because that is what a distributor means by inviting them again.
+     * Re-typing the address into the invite form already does exactly this,
+     * so the button only makes an existing path discoverable. A declined
+     * invitation is left out: the recipient said no, and one step of friction
+     * before asking again is the right amount.
      */
     public function resend(Organization $currentOrganization, SupplierConnection $supplierConnection): RedirectResponse
     {
         Gate::authorize('update', $supplierConnection);
 
-        abort_unless($supplierConnection->isPending() && ! $supplierConnection->isClaimed(), 404);
+        abort_unless($this->isResendable($supplierConnection), 404);
 
         $supplierConnection->reinvite($supplierConnection->company_name);
 
@@ -133,6 +140,18 @@ class SupplierConnectionController extends Controller
     }
 
     /**
+     * Determine if the claim link can be sent again.
+     */
+    protected function isResendable(SupplierConnection $connection): bool
+    {
+        return ! $connection->isClaimed() && in_array(
+            $connection->status,
+            [SupplierConnectionStatus::Pending, SupplierConnectionStatus::Revoked],
+            strict: true,
+        );
+    }
+
+    /**
      * Mail the claim link to the contact address.
      */
     protected function sendInvitation(SupplierConnection $connection): void
@@ -144,7 +163,11 @@ class SupplierConnectionController extends Controller
     /**
      * Transform the connection for the distributor's frontend.
      *
-     * @return array{uuid: string, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isAssignable: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
+     * The row actions are decided here rather than from status strings in the
+     * page, so the button a distributor sees and the request the controller
+     * accepts can never drift apart.
+     *
+     * @return array{uuid: string, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
@@ -160,6 +183,8 @@ class SupplierConnectionController extends Controller
                 : $connection->status->label(),
             'isClaimed' => $connection->isClaimed(),
             'isAssignable' => in_array($connection->status, SupplierConnectionStatus::assignable(), strict: true),
+            'canResend' => $this->isResendable($connection),
+            'canRestore' => $connection->status === SupplierConnectionStatus::Revoked && $connection->isClaimed(),
             'productsCount' => (int) ($connection->products_count ?? 0),
             'expiresAt' => $connection->expires_at?->toIso8601String(),
             'createdAt' => $connection->created_at?->toIso8601String(),

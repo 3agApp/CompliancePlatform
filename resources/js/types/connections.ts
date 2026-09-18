@@ -12,6 +12,8 @@ export type SupplierConnection = {
     statusLabel: string;
     isClaimed: boolean;
     isAssignable: boolean;
+    canResend: boolean;
+    canRestore: boolean;
     productsCount: number;
     expiresAt: string | null;
     createdAt: string | null;

@@ -118,8 +118,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                             <td className="px-6">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {permissions.canManageConnection &&
-                                                    connection.status ===
-                                                        'pending' ? (
+                                                    connection.canResend ? (
                                                         <Form
                                                             {...resend.form([
                                                                 organizationSlug,
@@ -156,9 +155,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                     ) : null}
 
                                                     {permissions.canManageConnection &&
-                                                    connection.status ===
-                                                        'revoked' &&
-                                                    connection.isClaimed ? (
+                                                    connection.canRestore ? (
                                                         <Form
                                                             {...restore.form([
                                                                 organizationSlug,

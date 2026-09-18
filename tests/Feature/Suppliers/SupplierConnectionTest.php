@@ -247,3 +247,99 @@ test('guests cannot reach the suppliers page', function () {
         ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
         ->assertRedirect(route('login'));
 });
+
+test('a distributor sends the invitation again for a connection revoked before it was claimed', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor, attributes: [
+        'status' => SupplierConnectionStatus::Revoked,
+        'expires_at' => now()->subDay(),
+    ]);
+
+    $originalCode = $connection->code;
+
+    $this
+        ->actingAs($user)
+        ->post(route('suppliers.resend', [
+            'current_organization' => $distributor->slug,
+            'supplier_connection' => $connection->uuid,
+        ]))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('suppliers.index', ['current_organization' => $distributor->slug]));
+
+    expect($connection->fresh())
+        ->status->toBe(SupplierConnectionStatus::Pending)
+        ->code->not->toBe($originalCode)
+        ->expires_at->toBeGreaterThan(now());
+
+    Notification::assertSentOnDemand(SupplierConnectionInvitation::class);
+});
+
+test('a claimed connection cannot be invited again', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+    $connection->update(['status' => SupplierConnectionStatus::Revoked]);
+
+    $this
+        ->actingAs($user)
+        ->post(route('suppliers.resend', [
+            'current_organization' => $distributor->slug,
+            'supplier_connection' => $connection->uuid,
+        ]))
+        ->assertNotFound();
+
+    expect($connection->fresh()->status)->toBe(SupplierConnectionStatus::Revoked);
+
+    Notification::assertNothingSent();
+});
+
+test('a declined connection cannot be invited again', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor, attributes: [
+        'status' => SupplierConnectionStatus::Declined,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->post(route('suppliers.resend', [
+            'current_organization' => $distributor->slug,
+            'supplier_connection' => $connection->uuid,
+        ]))
+        ->assertNotFound();
+
+    expect($connection->fresh()->status)->toBe(SupplierConnectionStatus::Declined);
+
+    Notification::assertNothingSent();
+});
+
+test('the suppliers list offers to invite a revoked unclaimed connection again', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    newSupplierConnection($distributor, attributes: [
+        'company_name' => 'Unclaimed Supplies',
+        'status' => SupplierConnectionStatus::Revoked,
+    ]);
+
+    $claimed = newSupplierConnection($distributor, $supplier, [
+        'company_name' => 'Anchored Supplies',
+        'contact_email' => 'claimed@acme.test',
+    ]);
+    $claimed->update(['status' => SupplierConnectionStatus::Revoked]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.companyName', $supplier->name)
+            ->where('connections.0.canResend', false)
+            ->where('connections.0.canRestore', true)
+            ->where('connections.1.companyName', 'Unclaimed Supplies')
+            ->where('connections.1.canResend', true)
+            ->where('connections.1.canRestore', false),
+        );
+});
