@@ -1,9 +1,19 @@
 export type OrganizationRole = 'owner' | 'admin' | 'member';
 
+export type OrganizationType = 'distributor' | 'supplier';
+
+export type OrganizationTypeOption = {
+    value: OrganizationType;
+    label: string;
+    description: string;
+};
+
 export type Organization = {
     id: number;
     name: string;
     slug: string;
+    type: OrganizationType;
+    typeLabel: string;
     role?: OrganizationRole;
     roleLabel?: string;
     isCurrent?: boolean;
@@ -29,6 +39,7 @@ export type OrganizationInvitation = {
 export type OrganizationInvitationContext = {
     code: string;
     organizationName: string;
+    kind: 'organization' | 'supplier_connection';
 };
 
 export type PendingInvitation = {

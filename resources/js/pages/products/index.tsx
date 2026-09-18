@@ -1,8 +1,10 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Package, Pencil, Plus, SearchX, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import CreateProductModal from '@/components/create-product-modal';
 import DeleteProductModal from '@/components/delete-product-modal';
+import ProductFilterBar from '@/components/product-filter-bar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -10,21 +12,59 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { edit } from '@/routes/products';
-import type { CountryOption, Product, ProductPermissions } from '@/types';
+import { index as suppliersIndex } from '@/routes/suppliers';
+import type {
+    CountryOption,
+    OrganizationType,
+    Product,
+    ProductCounterparty,
+    ProductFilters,
+    ProductPermissions,
+    SupplierConnectionOption,
+} from '@/types';
 
 type Props = {
     products: Product[];
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    availableConnections: SupplierConnectionOption[];
+    counterparties: ProductCounterparty[];
+    filters: ProductFilters;
+    hasProducts: boolean;
+    viewerType: OrganizationType;
 };
 
 export default function ProductsIndex({
     products,
     permissions,
     availableCountries,
+    availableConnections,
+    counterparties,
+    filters,
+    hasProducts,
+    viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
+
+    const isSupplier = viewerType === 'supplier';
+    const counterpartyLabel = isSupplier ? 'Distributor' : 'Supplier';
+
+    const isFiltered = filters.connection !== null || filters.search !== null;
+
+    /**
+     * A filter bar over a catalogue that is empty for want of products, not
+     * for want of a match, is noise.
+     */
+    const showFilters = hasProducts || isFiltered;
+
+    /**
+     * Every product needs a supplier, so a distributor with no suppliers yet
+     * is pointed at the suppliers page rather than at a form they cannot
+     * submit.
+     */
+    const canAddProducts =
+        permissions.canCreateProduct && availableConnections.length > 0;
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(
@@ -44,26 +84,48 @@ export default function ProductsIndex({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
                         <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                            Organization catalog
+                            {isSupplier
+                                ? 'Assigned to you'
+                                : 'Organization catalog'}
                         </p>
                         <h1 className="page-title">Products</h1>
                         <p className="text-muted-foreground text-sm">
-                            The products {currentOrganization?.name} is
-                            responsible for.
+                            {isSupplier
+                                ? `Products distributors have assigned to ${currentOrganization?.name}.`
+                                : `The products ${currentOrganization?.name} is responsible for.`}
                         </p>
                     </div>
 
-                    {permissions.canCreateProduct ? (
+                    {canAddProducts ? (
                         <CreateProductModal
                             organizationSlug={organizationSlug}
                             availableCountries={availableCountries}
+                            availableConnections={availableConnections}
                         >
                             <Button data-test="products-new-product-button">
                                 <Plus /> New product
                             </Button>
                         </CreateProductModal>
+                    ) : permissions.canCreateProduct ? (
+                        <Button variant="outline" asChild>
+                            <Link
+                                href={suppliersIndex(organizationSlug)}
+                                data-test="products-invite-supplier-button"
+                            >
+                                <Plus /> Invite a supplier
+                            </Link>
+                        </Button>
                     ) : null}
                 </div>
+
+                {showFilters ? (
+                    <ProductFilterBar
+                        organizationSlug={organizationSlug}
+                        filters={filters}
+                        counterparties={counterparties}
+                        counterpartyLabel={counterpartyLabel}
+                    />
+                ) : null}
 
                 {products.length > 0 ? (
                     <div className="workspace-table">
@@ -73,6 +135,9 @@ export default function ProductsIndex({
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
                                             Name
+                                        </th>
+                                        <th className="px-6 font-medium">
+                                            {counterpartyLabel}
                                         </th>
                                         <th className="px-6 font-medium">
                                             EAN / barcode
@@ -96,6 +161,29 @@ export default function ProductsIndex({
                                         >
                                             <td className="px-6 font-medium break-words">
                                                 {product.name}
+                                            </td>
+                                            <td
+                                                className="px-6"
+                                                data-test="product-counterparty"
+                                            >
+                                                <span className="text-muted-foreground">
+                                                    {product.counterparty ??
+                                                        '—'}
+                                                </span>
+                                                {!isSupplier &&
+                                                product.connection_status &&
+                                                product.connection_status !==
+                                                    'active' ? (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="ml-2"
+                                                    >
+                                                        {product.connection_status ===
+                                                        'pending'
+                                                            ? 'Pending'
+                                                            : 'Revoked'}
+                                                    </Badge>
+                                                ) : null}
                                             </td>
                                             <td className="text-muted-foreground px-6 font-mono text-xs">
                                                 {product.ean ?? '—'}
@@ -176,6 +264,25 @@ export default function ProductsIndex({
                             </table>
                         </div>
                     </div>
+                ) : isFiltered ? (
+                    <div
+                        className="workspace-panel flex flex-col items-center justify-center gap-3 px-6 py-16 text-center"
+                        data-test="products-no-matches"
+                    >
+                        <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                            <SearchX className="text-muted-foreground size-6" />
+                        </div>
+                        <div className="space-y-1">
+                            <h2 className="font-medium">
+                                No products match these filters
+                            </h2>
+                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+                                {filters.search === null
+                                    ? `Nothing is assigned to this ${counterpartyLabel.toLowerCase()} yet.`
+                                    : 'Try a different name or barcode, or clear the filters.'}
+                            </p>
+                        </div>
+                    </div>
                 ) : (
                     <div className="workspace-panel flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
@@ -184,9 +291,13 @@ export default function ProductsIndex({
                         <div className="space-y-1">
                             <h2 className="font-medium">No products yet</h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {permissions.canCreateProduct
-                                    ? 'Add your first product to start tracking it.'
-                                    : 'Products added to this organization will show up here.'}
+                                {isSupplier
+                                    ? 'Products a distributor assigns to you will show up here.'
+                                    : canAddProducts
+                                      ? 'Add your first product to start tracking it.'
+                                      : permissions.canCreateProduct
+                                        ? 'Invite a supplier first — every product is assigned to one.'
+                                        : 'Products added to this organization will show up here.'}
                             </p>
                         </div>
                     </div>

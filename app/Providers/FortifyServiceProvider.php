@@ -10,6 +10,7 @@ use App\Http\Responses\RegisterResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Http\Responses\VerifyEmailResponse;
 use App\Models\OrganizationInvitation;
+use App\Models\SupplierConnection;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -119,6 +120,14 @@ class FortifyServiceProvider extends ServiceProvider
      *
      * @return array{code: string, organizationName: string}|null
      */
+    /**
+     * Get the invitation context for the login and register pages.
+     *
+     * Supplier connections reuse the same "?invitation=" parameter as member
+     * invitations so the two flows share one banner and one landing page.
+     *
+     * @return array{code: string, organizationName: string, kind: string}|null
+     */
     private function organizationInvitation(Request $request): ?array
     {
         $invitationCode = $request->query('invitation');
@@ -136,13 +145,28 @@ class FortifyServiceProvider extends ServiceProvider
                 ->orWhere('expires_at', '>=', now()))
             ->first();
 
-        if (! $invitation) {
-            return null;
+        if ($invitation) {
+            return [
+                'code' => $invitation->code,
+                'organizationName' => $invitation->organization->name,
+                'kind' => 'organization',
+            ];
         }
 
-        return [
-            'code' => $invitation->code,
-            'organizationName' => $invitation->organization->name,
-        ];
+        $connection = SupplierConnection::query()
+            ->claimable()
+            ->with('distributorOrganization')
+            ->where('code', $invitationCode)
+            ->first();
+
+        if ($connection) {
+            return [
+                'code' => $connection->code,
+                'organizationName' => $connection->distributorOrganization->name,
+                'kind' => 'supplier_connection',
+            ];
+        }
+
+        return null;
     }
 }

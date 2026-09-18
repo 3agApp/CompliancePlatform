@@ -8,6 +8,8 @@ readonly class UserOrganization
         public int $id,
         public string $name,
         public string $slug,
+        public string $type,
+        public string $typeLabel,
         public ?string $role,
         public ?string $roleLabel,
         public ?bool $isCurrent = null,

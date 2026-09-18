@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import CreateOrganizationModal from '@/components/create-organization-modal';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -86,7 +87,10 @@ export function OrganizationSwitcher() {
                         className="cursor-pointer gap-2 p-2"
                         onSelect={() => switchOrganization(organization)}
                     >
-                        {organization.name}
+                        <span className="truncate">{organization.name}</span>
+                        <Badge variant="secondary" className="shrink-0">
+                            {organization.typeLabel}
+                        </Badge>
                         {currentOrganization?.id === organization.id && (
                             <Check className="ml-auto h-4 w-4" />
                         )}

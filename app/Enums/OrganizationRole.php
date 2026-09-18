@@ -29,12 +29,15 @@ enum OrganizationRole: string
                 OrganizationPermission::UpdateOrganization,
                 OrganizationPermission::CreateInvitation,
                 OrganizationPermission::CancelInvitation,
+                OrganizationPermission::ViewConnection,
+                OrganizationPermission::ManageConnection,
                 OrganizationPermission::ViewProduct,
                 OrganizationPermission::CreateProduct,
                 OrganizationPermission::UpdateProduct,
                 OrganizationPermission::DeleteProduct,
             ],
             self::Member => [
+                OrganizationPermission::ViewConnection,
                 OrganizationPermission::ViewProduct,
             ],
         };

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\OrganizationType;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -23,7 +24,18 @@ class OrganizationFactory extends Factory
         return [
             'name' => $name,
             'slug' => Str::slug($name),
+            'type' => OrganizationType::Distributor,
         ];
+    }
+
+    /**
+     * Indicate that the organization supplies products to distributors.
+     */
+    public function supplier(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => OrganizationType::Supplier,
+        ]);
     }
 
     /**

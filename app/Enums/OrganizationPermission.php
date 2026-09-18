@@ -14,6 +14,9 @@ enum OrganizationPermission: string
     case CreateInvitation = 'invitation:create';
     case CancelInvitation = 'invitation:cancel';
 
+    case ViewConnection = 'connection:view';
+    case ManageConnection = 'connection:manage';
+
     case ViewProduct = 'product:view';
     case CreateProduct = 'product:create';
     case UpdateProduct = 'product:update';

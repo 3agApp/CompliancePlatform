@@ -1,5 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Mail, Package, Settings2 } from 'lucide-react';
+import {
+    Factory,
+    LayoutGrid,
+    Mail,
+    Package,
+    Settings2,
+    Truck,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -16,7 +23,9 @@ import {
 import { dashboard, onboarding } from '@/routes';
 import { index as invitationsIndex } from '@/routes/invitations';
 import { edit as editOrganization } from '@/routes/organizations';
+import { index as distributorsIndex } from '@/routes/distributors';
 import { index as productsIndex } from '@/routes/products';
+import { index as suppliersIndex } from '@/routes/suppliers';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
@@ -34,11 +43,27 @@ export function AppSidebar() {
     ];
 
     if (currentOrganization) {
+        const isSupplier = currentOrganization.type === 'supplier';
+
         mainNavItems.push({
-            title: 'Products',
+            title: isSupplier ? 'Assigned products' : 'Products',
             href: productsIndex(currentOrganization.slug),
             icon: Package,
         });
+
+        mainNavItems.push(
+            isSupplier
+                ? {
+                      title: 'Distributors',
+                      href: distributorsIndex(currentOrganization.slug),
+                      icon: Truck,
+                  }
+                : {
+                      title: 'Suppliers',
+                      href: suppliersIndex(currentOrganization.slug),
+                      icon: Factory,
+                  },
+        );
 
         mainNavItems.push({
             title: 'Organization settings',

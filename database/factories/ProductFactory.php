@@ -21,6 +21,7 @@ class ProductFactory extends Factory
     {
         return [
             'organization_id' => Organization::factory(),
+            'supplier_connection_id' => null,
             'name' => fake()->unique()->words(3, true),
             'ean' => (string) fake()->unique()->numerify('#############'),
             'country_of_origin' => fake()->randomElement(CountryOfOrigin::cases()),

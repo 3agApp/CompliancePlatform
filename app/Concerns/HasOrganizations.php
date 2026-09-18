@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Data\OrganizationPermissions;
 use App\Data\ProductPermissions;
+use App\Data\SupplierConnectionPermissions;
 use App\Data\UserOrganization;
 use App\Enums\OrganizationPermission;
 use App\Enums\OrganizationRole;
@@ -160,6 +161,8 @@ trait HasOrganizations
             id: $organization->id,
             name: $organization->name,
             slug: $organization->slug,
+            type: $organization->type->value,
+            typeLabel: $organization->type->label(),
             role: $role?->value,
             roleLabel: $role?->label(),
             isCurrent: $this->isCurrentOrganization($organization),
@@ -191,10 +194,31 @@ trait HasOrganizations
     {
         $role = $this->organizationRole($organization);
 
+        /**
+         * Products belong to the distributor that places them on the market.
+         * A supplier fills in the details of products assigned to them, but
+         * never creates or deletes one, so the type gates those two the same
+         * way ProductPolicy does.
+         */
+        $ownsProducts = $organization->isDistributor();
+
         return new ProductPermissions(
-            canCreateProduct: $role?->hasPermission(OrganizationPermission::CreateProduct) ?? false,
+            canCreateProduct: $ownsProducts && ($role?->hasPermission(OrganizationPermission::CreateProduct) ?? false),
             canUpdateProduct: $role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false,
-            canDeleteProduct: $role?->hasPermission(OrganizationPermission::DeleteProduct) ?? false,
+            canDeleteProduct: $ownsProducts && ($role?->hasPermission(OrganizationPermission::DeleteProduct) ?? false),
+        );
+    }
+
+    /**
+     * Get the supplier connection permissions for an organization.
+     */
+    public function toSupplierConnectionPermissions(Organization $organization): SupplierConnectionPermissions
+    {
+        $role = $this->organizationRole($organization);
+
+        return new SupplierConnectionPermissions(
+            canViewConnection: $role?->hasPermission(OrganizationPermission::ViewConnection) ?? false,
+            canManageConnection: $role?->hasPermission(OrganizationPermission::ManageConnection) ?? false,
         );
     }
 

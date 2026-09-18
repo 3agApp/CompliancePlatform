@@ -4,36 +4,41 @@ use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Models\SupplierConnection;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
-function organizationMember(OrganizationRole $role = OrganizationRole::Owner): array
+/**
+ * Create a distributor owner together with a supplier they can assign
+ * products to. A supplier is required on every product, so every write test
+ * needs one.
+ *
+ * @return array{0: User, 1: Organization, 2: SupplierConnection}
+ */
+function distributorWithSupplier(OrganizationRole $role = OrganizationRole::Owner): array
 {
-    $user = User::factory()->withoutOrganization()->create();
-    $organization = Organization::factory()->create();
+    [$user, $organization] = newOrganizationMember($role);
 
-    $organization->members()->attach($user, ['role' => $role->value]);
-    $user->switchOrganization($organization);
-
-    return [$user, $organization];
+    return [$user, $organization, newSupplierConnection($organization)];
 }
 
 /**
  * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
-function productPayload(array $overrides = []): array
+function productPayload(SupplierConnection $connection, array $overrides = []): array
 {
     return [
         'name' => 'Organic Oat Milk',
         'ean' => '4006381333931',
         'country_of_origin' => 'DE',
+        'supplier_connection_id' => $connection->id,
         ...$overrides,
     ];
 }
 
 test('the products index page lists the products of the current organization', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create(['name' => 'Organic Oat Milk']);
     Product::factory()->create(['name' => 'Someone Else Product']);
@@ -52,11 +57,11 @@ test('the products index page lists the products of the current organization', f
 });
 
 test('products can be created', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload())
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection))
         ->assertRedirect(route('products.index', ['current_organization' => $organization->slug]));
 
     $this->assertDatabaseHas('products', [
@@ -68,21 +73,21 @@ test('products can be created', function () {
 });
 
 test('products are created with a uuid', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload());
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection));
 
     expect(Str::isUuid(Product::sole()->uuid))->toBeTrue();
 });
 
 test('products can be created without a barcode', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload(['ean' => null]))
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, ['ean' => null]))
         ->assertSessionHasNoErrors();
 
     $this->assertDatabaseHas('products', [
@@ -92,11 +97,11 @@ test('products can be created without a barcode', function () {
 });
 
 test('products can be created without a country of origin', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload([
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
             'country_of_origin' => null,
         ]))
         ->assertSessionHasNoErrors();
@@ -108,7 +113,7 @@ test('products can be created without a country of origin', function () {
 });
 
 test('a country of origin can be removed by submitting an empty value', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create([
         'country_of_origin' => CountryOfOrigin::Germany,
@@ -116,7 +121,7 @@ test('a country of origin can be removed by submitting an empty value', function
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload([
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection, [
             'country_of_origin' => '',
         ]))
         ->assertSessionHasNoErrors();
@@ -125,22 +130,22 @@ test('a country of origin can be removed by submitting an empty value', function
 });
 
 test('a product name is required', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload(['name' => '']))
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, ['name' => '']))
         ->assertSessionHasErrors('name');
 
     $this->assertDatabaseCount('products', 0);
 });
 
 test('a barcode must be a valid ean length', function (string $ean, bool $valid) {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $response = $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload(['ean' => $ean]));
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, ['ean' => $ean]));
 
     $valid
         ? $response->assertSessionHasNoErrors()
@@ -156,11 +161,11 @@ test('a barcode must be a valid ean length', function (string $ean, bool $valid)
 ]);
 
 test('the country of origin is limited to germany and switzerland', function (?string $country, bool $valid) {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $response = $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload([
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
             'country_of_origin' => $country,
         ]));
 
@@ -178,7 +183,7 @@ test('the country of origin is limited to germany and switzerland', function (?s
 ]);
 
 test('the available countries of origin are shared with the product pages', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create([
         'country_of_origin' => CountryOfOrigin::Switzerland,
@@ -206,13 +211,13 @@ test('the available countries of origin are shared with the product pages', func
 });
 
 test('products can be updated', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create(['name' => 'Oat Milk']);
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload())
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection))
         ->assertRedirect(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->uuid]));
 
     expect($product->fresh())
@@ -222,7 +227,7 @@ test('products can be updated', function () {
 });
 
 test('products can be deleted', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create();
 
@@ -235,7 +240,7 @@ test('products can be deleted', function () {
 });
 
 test('products of another organization cannot be reached through the current organization', function () {
-    [$user, $organization] = organizationMember();
+    [$user, $organization, $connection] = distributorWithSupplier();
 
     $otherProduct = Product::factory()->create();
 
@@ -246,7 +251,7 @@ test('products of another organization cannot be reached through the current org
 });
 
 test('users who do not belong to the organization cannot list its products', function () {
-    [, $organization] = organizationMember();
+    [, $organization] = distributorWithSupplier();
 
     $stranger = User::factory()->create();
 
@@ -257,7 +262,7 @@ test('users who do not belong to the organization cannot list its products', fun
 });
 
 test('members can view products but cannot create, update or delete them', function () {
-    [$user, $organization] = organizationMember(OrganizationRole::Member);
+    [$user, $organization, $connection] = distributorWithSupplier(OrganizationRole::Member);
 
     $product = Product::factory()->for($organization)->create();
 
@@ -273,12 +278,12 @@ test('members can view products but cannot create, update or delete them', funct
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload())
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection))
         ->assertForbidden();
 
     $this
         ->actingAs($user)
-        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload())
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->uuid]), productPayload($connection))
         ->assertForbidden();
 
     $this
@@ -288,11 +293,11 @@ test('members can view products but cannot create, update or delete them', funct
 });
 
 test('admins can manage products', function () {
-    [$user, $organization] = organizationMember(OrganizationRole::Admin);
+    [$user, $organization, $connection] = distributorWithSupplier(OrganizationRole::Admin);
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload())
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection))
         ->assertSessionHasNoErrors();
 
     $this->assertDatabaseHas('products', ['organization_id' => $organization->id, 'name' => 'Organic Oat Milk']);

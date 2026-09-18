@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Organizations;
 
 use App\Actions\Organizations\CreateOrganization;
 use App\Enums\OrganizationRole;
+use App\Enums\OrganizationType;
+use App\Enums\SupplierConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organizations\DeleteOrganizationRequest;
 use App\Http\Requests\Organizations\SaveOrganizationRequest;
@@ -36,7 +38,11 @@ class OrganizationController extends Controller
      */
     public function store(SaveOrganizationRequest $request, CreateOrganization $createOrganization): RedirectResponse
     {
-        $organization = $createOrganization->handle($request->user(), $request->validated('name'));
+        $organization = $createOrganization->handle(
+            $request->user(),
+            $request->validated('name'),
+            OrganizationType::from($request->validated('type')),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Organization created.')]);
 
@@ -55,6 +61,8 @@ class OrganizationController extends Controller
                 'id' => $organization->id,
                 'name' => $organization->name,
                 'slug' => $organization->slug,
+                'type' => $organization->type->value,
+                'type_label' => $organization->type->label(),
             ],
             'members' => $organization->members()->get()->map(function (User $member) {
                 /** @var Membership $membership */
@@ -152,6 +160,15 @@ class OrganizationController extends Controller
 
             $organization->invitations()->delete();
             $organization->memberships()->delete();
+
+            /**
+             * Organizations are soft deleted, so the cascade on the foreign
+             * key never fires. Left alone, an active connection would keep a
+             * supplier reading and writing a deleted distributor's products.
+             */
+            $organization->supplierConnections()->update(['status' => SupplierConnectionStatus::Revoked]);
+            $organization->distributorConnections()->update(['status' => SupplierConnectionStatus::Revoked]);
+
             $organization->delete();
         });
 

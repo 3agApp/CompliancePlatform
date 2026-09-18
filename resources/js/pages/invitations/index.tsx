@@ -1,16 +1,18 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { MailOpen } from 'lucide-react';
 import { useState } from 'react';
 import OrganizationInvitationController from '@/actions/App/Http/Controllers/Organizations/OrganizationInvitationController';
 import { Button } from '@/components/ui/button';
+import { show as showConnection } from '@/routes/connections';
 import { index } from '@/routes/invitations';
-import type { PendingInvitation } from '@/types';
+import type { PendingInvitation, PendingSupplierConnection } from '@/types';
 
 type Props = {
     invitations: PendingInvitation[];
+    connections: PendingSupplierConnection[];
 };
 
-export default function InvitationsIndex({ invitations }: Props) {
+export default function InvitationsIndex({ invitations, connections }: Props) {
     const [processingCode, setProcessingCode] = useState<string | null>(null);
 
     const respond = (
@@ -31,10 +33,46 @@ export default function InvitationsIndex({ invitations }: Props) {
                 <div className="page-heading">
                     <h1 className="page-title">Invitations</h1>
                     <p className="text-muted-foreground text-sm">
-                        Accept or decline the organizations you have been
-                        invited to join.
+                        Accept or decline the organizations and distributors
+                        that have invited you.
                     </p>
                 </div>
+
+                {connections.length > 0 ? (
+                    <ul className="grid gap-3">
+                        {connections.map((connection) => (
+                            <li
+                                key={connection.code}
+                                data-test="pending-connection-row"
+                                className="bg-card flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-xs"
+                            >
+                                <div className="min-w-0 space-y-1">
+                                    <p className="font-medium break-words">
+                                        {connection.distributorName}
+                                    </p>
+                                    <p className="text-muted-foreground text-sm">
+                                        {connection.inviterName} invited{' '}
+                                        {connection.companyName} to supply them.
+                                        {connection.expiresAt
+                                            ? ` Expires ${new Date(connection.expiresAt).toLocaleDateString()}.`
+                                            : null}
+                                    </p>
+                                </div>
+
+                                <Button
+                                    data-test="pending-connection-review"
+                                    asChild
+                                >
+                                    <Link
+                                        href={showConnection(connection.code)}
+                                    >
+                                        Review
+                                    </Link>
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
 
                 {invitations.length > 0 ? (
                     <ul className="grid gap-3">
@@ -85,7 +123,7 @@ export default function InvitationsIndex({ invitations }: Props) {
                             </li>
                         ))}
                     </ul>
-                ) : (
+                ) : connections.length > 0 ? null : (
                     <div className="bg-card flex flex-col items-center justify-center gap-3 rounded-2xl border px-6 py-16 text-center shadow-xs">
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <MailOpen className="text-muted-foreground size-6" />
@@ -95,8 +133,8 @@ export default function InvitationsIndex({ invitations }: Props) {
                                 No pending invitations
                             </h2>
                             <p className="text-muted-foreground text-sm">
-                                When someone invites you to an organization, it
-                                will show up here.
+                                Invitations to join an organization, or to
+                                supply a distributor, will show up here.
                             </p>
                         </div>
                     </div>
