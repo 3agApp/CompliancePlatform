@@ -98,6 +98,58 @@ test('the product search matches a barcode', function () {
         );
 });
 
+test('the product search matches an article number from either side', function (string $field, string $term) {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    Product::factory()->for($distributor)->create([
+        'name' => 'Organic Oat Milk',
+        'internal_article_number' => 'ART-10294',
+        'supplier_article_number' => 'MT-BLUE-32',
+        'supplier_connection_id' => $connection->id,
+        $field => $term,
+    ]);
+    Product::factory()->for($distributor)->create([
+        'name' => 'Whipping Cream',
+        'internal_article_number' => 'ART-55555',
+        'supplier_article_number' => 'MT-RED-11',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['search' => $term])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Organic Oat Milk'),
+        );
+})->with([
+    'internal article number' => ['internal_article_number', 'ART-10294'],
+    'supplier article number' => ['supplier_article_number', 'MT-BLUE-32'],
+]);
+
+test('the product search by article number never reaches another organization products', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $otherDistributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor);
+    $otherConnection = newSupplierConnection($otherDistributor);
+
+    Product::factory()->for($distributor)->create([
+        'internal_article_number' => 'ART-00001',
+        'supplier_article_number' => 'SUP-00001',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($otherDistributor)->create([
+        'internal_article_number' => 'ART-10294',
+        'supplier_article_number' => 'SUP-10294',
+        'supplier_connection_id' => $otherConnection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['search' => 'ART-10294'])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+});
+
 test('the product search ignores case', function () {
     [$user, $distributor] = newOrganizationMember();
     $connection = newSupplierConnection($distributor);

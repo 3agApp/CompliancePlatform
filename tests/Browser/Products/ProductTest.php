@@ -3,6 +3,7 @@
 use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\SupplierConnection;
 
 test('a product is created through the new product dialog', function () {
@@ -17,7 +18,13 @@ test('a product is created through the new product dialog', function () {
         ->click('@products-new-product-button')
         ->assertSee('Add a product')
         ->fill('@product-name', 'Organic Oat Milk')
+        ->fill('@product-brand', 'Magna-Tiles')
+        ->click('@product-category')
+        ->click('[role="option"]:has-text("Magnetic toy")')
+        ->fill('@product-internal-article-number', 'ART-10294')
+        ->fill('@product-supplier-article-number', 'MT-BLUE-32')
         ->fill('@product-ean', '4006381333931')
+        ->fill('@product-order-number', 'PO-2026-0148')
         ->click('@product-country-of-origin')
         ->click('[role="option"]:has-text("Germany")')
         ->click('@product-supplier')
@@ -25,15 +32,57 @@ test('a product is created through the new product dialog', function () {
         ->click('@create-product-submit')
         ->assertDontSee('Add a product')
         ->assertSee('Organic Oat Milk')
+        ->assertSee('Magna-Tiles')
+        ->assertSee('Magnetic toy')
+        ->assertSee('ART-10294')
         ->assertSee('4006381333931')
         ->assertNoJavaScriptErrors();
 
     expect(Product::sole())
         ->name->toBe('Organic Oat Milk')
+        ->brand->toBe('Magna-Tiles')
+        ->product_category_id->toBe(ProductCategory::query()->where('name', 'Magnetic toy')->value('id'))
         ->ean->toBe('4006381333931')
+        ->internal_article_number->toBe('ART-10294')
+        ->supplier_article_number->toBe('MT-BLUE-32')
+        ->order_number->toBe('PO-2026-0148')
         ->country_of_origin->toBe(CountryOfOrigin::Germany)
         ->organization_id->toBe($organization->id)
         ->supplier_connection_id->toBe(SupplierConnection::sole()->id);
+});
+
+test('the identification details of a product are edited on its own page', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'name' => 'Organic Oat Milk',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->uuid,
+    ]));
+
+    $page->fill('@product-brand', 'Magna-Tiles')
+        ->click('@product-category')
+        ->click('[role="option"]:has-text("Magnetic toy")')
+        ->fill('@product-internal-article-number', 'ART-10294')
+        ->fill('@product-supplier-article-number', 'MT-BLUE-32')
+        ->fill('@product-order-number', 'PO-2026-0148')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh())
+        ->brand->toBe('Magna-Tiles')
+        ->product_category_id->toBe(ProductCategory::query()->where('name', 'Magnetic toy')->value('id'))
+        ->internal_article_number->toBe('ART-10294')
+        ->supplier_article_number->toBe('MT-BLUE-32')
+        ->order_number->toBe('PO-2026-0148');
 });
 
 test('the new product dialog stays open and shows the validation message for an invalid barcode', function () {

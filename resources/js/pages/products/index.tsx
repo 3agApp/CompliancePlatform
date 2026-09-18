@@ -17,6 +17,7 @@ import type {
     CountryOption,
     OrganizationType,
     Product,
+    ProductCategoryOption,
     ProductCounterparty,
     ProductFilters,
     ProductPermissions,
@@ -27,6 +28,7 @@ type Props = {
     products: Product[];
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    availableCategories: ProductCategoryOption[];
     availableConnections: SupplierConnectionOption[];
     counterparties: ProductCounterparty[];
     filters: ProductFilters;
@@ -38,6 +40,7 @@ export default function ProductsIndex({
     products,
     permissions,
     availableCountries,
+    availableCategories,
     availableConnections,
     counterparties,
     filters,
@@ -100,6 +103,7 @@ export default function ProductsIndex({
                         <CreateProductModal
                             organizationSlug={organizationSlug}
                             availableCountries={availableCountries}
+                            availableCategories={availableCategories}
                             availableConnections={availableConnections}
                         >
                             <Button data-test="products-new-product-button">
@@ -130,11 +134,17 @@ export default function ProductsIndex({
                 {products.length > 0 ? (
                     <div className="workspace-table">
                         <div className="min-w-0 overflow-x-auto">
-                            <table className="w-full min-w-xl text-left text-sm">
+                            <table className="w-full min-w-3xl text-left text-sm">
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
                                             Name
+                                        </th>
+                                        <th className="px-6 font-medium">
+                                            Brand
+                                        </th>
+                                        <th className="px-6 font-medium">
+                                            Category
                                         </th>
                                         <th className="px-6 font-medium">
                                             {counterpartyLabel}
@@ -161,6 +171,25 @@ export default function ProductsIndex({
                                         >
                                             <td className="px-6 font-medium break-words">
                                                 {product.name}
+                                                {product.internal_article_number ? (
+                                                    <span
+                                                        className="text-muted-foreground block font-mono text-xs font-normal"
+                                                        data-test="product-list-article-number"
+                                                    >
+                                                        {
+                                                            product.internal_article_number
+                                                        }
+                                                    </span>
+                                                ) : null}
+                                            </td>
+                                            <td className="text-muted-foreground px-6 break-words">
+                                                {product.brand ?? '—'}
+                                            </td>
+                                            <td
+                                                className="text-muted-foreground px-6"
+                                                data-test="product-list-category"
+                                            >
+                                                {product.category_label ?? '—'}
                                             </td>
                                             <td
                                                 className="px-6"
@@ -279,7 +308,7 @@ export default function ProductsIndex({
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                 {filters.search === null
                                     ? `Nothing is assigned to this ${counterpartyLabel.toLowerCase()} yet.`
-                                    : 'Try a different name or barcode, or clear the filters.'}
+                                    : 'Try a different name, barcode or article number, or clear the filters.'}
                             </p>
                         </div>
                     </div>

@@ -9,6 +9,7 @@ import type {
     CountryOption,
     OrganizationType,
     Product,
+    ProductCategoryOption,
     ProductPermissions,
     SupplierConnectionOption,
 } from '@/types';
@@ -17,6 +18,7 @@ type Props = {
     product: Product;
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    availableCategories: ProductCategoryOption[];
     availableConnections: SupplierConnectionOption[];
     viewerType: OrganizationType;
 };
@@ -25,6 +27,7 @@ export default function ProductEdit({
     product,
     permissions,
     availableCountries,
+    availableCategories,
     availableConnections,
     viewerType,
 }: Props) {
@@ -87,6 +90,7 @@ export default function ProductEdit({
                                 <ProductFormFields
                                     errors={errors}
                                     availableCountries={availableCountries}
+                                    availableCategories={availableCategories}
                                     availableConnections={availableConnections}
                                     viewerType={viewerType}
                                     product={product}

@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Collection<int, OrganizationInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, ProductCategory> $productCategories
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, SupplierConnection> $supplierConnections
  * @property-read Collection<int, SupplierConnection> $distributorConnections
@@ -56,6 +57,10 @@ class Organization extends Model
             if ($organization->isDirty('name')) {
                 $organization->slug = static::generateUniqueOrganizationSlug($organization->name, $organization->id);
             }
+        });
+
+        static::created(function (Organization $organization) {
+            $organization->createDefaultProductCategories();
         });
     }
 
@@ -128,6 +133,37 @@ class Organization extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Get the organization's own list of legal families.
+     *
+     * @return HasMany<ProductCategory, $this>
+     */
+    public function productCategories(): HasMany
+    {
+        return $this->hasMany(ProductCategory::class);
+    }
+
+    /**
+     * Give the organization the legal families it starts out with.
+     *
+     * Organizations are created from onboarding, from the organization
+     * settings and from claiming a supplier invitation, so this hangs off the
+     * created event rather than off any one of those paths. Only a
+     * distributor files products under a category, and an organization cannot
+     * change type once created, so a supplier is left without a list rather
+     * than with one nothing will ever read.
+     */
+    public function createDefaultProductCategories(): void
+    {
+        if (! $this->isDistributor()) {
+            return;
+        }
+
+        foreach (ProductCategory::DEFAULT_NAMES as $name) {
+            $this->productCategories()->create(['name' => $name]);
+        }
     }
 
     /**
