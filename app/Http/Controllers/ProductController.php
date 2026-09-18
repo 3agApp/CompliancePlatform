@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\ProductFilters;
 use App\Enums\CountryOfOrigin;
+use App\Enums\SupplierConnectionStatus;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\SupplierConnection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,13 +34,19 @@ class ProductController extends Controller
         Gate::authorize('viewAny', [Product::class, $currentOrganization]);
 
         $isSupplier = $currentOrganization->isSupplier();
+        $filters = ProductFilters::fromRequest($request);
+
+        $products = $this->products($currentOrganization, $isSupplier, $filters);
 
         return Inertia::render('products/index', [
-            'products' => $this->products($currentOrganization, $isSupplier)
-                ->map(fn (Product $product) => $this->toProductArray($product, $isSupplier)),
+            'products' => $products->map(fn (Product $product) => $this->toProductArray($product, $isSupplier)),
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
             'availableCountries' => CountryOfOrigin::options(),
             'availableConnections' => $this->assignableConnections($currentOrganization),
+            'counterparties' => $this->counterparties($currentOrganization, $isSupplier),
+            'filters' => $filters,
+            'hasProducts' => $products->isNotEmpty()
+                || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
             'viewerType' => $currentOrganization->type->value,
         ]);
     }
@@ -107,23 +117,73 @@ class ProductController extends Controller
     }
 
     /**
-     * Get the products the organization can see, from the side it sits on.
+     * Get the base query for the products the organization can see, from the
+     * side it sits on.
      *
-     * @return Collection<int, Product>
+     * Both sides are already narrowed to the viewer here: a distributor by
+     * ownership, a supplier by its active connections. Every filter applied
+     * on top composes onto that, so no filter can widen what is visible.
+     *
+     * @return HasMany<Product, Organization>|HasManyThrough<Product, SupplierConnection, Organization>
      */
-    protected function products(Organization $organization, bool $asSupplier): Collection
+    protected function visibleProducts(Organization $organization, bool $asSupplier): HasMany|HasManyThrough
     {
         if ($asSupplier) {
             return $organization->suppliedProducts()
-                ->with('supplierConnection.distributorOrganization')
-                ->orderBy('products.name')
-                ->get();
+                ->with('supplierConnection.distributorOrganization');
         }
 
         return $organization->products()
-            ->with('supplierConnection.supplierOrganization')
-            ->orderBy('name')
+            ->with('supplierConnection.supplierOrganization');
+    }
+
+    /**
+     * Get the products the organization can see, narrowed by the filters.
+     *
+     * Columns are qualified because the supplier side joins products and
+     * supplier_connections, which share id, uuid and both timestamps.
+     *
+     * @return Collection<int, Product>
+     */
+    protected function products(Organization $organization, bool $asSupplier, ProductFilters $filters): Collection
+    {
+        return $this->visibleProducts($organization, $asSupplier)
+            ->when($filters->connection, fn ($query, string $uuid) => $query->assignedTo($uuid))
+            ->when($filters->search, fn ($query, string $term) => $query->matching($term))
+            ->orderBy('products.name')
             ->get();
+    }
+
+    /**
+     * Get the counterparties the product list can be filtered by.
+     *
+     * Every connection that can hold a visible product is offered, including
+     * a distributor's revoked ones: their products stay in the list, so they
+     * have to stay reachable. The connection is named by its uuid rather than
+     * by an organization, because a supplier a distributor has invited may
+     * not have an organization yet.
+     *
+     * @return array<array{uuid: string, label: string}>
+     */
+    protected function counterparties(Organization $organization, bool $asSupplier): array
+    {
+        $connections = $asSupplier
+            ? $organization->distributorConnections()
+                ->where('status', SupplierConnectionStatus::Active)
+                ->with('distributorOrganization')
+                ->get()
+            : $organization->supplierConnections()->with('supplierOrganization')->get();
+
+        return $connections
+            ->map(fn (SupplierConnection $connection) => [
+                'uuid' => $connection->uuid,
+                'label' => $asSupplier
+                    ? $connection->distributorOrganization->name
+                    : $this->connectionLabel($connection),
+            ])
+            ->sortBy('label')
+            ->values()
+            ->toArray();
     }
 
     /**

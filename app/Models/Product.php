@@ -6,6 +6,7 @@ use App\Enums\CountryOfOrigin;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -77,6 +78,41 @@ class Product extends Model
     public function supplierConnection(): BelongsTo
     {
         return $this->belongsTo(SupplierConnection::class);
+    }
+
+    /**
+     * Scope the query to the products assigned to one connection.
+     *
+     * The connection is matched by its public uuid so the filter can live in
+     * a URL, and as an EXISTS clause so it composes onto a query that is
+     * already scoped to the viewing organization. A uuid belonging to someone
+     * else therefore matches no candidate row rather than needing a second
+     * authorization check, and the viewer learns nothing about it.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeAssignedTo(Builder $query, string $connectionUuid): void
+    {
+        $query->whereRelation('supplierConnection', 'supplier_connections.uuid', $connectionUuid);
+    }
+
+    /**
+     * Scope the query to products whose name or barcode contains the term.
+     *
+     * The OR must stay grouped. Ungrouped, it binds looser than the caller's
+     * organization clause and returns every product on the platform whose
+     * barcode matches. A scope is grouped for free -- callScope wraps
+     * whatever wheres it adds -- so the explicit group is belt and braces,
+     * kept because the danger is invisible without it and because the clause
+     * may one day be read outside a scope.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeMatching(Builder $query, string $term): void
+    {
+        $query->where(fn (Builder $query) => $query
+            ->whereLike('products.name', "%{$term}%")
+            ->orWhereLike('products.ean', "%{$term}%"));
     }
 
     /**
