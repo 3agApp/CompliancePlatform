@@ -5,6 +5,11 @@ import InviteSupplierModal from '@/components/invite-supplier-modal';
 import RevokeSupplierModal from '@/components/revoke-supplier-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { resend, restore } from '@/routes/suppliers';
 import type {
     SupplierConnection,
@@ -121,18 +126,32 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                                 connection.uuid,
                                                             ])}
                                                         >
-                                                            <Button
-                                                                type="submit"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                data-test="supplier-resend-button"
-                                                            >
-                                                                <Send className="h-4 w-4" />
-                                                                <span className="sr-only">
-                                                                    Resend
-                                                                    invitation
-                                                                </span>
-                                                            </Button>
+                                                            <Tooltip>
+                                                                <TooltipTrigger
+                                                                    asChild
+                                                                >
+                                                                    <Button
+                                                                        type="submit"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        data-test="supplier-resend-button"
+                                                                    >
+                                                                        <Send className="h-4 w-4" />
+                                                                        <span className="sr-only">
+                                                                            Send
+                                                                            invitation
+                                                                            again
+                                                                        </span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>
+                                                                        Send
+                                                                        invitation
+                                                                        again
+                                                                    </p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
                                                         </Form>
                                                     ) : null}
 
@@ -146,40 +165,64 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                                 connection.uuid,
                                                             ])}
                                                         >
-                                                            <Button
-                                                                type="submit"
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                data-test="supplier-restore-button"
-                                                            >
-                                                                <RotateCcw className="h-4 w-4" />
-                                                                <span className="sr-only">
-                                                                    Reconnect
-                                                                    supplier
-                                                                </span>
-                                                            </Button>
+                                                            <Tooltip>
+                                                                <TooltipTrigger
+                                                                    asChild
+                                                                >
+                                                                    <Button
+                                                                        type="submit"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        data-test="supplier-restore-button"
+                                                                    >
+                                                                        <RotateCcw className="h-4 w-4" />
+                                                                        <span className="sr-only">
+                                                                            Reconnect
+                                                                            supplier
+                                                                        </span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>
+                                                                        Reconnect
+                                                                        supplier
+                                                                    </p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
                                                         </Form>
                                                     ) : null}
 
                                                     {permissions.canManageConnection &&
                                                     connection.status !==
                                                         'revoked' ? (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            data-test="supplier-revoke-button"
-                                                            onClick={() =>
-                                                                confirmRevoke(
-                                                                    connection,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Unplug className="h-4 w-4" />
-                                                            <span className="sr-only">
-                                                                Disconnect
-                                                                supplier
-                                                            </span>
-                                                        </Button>
+                                                        <Tooltip>
+                                                            <TooltipTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    data-test="supplier-revoke-button"
+                                                                    onClick={() =>
+                                                                        confirmRevoke(
+                                                                            connection,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Unplug className="h-4 w-4" />
+                                                                    <span className="sr-only">
+                                                                        Disconnect
+                                                                        supplier
+                                                                    </span>
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    Disconnect
+                                                                    supplier
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
                                                     ) : null}
                                                 </div>
                                             </td>
