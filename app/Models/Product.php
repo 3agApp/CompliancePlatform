@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $internal_article_number
  * @property string|null $supplier_article_number
  * @property string|null $order_number
+ * @property string|null $customs_tariff_number
  * @property CountryOfOrigin|null $country_of_origin
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -38,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'internal_article_number',
     'supplier_article_number',
     'order_number',
+    'customs_tariff_number',
     'country_of_origin',
     'supplier_connection_id',
 ])]

@@ -28,6 +28,7 @@ test('a product is created through the new product dialog', function () {
         ->fill('@product-supplier-article-number', 'MT-BLUE-32')
         ->fill('@product-ean', '4006381333931')
         ->fill('@product-order-number', 'PO-2026-0148')
+        ->fill('@product-customs-tariff-number', '9503.00.75')
         ->click('@product-country-of-origin')
         ->click('[role="option"]:has-text("Germany")')
         ->click('@product-supplier')
@@ -49,6 +50,7 @@ test('a product is created through the new product dialog', function () {
         ->internal_article_number->toBe('ART-10294')
         ->supplier_article_number->toBe('MT-BLUE-32')
         ->order_number->toBe('PO-2026-0148')
+        ->customs_tariff_number->toBe('95030075')
         ->country_of_origin->toBe(CountryOfOrigin::Germany)
         ->organization_id->toBe($organization->id)
         ->supplier_connection_id->toBe(SupplierConnection::sole()->id);
@@ -78,6 +80,7 @@ test('the identification details of a product are edited on its own page', funct
         ->fill('@product-internal-article-number', 'ART-10294')
         ->fill('@product-supplier-article-number', 'MT-BLUE-32')
         ->fill('@product-order-number', 'PO-2026-0148')
+        ->fill('@product-customs-tariff-number', '9503.00.75')
         ->click('@update-product-submit')
         ->assertSee('Product updated.')
         ->assertNoJavaScriptErrors();
@@ -87,7 +90,8 @@ test('the identification details of a product are edited on its own page', funct
         ->product_category_id->toBe(ProductCategory::query()->where('name', 'Magnetic toy')->value('id'))
         ->internal_article_number->toBe('ART-10294')
         ->supplier_article_number->toBe('MT-BLUE-32')
-        ->order_number->toBe('PO-2026-0148');
+        ->order_number->toBe('PO-2026-0148')
+        ->customs_tariff_number->toBe('95030075');
 });
 
 test('the new product dialog stays open and shows the validation message for an invalid barcode', function () {

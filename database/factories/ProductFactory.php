@@ -35,6 +35,7 @@ class ProductFactory extends Factory
             'internal_article_number' => fake()->unique()->bothify('ART-#####'),
             'supplier_article_number' => fake()->unique()->bothify('SUP-#####'),
             'order_number' => fake()->bothify('PO-#####'),
+            'customs_tariff_number' => (string) fake()->numerify('95030075'),
             'country_of_origin' => fake()->randomElement(CountryOfOrigin::cases()),
         ];
     }
@@ -71,6 +72,7 @@ class ProductFactory extends Factory
             'internal_article_number' => null,
             'supplier_article_number' => null,
             'order_number' => null,
+            'customs_tariff_number' => null,
             'country_of_origin' => null,
         ]);
     }
