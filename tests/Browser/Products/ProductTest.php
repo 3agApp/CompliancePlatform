@@ -2,6 +2,7 @@
 
 use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SupplierConnection;
@@ -9,6 +10,7 @@ use App\Models\SupplierConnection;
 test('a product is created through the new product dialog', function () {
     [$user, $organization] = newOrganizationMember();
     newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
+    $organization->brands()->create(['name' => 'Magna-Tiles']);
 
     $this->actingAs($user);
 
@@ -18,7 +20,8 @@ test('a product is created through the new product dialog', function () {
         ->click('@products-new-product-button')
         ->assertSee('Add a product')
         ->fill('@product-name', 'Organic Oat Milk')
-        ->fill('@product-brand', 'Magna-Tiles')
+        ->click('@product-brand')
+        ->click('[role="option"]:has-text("Magna-Tiles")')
         ->click('@product-category')
         ->click('[role="option"]:has-text("Magnetic toy")')
         ->fill('@product-internal-article-number', 'ART-10294')
@@ -40,7 +43,7 @@ test('a product is created through the new product dialog', function () {
 
     expect(Product::sole())
         ->name->toBe('Organic Oat Milk')
-        ->brand->toBe('Magna-Tiles')
+        ->brand_id->toBe(Brand::query()->where('name', 'Magna-Tiles')->value('id'))
         ->product_category_id->toBe(ProductCategory::query()->where('name', 'Magnetic toy')->value('id'))
         ->ean->toBe('4006381333931')
         ->internal_article_number->toBe('ART-10294')
@@ -54,6 +57,7 @@ test('a product is created through the new product dialog', function () {
 test('the identification details of a product are edited on its own page', function () {
     [$user, $organization] = newOrganizationMember();
     $connection = newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
+    $organization->brands()->create(['name' => 'Magna-Tiles']);
 
     $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
         'name' => 'Organic Oat Milk',
@@ -67,7 +71,8 @@ test('the identification details of a product are edited on its own page', funct
         'product' => $product->id,
     ]));
 
-    $page->fill('@product-brand', 'Magna-Tiles')
+    $page->click('@product-brand')
+        ->click('[role="option"]:has-text("Magna-Tiles")')
         ->click('@product-category')
         ->click('[role="option"]:has-text("Magnetic toy")')
         ->fill('@product-internal-article-number', 'ART-10294')
@@ -78,7 +83,7 @@ test('the identification details of a product are edited on its own page', funct
         ->assertNoJavaScriptErrors();
 
     expect($product->fresh())
-        ->brand->toBe('Magna-Tiles')
+        ->brand_id->toBe(Brand::query()->where('name', 'Magna-Tiles')->value('id'))
         ->product_category_id->toBe(ProductCategory::query()->where('name', 'Magnetic toy')->value('id'))
         ->internal_article_number->toBe('ART-10294')
         ->supplier_article_number->toBe('MT-BLUE-32')

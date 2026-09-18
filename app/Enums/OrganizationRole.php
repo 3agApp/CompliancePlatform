@@ -39,11 +39,16 @@ enum OrganizationRole: string
                 OrganizationPermission::CreateProductCategory,
                 OrganizationPermission::UpdateProductCategory,
                 OrganizationPermission::DeleteProductCategory,
+                OrganizationPermission::ViewBrand,
+                OrganizationPermission::CreateBrand,
+                OrganizationPermission::UpdateBrand,
+                OrganizationPermission::DeleteBrand,
             ],
             self::Member => [
                 OrganizationPermission::ViewConnection,
                 OrganizationPermission::ViewProduct,
                 OrganizationPermission::ViewProductCategory,
+                OrganizationPermission::ViewBrand,
             ],
         };
     }

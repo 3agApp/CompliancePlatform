@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $organization_id
  * @property int|null $supplier_connection_id
  * @property string $name
- * @property string|null $brand
+ * @property int|null $brand_id
  * @property int|null $product_category_id
  * @property string|null $ean
  * @property string|null $internal_article_number
@@ -26,12 +26,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
+ * @property-read Brand|null $brand
  * @property-read ProductCategory|null $category
  * @property-read SupplierConnection|null $supplierConnection
  */
 #[Fillable([
     'name',
-    'brand',
+    'brand_id',
     'product_category_id',
     'ean',
     'internal_article_number',
@@ -65,6 +66,16 @@ class Product extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Get the brand the product carries.
+     *
+     * @return BelongsTo<Brand, $this>
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
     }
 
     /**
@@ -118,6 +129,20 @@ class Product extends Model
     public function scopeInCategory(Builder $query, int $categoryId): void
     {
         $query->where('products.product_category_id', $categoryId);
+    }
+
+    /**
+     * Scope the query to the products carrying one brand.
+     *
+     * Applied on top of a query that is already scoped to the viewer, so a
+     * brand id from another organization's list matches nothing rather than
+     * needing a check of its own.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeOfBrand(Builder $query, int $brandId): void
+    {
+        $query->where('products.brand_id', $brandId);
     }
 
     /**

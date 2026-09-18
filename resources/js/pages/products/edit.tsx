@@ -6,6 +6,7 @@ import ProductFormFields from '@/components/product-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, update } from '@/routes/products';
 import type {
+    BrandOption,
     CountryOption,
     OrganizationType,
     Product,
@@ -19,6 +20,7 @@ type Props = {
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
     availableCategories: ProductCategoryOption[];
+    availableBrands: BrandOption[];
     availableConnections: SupplierConnectionOption[];
     viewerType: OrganizationType;
 };
@@ -28,6 +30,7 @@ export default function ProductEdit({
     permissions,
     availableCountries,
     availableCategories,
+    availableBrands,
     availableConnections,
     viewerType,
 }: Props) {
@@ -91,6 +94,7 @@ export default function ProductEdit({
                                     errors={errors}
                                     availableCountries={availableCountries}
                                     availableCategories={availableCategories}
+                                    availableBrands={availableBrands}
                                     availableConnections={availableConnections}
                                     viewerType={viewerType}
                                     product={product}

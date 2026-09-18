@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BrandController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
@@ -31,6 +32,11 @@ Route::prefix('{current_organization}')
             Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
             Route::middleware(EnsureOrganizationType::class.':distributor')->group(function () {
+                Route::get('brands', [BrandController::class, 'index'])->name('brands.index');
+                Route::post('brands', [BrandController::class, 'store'])->name('brands.store');
+                Route::patch('brands/{brand}', [BrandController::class, 'update'])->name('brands.update');
+                Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
+
                 Route::get('categories', [ProductCategoryController::class, 'index'])->name('categories.index');
                 Route::post('categories', [ProductCategoryController::class, 'store'])->name('categories.store');
                 Route::patch('categories/{product_category}', [ProductCategoryController::class, 'update'])->name('categories.update');

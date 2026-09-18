@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\CountryOfOrigin;
+use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -16,9 +17,9 @@ class ProductFactory extends Factory
     /**
      * Define the model's default state.
      *
-     * The category is left unset so a test that asserts on the categories
-     * offered by the product pages sees only the ones seeded with the table,
-     * rather than one invented for a product it happened to create.
+     * The brand and the category are left unset so a test that asserts on
+     * the lists offered by the product pages sees only the rows it set up
+     * itself, rather than ones invented for a product it happened to create.
      *
      * @return array<string, mixed>
      */
@@ -28,14 +29,24 @@ class ProductFactory extends Factory
             'organization_id' => Organization::factory(),
             'supplier_connection_id' => null,
             'product_category_id' => null,
+            'brand_id' => null,
             'name' => fake()->unique()->words(3, true),
-            'brand' => fake()->company(),
             'ean' => (string) fake()->unique()->numerify('#############'),
             'internal_article_number' => fake()->unique()->bothify('ART-#####'),
             'supplier_article_number' => fake()->unique()->bothify('SUP-#####'),
             'order_number' => fake()->bothify('PO-#####'),
             'country_of_origin' => fake()->randomElement(CountryOfOrigin::cases()),
         ];
+    }
+
+    /**
+     * Indicate that the product carries the given brand.
+     */
+    public function ofBrand(Brand $brand): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'brand_id' => $brand->id,
+        ]);
     }
 
     /**
@@ -55,7 +66,7 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'product_category_id' => null,
-            'brand' => null,
+            'brand_id' => null,
             'ean' => null,
             'internal_article_number' => null,
             'supplier_article_number' => null,

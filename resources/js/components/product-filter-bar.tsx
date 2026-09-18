@@ -13,6 +13,7 @@ import {
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { index as productsIndex } from '@/routes/products';
 import type {
+    BrandOption,
     ProductCategoryOption,
     ProductCounterparty,
     ProductFilters,
@@ -34,6 +35,7 @@ const ONLY = ['products', 'filters', 'hasProducts'];
 type Query = {
     connection?: string;
     category?: string;
+    brand?: string;
     search?: string;
 };
 
@@ -43,6 +45,7 @@ type Props = {
     counterparties: ProductCounterparty[];
     counterpartyLabel: string;
     filterableCategories: ProductCategoryOption[];
+    filterableBrands: BrandOption[];
 };
 
 export default function ProductFilterBar({
@@ -51,6 +54,7 @@ export default function ProductFilterBar({
     counterparties,
     counterpartyLabel,
     filterableCategories,
+    filterableBrands,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebouncedValue(search);
@@ -93,6 +97,7 @@ export default function ProductFilterBar({
         visit({
             connection: undefined,
             category: undefined,
+            brand: undefined,
             search: undefined,
         });
     };
@@ -186,8 +191,40 @@ export default function ProductFilterBar({
                 </Select>
             ) : null}
 
+            {filterableBrands.length > 0 ? (
+                <Select
+                    value={
+                        filters.brand === null
+                            ? NO_FILTER
+                            : String(filters.brand)
+                    }
+                    onValueChange={(value) =>
+                        visit({
+                            brand: value === NO_FILTER ? undefined : value,
+                        })
+                    }
+                >
+                    <SelectTrigger
+                        data-test="product-filter-brand"
+                        aria-label="Filter by brand"
+                        className="w-full sm:w-56"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value={NO_FILTER}>All brands</SelectItem>
+                        {filterableBrands.map((brand) => (
+                            <SelectItem key={brand.id} value={String(brand.id)}>
+                                {brand.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            ) : null}
+
             {filters.connection !== null ||
             filters.category !== null ||
+            filters.brand !== null ||
             filters.search !== null ? (
                 <Button
                     variant="ghost"
