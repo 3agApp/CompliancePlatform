@@ -22,8 +22,8 @@ const ALL_COUNTERPARTIES = 'all';
 
 /**
  * Only the list and the state describing it are re-fetched. The permissions,
- * the countries and the assignable connections cannot change while the page
- * is open.
+ * the countries, the categories and the assignable connections cannot change
+ * while the page is open.
  */
 const ONLY = ['products', 'filters', 'hasProducts'];
 
@@ -92,8 +92,8 @@ export default function ProductFilterBar({
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     data-test="product-filter-search"
-                    aria-label="Search products by name or barcode"
-                    placeholder="Search name or barcode"
+                    aria-label="Search products by name, barcode or article number"
+                    placeholder="Search name, barcode or article no."
                     className="pl-9"
                 />
             </div>

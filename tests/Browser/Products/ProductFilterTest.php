@@ -47,6 +47,33 @@ test('the product list offers to clear the filters when nothing matches', functi
         ->assertNoJavaScriptErrors();
 });
 
+test('the product list is searched by an article number', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
+
+    Product::factory()->for($distributor)->create([
+        'name' => 'Organic Oat Milk',
+        'internal_article_number' => 'ART-10294',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->create([
+        'name' => 'Whipping Cream',
+        'internal_article_number' => 'ART-55555',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.index', ['current_organization' => $distributor->slug]));
+
+    $page->assertSee('Whipping Cream')
+        ->fill('@product-filter-search', 'ART-10294')
+        ->assertSee('Organic Oat Milk')
+        ->assertDontSee('Whipping Cream')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a distributor opens the product list filtered to one supplier from the suppliers page', function () {
     [$user, $distributor] = newOrganizationMember();
 

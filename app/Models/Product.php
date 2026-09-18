@@ -18,14 +18,30 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $organization_id
  * @property int|null $supplier_connection_id
  * @property string $name
+ * @property string|null $brand
+ * @property int|null $product_category_id
  * @property string|null $ean
+ * @property string|null $internal_article_number
+ * @property string|null $supplier_article_number
+ * @property string|null $order_number
  * @property CountryOfOrigin|null $country_of_origin
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
+ * @property-read ProductCategory|null $category
  * @property-read SupplierConnection|null $supplierConnection
  */
-#[Fillable(['name', 'ean', 'country_of_origin', 'supplier_connection_id'])]
+#[Fillable([
+    'name',
+    'brand',
+    'product_category_id',
+    'ean',
+    'internal_article_number',
+    'supplier_article_number',
+    'order_number',
+    'country_of_origin',
+    'supplier_connection_id',
+])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -67,6 +83,16 @@ class Product extends Model
     }
 
     /**
+     * Get the legal family the product is filed under.
+     *
+     * @return BelongsTo<ProductCategory, $this>
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProductCategory::class, 'product_category_id');
+    }
+
+    /**
      * Get the connection this product is assigned to.
      *
      * A product is assigned to the connection rather than directly to the
@@ -97,7 +123,12 @@ class Product extends Model
     }
 
     /**
-     * Scope the query to products whose name or barcode contains the term.
+     * Scope the query to products whose name, barcode or either side's
+     * article number contains the term.
+     *
+     * Both article numbers are searched because the two sides of a trade
+     * know the same product by different ones, and each side pastes the
+     * number it holds into the same box.
      *
      * The OR must stay grouped. Ungrouped, it binds looser than the caller's
      * organization clause and returns every product on the platform whose
@@ -112,7 +143,9 @@ class Product extends Model
     {
         $query->where(fn (Builder $query) => $query
             ->whereLike('products.name', "%{$term}%")
-            ->orWhereLike('products.ean', "%{$term}%"));
+            ->orWhereLike('products.ean', "%{$term}%")
+            ->orWhereLike('products.internal_article_number', "%{$term}%")
+            ->orWhereLike('products.supplier_article_number', "%{$term}%"));
     }
 
     /**

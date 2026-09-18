@@ -8,6 +8,7 @@ use App\Enums\SupplierConnectionStatus;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\SupplierConnection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -42,6 +43,7 @@ class ProductController extends Controller
             'products' => $products->map(fn (Product $product) => $this->toProductArray($product, $isSupplier)),
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
             'availableCountries' => CountryOfOrigin::options(),
+            'availableCategories' => $this->availableCategories($currentOrganization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
             'counterparties' => $this->counterparties($currentOrganization, $isSupplier),
             'filters' => $filters,
@@ -74,12 +76,13 @@ class ProductController extends Controller
 
         $isSupplier = $currentOrganization->isSupplier();
 
-        $product->load(['supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization']);
+        $product->load(['organization', 'category', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization']);
 
         return Inertia::render('products/edit', [
             'product' => $this->toProductArray($product, $isSupplier),
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
             'availableCountries' => CountryOfOrigin::options(),
+            'availableCategories' => $this->availableCategories($product->organization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
             'viewerType' => $currentOrganization->type->value,
         ]);
@@ -130,11 +133,11 @@ class ProductController extends Controller
     {
         if ($asSupplier) {
             return $organization->suppliedProducts()
-                ->with('supplierConnection.distributorOrganization');
+                ->with(['category', 'supplierConnection.distributorOrganization']);
         }
 
         return $organization->products()
-            ->with('supplierConnection.supplierOrganization');
+            ->with(['category', 'supplierConnection.supplierOrganization']);
     }
 
     /**
@@ -187,6 +190,30 @@ class ProductController extends Controller
     }
 
     /**
+     * Get the legal families a product may be filed under.
+     *
+     * The list always comes from the organization that owns the product, not
+     * from the one doing the looking. A supplier editing a product assigned
+     * to them is choosing from their distributor's families, because that is
+     * whose catalog the answer ends up in.
+     *
+     * @return array<array{id: int, label: string}>
+     */
+    protected function availableCategories(Organization $organization): array
+    {
+        if (! $organization->isDistributor()) {
+            return [];
+        }
+
+        return $organization->productCategories()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (ProductCategory $category) => $category->toOption())
+            ->values()
+            ->toArray();
+    }
+
+    /**
      * Get the suppliers a product may be assigned to.
      *
      * Pending connections are included so a distributor can assign products
@@ -230,7 +257,7 @@ class ProductController extends Controller
     /**
      * Transform the product for the frontend.
      *
-     * @return array{uuid: string, name: string, ean: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
+     * @return array{uuid: string, name: string, brand: string|null, product_category_id: int|null, category_label: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
      */
     protected function toProductArray(Product $product, bool $asSupplier = false): array
     {
@@ -239,7 +266,13 @@ class ProductController extends Controller
         return [
             'uuid' => $product->uuid,
             'name' => $product->name,
+            'brand' => $product->brand,
+            'product_category_id' => $product->product_category_id,
+            'category_label' => $product->category?->name,
             'ean' => $product->ean,
+            'internal_article_number' => $product->internal_article_number,
+            'supplier_article_number' => $product->supplier_article_number,
+            'order_number' => $product->order_number,
             'country_of_origin' => $product->country_of_origin?->value,
             'country_of_origin_label' => $product->country_of_origin?->label(),
             'supplier_connection_id' => $connection?->id,
