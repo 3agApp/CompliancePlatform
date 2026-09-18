@@ -50,6 +50,7 @@ export type Product = {
     internal_article_number: string | null;
     supplier_article_number: string | null;
     order_number: string | null;
+    customs_tariff_number: string | null;
     country_of_origin: CountryOfOrigin | null;
     country_of_origin_label: string | null;
     supplier_connection_id: number | null;

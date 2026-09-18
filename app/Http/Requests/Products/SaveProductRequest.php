@@ -14,6 +14,27 @@ use Illuminate\Validation\Rules\Exists;
 class SaveProductRequest extends FormRequest
 {
     /**
+     * Prepare the input for validation.
+     *
+     * A customs tariff number is read and quoted in groups -- "9503.00.75",
+     * "9503 00 75" -- so whichever way it was typed or pasted, the
+     * separators come off before it is checked or stored. Otherwise the same
+     * code sits in the column three ways and none of them match each other.
+     */
+    protected function prepareForValidation(): void
+    {
+        $tariffNumber = $this->input('customs_tariff_number');
+
+        if (! is_string($tariffNumber)) {
+            return;
+        }
+
+        $digits = (string) preg_replace('/[\s.\-]/', '', $tariffNumber);
+
+        $this->merge(['customs_tariff_number' => $digits === '' ? null : $digits]);
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -30,6 +51,7 @@ class SaveProductRequest extends FormRequest
             'internal_article_number' => ['nullable', 'string', 'max:255'],
             'supplier_article_number' => ['nullable', 'string', 'max:255'],
             'order_number' => ['nullable', 'string', 'max:255'],
+            'customs_tariff_number' => ['nullable', 'string', 'regex:/^\d{6,12}$/'],
             'country_of_origin' => ['nullable', Rule::enum(CountryOfOrigin::class)],
         ];
 
@@ -86,6 +108,7 @@ class SaveProductRequest extends FormRequest
     {
         return [
             'ean.regex' => __('The EAN/barcode must be 8, 12, 13, or 14 digits.'),
+            'customs_tariff_number.regex' => __('The customs tariff number must be 6 to 12 digits.'),
             'brand_id.exists' => __('Select one of the available brands.'),
             'product_category_id.exists' => __('Select one of the available categories.'),
             'supplier_connection_id.required' => __('Select the supplier responsible for this product.'),
@@ -107,6 +130,7 @@ class SaveProductRequest extends FormRequest
             'internal_article_number' => __('internal article number'),
             'supplier_article_number' => __('supplier article number'),
             'order_number' => __('order number'),
+            'customs_tariff_number' => __('customs tariff number'),
             'country_of_origin' => __('country of origin'),
             'supplier_connection_id' => __('supplier'),
         ];

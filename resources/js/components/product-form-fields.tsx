@@ -27,6 +27,7 @@ type FieldName =
     | 'internal_article_number'
     | 'supplier_article_number'
     | 'order_number'
+    | 'customs_tariff_number'
     | 'country_of_origin'
     | 'supplier_connection_id';
 
@@ -263,41 +264,63 @@ export default function ProductFormFields({
                 </div>
             </div>
 
-            <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}-country-of-origin`}>
-                    Country of origin <Optional />
-                </Label>
-                <Select
-                    value={country}
-                    onValueChange={(value) =>
-                        setCountry(value as CountryOfOrigin)
-                    }
-                    disabled={disabled}
-                >
-                    <SelectTrigger
-                        id={`${idPrefix}-country-of-origin`}
-                        data-test="product-country-of-origin"
-                        className="w-full"
+            <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid content-start gap-2">
+                    <Label htmlFor={`${idPrefix}-customs-tariff-number`}>
+                        Customs tariff number <Optional />
+                    </Label>
+                    <Input
+                        id={`${idPrefix}-customs-tariff-number`}
+                        name="customs_tariff_number"
+                        data-test="product-customs-tariff-number"
+                        defaultValue={product?.customs_tariff_number ?? ''}
+                        placeholder="9503.00.75"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        disabled={disabled}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                        Its HS code.
+                    </p>
+                    <InputError message={errors.customs_tariff_number} />
+                </div>
+
+                <div className="grid content-start gap-2">
+                    <Label htmlFor={`${idPrefix}-country-of-origin`}>
+                        Country of origin <Optional />
+                    </Label>
+                    <Select
+                        value={country}
+                        onValueChange={(value) =>
+                            setCountry(value as CountryOfOrigin)
+                        }
+                        disabled={disabled}
                     >
-                        <SelectValue placeholder="Select a country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {availableCountries.map((availableCountry) => (
-                            <SelectItem
-                                key={availableCountry.value}
-                                value={availableCountry.value}
-                            >
-                                {availableCountry.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <input
-                    type="hidden"
-                    name="country_of_origin"
-                    value={country ?? ''}
-                />
-                <InputError message={errors.country_of_origin} />
+                        <SelectTrigger
+                            id={`${idPrefix}-country-of-origin`}
+                            data-test="product-country-of-origin"
+                            className="w-full"
+                        >
+                            <SelectValue placeholder="Select a country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableCountries.map((availableCountry) => (
+                                <SelectItem
+                                    key={availableCountry.value}
+                                    value={availableCountry.value}
+                                >
+                                    {availableCountry.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <input
+                        type="hidden"
+                        name="country_of_origin"
+                        value={country ?? ''}
+                    />
+                    <InputError message={errors.country_of_origin} />
+                </div>
             </div>
 
             {canAssignSupplier ? (

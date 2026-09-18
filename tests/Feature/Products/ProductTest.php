@@ -38,6 +38,7 @@ function productPayload(SupplierConnection $connection, array $overrides = []): 
         'internal_article_number' => 'ART-10294',
         'supplier_article_number' => 'MT-BLUE-32',
         'order_number' => 'PO-2026-0148',
+        'customs_tariff_number' => '95030075',
         'country_of_origin' => 'DE',
         'supplier_connection_id' => $connection->id,
         ...$overrides,
@@ -104,6 +105,7 @@ test('products can be created', function () {
         'internal_article_number' => 'ART-10294',
         'supplier_article_number' => 'MT-BLUE-32',
         'order_number' => 'PO-2026-0148',
+        'customs_tariff_number' => '95030075',
         'country_of_origin' => 'DE',
     ]);
 });
@@ -119,6 +121,7 @@ test('products can be created without any of the optional identification details
             'internal_article_number' => null,
             'supplier_article_number' => null,
             'order_number' => null,
+            'customs_tariff_number' => null,
         ]))
         ->assertSessionHasNoErrors();
 
@@ -129,6 +132,7 @@ test('products can be created without any of the optional identification details
         'internal_article_number' => null,
         'supplier_article_number' => null,
         'order_number' => null,
+        'customs_tariff_number' => null,
     ]);
 });
 
@@ -151,6 +155,7 @@ test('an identification field can be cleared by submitting an empty value', func
     'internal_article_number',
     'supplier_article_number',
     'order_number',
+    'customs_tariff_number',
 ]);
 
 test('an identification field is limited to the column length', function (string $field) {
@@ -405,6 +410,60 @@ test('a barcode must be a valid ean length', function (string $ean, bool $valid)
     ['400638133393A', false],
 ]);
 
+test('a customs tariff number must be 6 to 12 digits', function (string $tariffNumber, bool $valid) {
+    [$user, $organization, $connection] = distributorWithSupplier();
+
+    $response = $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
+            'customs_tariff_number' => $tariffNumber,
+        ]));
+
+    $valid
+        ? $response->assertSessionHasNoErrors()
+        : $response->assertSessionHasErrors('customs_tariff_number');
+})->with([
+    ['950300', true],
+    ['95030075', true],
+    ['9503007500', true],
+    ['950300750000', true],
+    ['95030', false],
+    ['9503007500000', false],
+    ['9503.00.7A', false],
+]);
+
+test('a customs tariff number is stored as bare digits however it was typed', function (string $typed) {
+    [$user, $organization, $connection] = distributorWithSupplier();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
+            'customs_tariff_number' => $typed,
+        ]))
+        ->assertSessionHasNoErrors();
+
+    expect(Product::sole()->customs_tariff_number)->toBe('95030075');
+})->with([
+    'bare' => '95030075',
+    'dotted' => '9503.00.75',
+    'spaced' => '9503 00 75',
+    'hyphenated' => '9503-00-75',
+    'padded' => '  9503.00.75  ',
+]);
+
+test('a customs tariff number of nothing but separators is no number at all', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
+            'customs_tariff_number' => ' . . ',
+        ]))
+        ->assertSessionHasNoErrors();
+
+    expect(Product::sole()->customs_tariff_number)->toBeNull();
+});
+
 test('the country of origin is limited to germany and switzerland', function (?string $country, bool $valid) {
     [$user, $organization, $connection] = distributorWithSupplier();
 
@@ -473,6 +532,7 @@ test('products can be updated', function () {
         ->internal_article_number->toBe('ART-10294')
         ->supplier_article_number->toBe('MT-BLUE-32')
         ->order_number->toBe('PO-2026-0148')
+        ->customs_tariff_number->toBe('95030075')
         ->country_of_origin->toBe(CountryOfOrigin::Germany);
 });
 
