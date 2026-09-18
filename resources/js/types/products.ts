@@ -76,3 +76,47 @@ export type ProductCounterparty = {
     id: number;
     label: string;
 };
+
+export type ProductComplianceDetails = {
+    age_grading: string | null;
+    safety_notice: string | null;
+    warning_text: string | null;
+    material_information: string | null;
+    usage_restrictions: string | null;
+    safety_instructions: string | null;
+    additional_notes: string | null;
+};
+
+export type ProductDocumentType =
+    | 'test_report'
+    | 'declaration_of_conformity'
+    | 'manual_or_instructions'
+    | 'certificate'
+    | 'product_image'
+    | 'safety_image'
+    | 'regulatory_document'
+    | 'other';
+
+export type ProductDocumentTypeOption = {
+    value: ProductDocumentType;
+    label: string;
+};
+
+export type ProductDocument = {
+    id: number;
+    type: ProductDocumentType;
+    type_label: string;
+    name: string;
+    size: number;
+    uploaded_by: string | null;
+    created_at: string | null;
+};
+
+/**
+ * A product as its own page sees it: everything the list carries, plus the
+ * compliance details and the papers filed against it.
+ */
+export type ProductDetail = Product &
+    ProductComplianceDetails & {
+        documents: ProductDocument[];
+    };

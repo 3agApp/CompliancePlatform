@@ -7,9 +7,11 @@ use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -24,12 +26,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $order_number
  * @property string|null $customs_tariff_number
  * @property CountryOfOrigin|null $country_of_origin
+ * @property string|null $age_grading
+ * @property string|null $safety_notice
+ * @property string|null $warning_text
+ * @property string|null $material_information
+ * @property string|null $usage_restrictions
+ * @property string|null $safety_instructions
+ * @property string|null $additional_notes
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
  * @property-read Brand|null $brand
  * @property-read ProductCategory|null $category
  * @property-read SupplierConnection|null $supplierConnection
+ * @property-read Collection<int, ProductDocument> $documents
  */
 #[Fillable([
     'name',
@@ -42,6 +52,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'customs_tariff_number',
     'country_of_origin',
     'supplier_connection_id',
+    'age_grading',
+    'safety_notice',
+    'warning_text',
+    'material_information',
+    'usage_restrictions',
+    'safety_instructions',
+    'additional_notes',
 ])]
 class Product extends Model
 {
@@ -102,6 +119,19 @@ class Product extends Model
     public function supplierConnection(): BelongsTo
     {
         return $this->belongsTo(SupplierConnection::class);
+    }
+
+    /**
+     * Get the papers filed against the product.
+     *
+     * Ordered oldest first, so a kind that gathers several -- a test report
+     * per component -- reads in the order the evidence arrived.
+     *
+     * @return HasMany<ProductDocument, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(ProductDocument::class)->oldest();
     }
 
     /**

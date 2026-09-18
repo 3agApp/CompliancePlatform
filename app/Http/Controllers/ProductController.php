@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Data\ProductFilters;
 use App\Enums\CountryOfOrigin;
+use App\Enums\ProductDocumentType;
 use App\Enums\SupplierConnectionStatus;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductDocument;
 use App\Models\SupplierConnection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -17,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -80,12 +83,17 @@ class ProductController extends Controller
 
         $isSupplier = $currentOrganization->isSupplier();
 
-        $product->load(['organization', 'brand', 'category', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization']);
+        $product->load(['organization', 'brand', 'category', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader']);
 
         return Inertia::render('products/edit', [
-            'product' => $this->toProductArray($product, $isSupplier),
+            'product' => [
+                ...$this->toProductArray($product, $isSupplier),
+                ...$this->toComplianceArray($product),
+                'documents' => $this->toDocumentArray($product),
+            ],
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
             'availableCountries' => CountryOfOrigin::options(),
+            'availableDocumentTypes' => ProductDocumentType::options(),
             'availableCategories' => $this->availableCategories($product->organization),
             'availableBrands' => $this->availableBrands($product->organization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
@@ -116,6 +124,12 @@ class ProductController extends Controller
     public function destroy(Organization $currentOrganization, Product $product): RedirectResponse
     {
         Gate::authorize('delete', $product);
+
+        /**
+         * The foreign key takes the document rows, but a cascade fires no
+         * model event and so leaves the files behind. They go first.
+         */
+        Storage::disk(ProductDocument::DISK)->deleteDirectory(ProductDocument::directoryFor($product));
 
         $product->delete();
 
@@ -350,6 +364,53 @@ class ProductController extends Controller
         $supplier = $connection->supplierOrganization;
 
         return $supplier !== null ? $supplier->name : $connection->company_name;
+    }
+
+    /**
+     * Transform the compliance details of the product for the frontend.
+     *
+     * Kept apart from the list payload on purpose: seven paragraphs of prose
+     * on every row of a catalog would be carried across the wire by every
+     * page that only ever shows a name.
+     *
+     * @return array{age_grading: string|null, safety_notice: string|null, warning_text: string|null, material_information: string|null, usage_restrictions: string|null, safety_instructions: string|null, additional_notes: string|null}
+     */
+    protected function toComplianceArray(Product $product): array
+    {
+        return [
+            'age_grading' => $product->age_grading,
+            'safety_notice' => $product->safety_notice,
+            'warning_text' => $product->warning_text,
+            'material_information' => $product->material_information,
+            'usage_restrictions' => $product->usage_restrictions,
+            'safety_instructions' => $product->safety_instructions,
+            'additional_notes' => $product->additional_notes,
+        ];
+    }
+
+    /**
+     * Transform the papers filed against the product for the frontend.
+     *
+     * No address is sent with them. The files are private and the page builds
+     * the download link itself, so nothing here is a URL that could be
+     * mistaken for one that works on its own.
+     *
+     * @return array<array{id: int, type: string, type_label: string, name: string, size: int, uploaded_by: string|null, created_at: string|null}>
+     */
+    protected function toDocumentArray(Product $product): array
+    {
+        return $product->documents
+            ->map(fn (ProductDocument $document) => [
+                'id' => $document->id,
+                'type' => $document->type->value,
+                'type_label' => $document->type->label(),
+                'name' => $document->name,
+                'size' => $document->size,
+                'uploaded_by' => $document->uploader?->name,
+                'created_at' => $document->created_at?->toISOString(),
+            ])
+            ->values()
+            ->toArray();
     }
 
     /**

@@ -61,6 +61,26 @@ class ProductFactory extends Factory
     }
 
     /**
+     * Indicate that the product has its compliance details filled in.
+     *
+     * Left out of the default state for the same reason the brand is: a test
+     * asserting on what a product page shows should see only what it set up
+     * itself.
+     */
+    public function withComplianceDetails(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'age_grading' => '3+',
+            'safety_notice' => 'Keep the packaging until the product has been checked.',
+            'warning_text' => 'Not suitable for children under 3 years. Small parts.',
+            'material_information' => 'ABS plastic, neodymium magnets, water based paint.',
+            'usage_restrictions' => 'Indoor use only. Not for use in water.',
+            'safety_instructions' => 'Inspect for damage before each use and replace broken parts.',
+            'additional_notes' => 'Replacement parts are available from the manufacturer.',
+        ]);
+    }
+
+    /**
      * Indicate that the product carries nothing but its name.
      */
     public function withoutOptionalDetails(): static
@@ -74,6 +94,13 @@ class ProductFactory extends Factory
             'order_number' => null,
             'customs_tariff_number' => null,
             'country_of_origin' => null,
+            'age_grading' => null,
+            'safety_notice' => null,
+            'warning_text' => null,
+            'material_information' => null,
+            'usage_restrictions' => null,
+            'safety_instructions' => null,
+            'additional_notes' => null,
         ]);
     }
 }

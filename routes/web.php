@@ -6,6 +6,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductDocumentController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
 use App\Http\Controllers\Suppliers\SupplierConnectionController;
@@ -30,6 +31,10 @@ Route::prefix('{current_organization}')
             Route::get('products/{product}', [ProductController::class, 'edit'])->name('products.edit');
             Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
             Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+
+            Route::post('products/{product}/documents', [ProductDocumentController::class, 'store'])->name('products.documents.store');
+            Route::get('products/{product}/documents/{document}', [ProductDocumentController::class, 'show'])->name('products.documents.show');
+            Route::delete('products/{product}/documents/{document}', [ProductDocumentController::class, 'destroy'])->name('products.documents.destroy');
 
             Route::middleware(EnsureOrganizationType::class.':distributor')->group(function () {
                 Route::get('brands', [BrandController::class, 'index'])->name('brands.index');

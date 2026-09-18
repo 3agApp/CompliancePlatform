@@ -2,6 +2,9 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
+import Heading from '@/components/heading';
+import ProductComplianceFields from '@/components/product-compliance-fields';
+import ProductDocumentsPanel from '@/components/product-documents-panel';
 import ProductFormFields from '@/components/product-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, update } from '@/routes/products';
@@ -9,16 +12,18 @@ import type {
     BrandOption,
     CountryOption,
     OrganizationType,
-    Product,
     ProductCategoryOption,
+    ProductDetail,
+    ProductDocumentTypeOption,
     ProductPermissions,
     SupplierConnectionOption,
 } from '@/types';
 
 type Props = {
-    product: Product;
+    product: ProductDetail;
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    availableDocumentTypes: ProductDocumentTypeOption[];
     availableCategories: ProductCategoryOption[];
     availableBrands: BrandOption[];
     availableConnections: SupplierConnectionOption[];
@@ -29,6 +34,7 @@ export default function ProductEdit({
     product,
     permissions,
     availableCountries,
+    availableDocumentTypes,
     availableCategories,
     availableBrands,
     availableConnections,
@@ -82,14 +88,20 @@ export default function ProductEdit({
                     ) : null}
                 </div>
 
-                <div className="workspace-panel max-w-2xl p-6">
-                    <Form
-                        {...update.form([organizationSlug, product.id])}
-                        options={{ preserveScroll: true }}
-                        className="space-y-6"
-                    >
-                        {({ errors, processing }) => (
-                            <>
+                <Form
+                    {...update.form([organizationSlug, product.id])}
+                    options={{ preserveScroll: true }}
+                    className="space-y-6"
+                >
+                    {({ errors, processing }) => (
+                        <>
+                            <div className="workspace-panel max-w-2xl space-y-6 p-6">
+                                <Heading
+                                    variant="small"
+                                    title="Product details"
+                                    description="What the product is, and the numbers each side of the trade knows it by."
+                                />
+
                                 <ProductFormFields
                                     errors={errors}
                                     availableCountries={availableCountries}
@@ -101,27 +113,50 @@ export default function ProductEdit({
                                     disabled={!permissions.canUpdateProduct}
                                     idPrefix="edit-product"
                                 />
+                            </div>
 
-                                {permissions.canUpdateProduct ? (
-                                    <div className="flex items-center gap-3">
-                                        <Button
-                                            type="submit"
-                                            data-test="update-product-submit"
-                                            disabled={processing}
-                                        >
-                                            Save changes
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <p className="text-muted-foreground text-sm">
-                                        You do not have permission to edit this
-                                        product.
-                                    </p>
-                                )}
-                            </>
-                        )}
-                    </Form>
-                </div>
+                            <div className="workspace-panel max-w-2xl space-y-6 p-6">
+                                <Heading
+                                    variant="small"
+                                    title="Compliance details"
+                                    description="What the product claims about its own safety: the warnings it carries, who it is for, and how it may be used."
+                                />
+
+                                <ProductComplianceFields
+                                    errors={errors}
+                                    product={product}
+                                    disabled={!permissions.canUpdateProduct}
+                                    idPrefix="edit-product"
+                                />
+                            </div>
+
+                            {permissions.canUpdateProduct ? (
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        type="submit"
+                                        data-test="update-product-submit"
+                                        disabled={processing}
+                                    >
+                                        Save changes
+                                    </Button>
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground text-sm">
+                                    You do not have permission to edit this
+                                    product.
+                                </p>
+                            )}
+                        </>
+                    )}
+                </Form>
+
+                <ProductDocumentsPanel
+                    organizationSlug={organizationSlug}
+                    productId={product.id}
+                    documents={product.documents}
+                    availableDocumentTypes={availableDocumentTypes}
+                    canUpload={permissions.canUpdateProduct}
+                />
             </div>
 
             <DeleteProductModal

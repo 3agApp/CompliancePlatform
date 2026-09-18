@@ -45,9 +45,10 @@ type Props = {
 
 /**
  * Everything but the name is optional, so the marker is worth factoring out
- * rather than repeating on every label.
+ * rather than repeating on every label. Shared with the compliance fields,
+ * where every single one is optional too.
  */
-function Optional() {
+export function Optional() {
     return (
         <span className="text-muted-foreground font-normal">(optional)</span>
     );

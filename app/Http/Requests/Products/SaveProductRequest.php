@@ -53,6 +53,13 @@ class SaveProductRequest extends FormRequest
             'order_number' => ['nullable', 'string', 'max:255'],
             'customs_tariff_number' => ['nullable', 'string', 'regex:/^\d{6,12}$/'],
             'country_of_origin' => ['nullable', Rule::enum(CountryOfOrigin::class)],
+            'age_grading' => ['nullable', 'string', 'max:255'],
+            'safety_notice' => ['nullable', 'string', 'max:5000'],
+            'warning_text' => ['nullable', 'string', 'max:5000'],
+            'material_information' => ['nullable', 'string', 'max:5000'],
+            'usage_restrictions' => ['nullable', 'string', 'max:5000'],
+            'safety_instructions' => ['nullable', 'string', 'max:5000'],
+            'additional_notes' => ['nullable', 'string', 'max:5000'],
         ];
 
         /**
@@ -133,6 +140,13 @@ class SaveProductRequest extends FormRequest
             'customs_tariff_number' => __('customs tariff number'),
             'country_of_origin' => __('country of origin'),
             'supplier_connection_id' => __('supplier'),
+            'age_grading' => __('age grading'),
+            'safety_notice' => __('safety notice'),
+            'warning_text' => __('warning text'),
+            'material_information' => __('material information'),
+            'usage_restrictions' => __('usage restrictions'),
+            'safety_instructions' => __('safety instructions'),
+            'additional_notes' => __('additional notes'),
         ];
     }
 }
