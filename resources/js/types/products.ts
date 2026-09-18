@@ -22,3 +22,13 @@ export type ProductPermissions = {
     canUpdateProduct: boolean;
     canDeleteProduct: boolean;
 };
+
+export type ProductFilters = {
+    connection: string | null;
+    search: string | null;
+};
+
+export type ProductCounterparty = {
+    uuid: string;
+    label: string;
+};

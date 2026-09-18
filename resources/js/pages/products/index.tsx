@@ -1,8 +1,9 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Package, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Package, Pencil, Plus, SearchX, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import CreateProductModal from '@/components/create-product-modal';
 import DeleteProductModal from '@/components/delete-product-modal';
+import ProductFilterBar from '@/components/product-filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +17,8 @@ import type {
     CountryOption,
     OrganizationType,
     Product,
+    ProductCounterparty,
+    ProductFilters,
     ProductPermissions,
     SupplierConnectionOption,
 } from '@/types';
@@ -25,6 +28,9 @@ type Props = {
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
     availableConnections: SupplierConnectionOption[];
+    counterparties: ProductCounterparty[];
+    filters: ProductFilters;
+    hasProducts: boolean;
     viewerType: OrganizationType;
 };
 
@@ -33,6 +39,9 @@ export default function ProductsIndex({
     permissions,
     availableCountries,
     availableConnections,
+    counterparties,
+    filters,
+    hasProducts,
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
@@ -40,6 +49,14 @@ export default function ProductsIndex({
 
     const isSupplier = viewerType === 'supplier';
     const counterpartyLabel = isSupplier ? 'Distributor' : 'Supplier';
+
+    const isFiltered = filters.connection !== null || filters.search !== null;
+
+    /**
+     * A filter bar over a catalogue that is empty for want of products, not
+     * for want of a match, is noise.
+     */
+    const showFilters = hasProducts || isFiltered;
 
     /**
      * Every product needs a supplier, so a distributor with no suppliers yet
@@ -101,6 +118,15 @@ export default function ProductsIndex({
                     ) : null}
                 </div>
 
+                {showFilters ? (
+                    <ProductFilterBar
+                        organizationSlug={organizationSlug}
+                        filters={filters}
+                        counterparties={counterparties}
+                        counterpartyLabel={counterpartyLabel}
+                    />
+                ) : null}
+
                 {products.length > 0 ? (
                     <div className="workspace-table">
                         <div className="min-w-0 overflow-x-auto">
@@ -111,13 +137,13 @@ export default function ProductsIndex({
                                             Name
                                         </th>
                                         <th className="px-6 font-medium">
+                                            {counterpartyLabel}
+                                        </th>
+                                        <th className="px-6 font-medium">
                                             EAN / barcode
                                         </th>
                                         <th className="px-6 font-medium">
                                             Country of origin
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            {counterpartyLabel}
                                         </th>
                                         <th className="px-6 font-medium">
                                             <span className="sr-only">
@@ -135,13 +161,6 @@ export default function ProductsIndex({
                                         >
                                             <td className="px-6 font-medium break-words">
                                                 {product.name}
-                                            </td>
-                                            <td className="text-muted-foreground px-6 font-mono text-xs">
-                                                {product.ean ?? '—'}
-                                            </td>
-                                            <td className="text-muted-foreground px-6">
-                                                {product.country_of_origin_label ??
-                                                    '—'}
                                             </td>
                                             <td
                                                 className="px-6"
@@ -165,6 +184,13 @@ export default function ProductsIndex({
                                                             : 'Revoked'}
                                                     </Badge>
                                                 ) : null}
+                                            </td>
+                                            <td className="text-muted-foreground px-6 font-mono text-xs">
+                                                {product.ean ?? '—'}
+                                            </td>
+                                            <td className="text-muted-foreground px-6">
+                                                {product.country_of_origin_label ??
+                                                    '—'}
                                             </td>
                                             <td className="px-6">
                                                 <div className="flex items-center justify-end gap-2">
@@ -236,6 +262,25 @@ export default function ProductsIndex({
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                ) : isFiltered ? (
+                    <div
+                        className="workspace-panel flex flex-col items-center justify-center gap-3 px-6 py-16 text-center"
+                        data-test="products-no-matches"
+                    >
+                        <div className="bg-muted flex size-12 items-center justify-center rounded-full">
+                            <SearchX className="text-muted-foreground size-6" />
+                        </div>
+                        <div className="space-y-1">
+                            <h2 className="font-medium">
+                                No products match these filters
+                            </h2>
+                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+                                {filters.search === null
+                                    ? `Nothing is assigned to this ${counterpartyLabel.toLowerCase()} yet.`
+                                    : 'Try a different name or barcode, or clear the filters.'}
+                            </p>
                         </div>
                     </div>
                 ) : (
