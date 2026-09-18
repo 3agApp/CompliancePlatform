@@ -24,8 +24,8 @@ class SaveProductRequest extends FormRequest
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'brand' => ['nullable', 'string', 'max:255'],
-            'product_category_id' => ['nullable', 'integer', $this->categoryExistsRule()],
+            'brand_id' => ['nullable', 'integer', $this->ownedByTheProductOwner('brands')],
+            'product_category_id' => ['nullable', 'integer', $this->ownedByTheProductOwner('product_categories')],
             'ean' => ['nullable', 'string', 'regex:/^(\d{8}|\d{12,14})$/'],
             'internal_article_number' => ['nullable', 'string', 'max:255'],
             'supplier_article_number' => ['nullable', 'string', 'max:255'],
@@ -56,17 +56,16 @@ class SaveProductRequest extends FormRequest
     }
 
     /**
-     * Require the category to come from the list of the organization that
-     * owns the product.
+     * Require the chosen row to come from a list the product's owner keeps.
      *
      * The owner is the distributor, which is the current organization when a
      * product is being created and the product's own organization when a
      * supplier is filling in the details of one assigned to them. Without the
      * scope, any id from any organization's list would be accepted, and a
-     * product would end up carrying a legal family its owner has never heard
-     * of.
+     * product would end up carrying a brand or a legal family its owner has
+     * never heard of.
      */
-    protected function categoryExistsRule(): Exists
+    protected function ownedByTheProductOwner(string $table): Exists
     {
         $product = $this->route('product');
 
@@ -74,7 +73,7 @@ class SaveProductRequest extends FormRequest
             ? $product->organization
             : $this->route('current_organization');
 
-        return Rule::exists('product_categories', 'id')
+        return Rule::exists($table, 'id')
             ->where('organization_id', $owner instanceof Organization ? $owner->id : null);
     }
 
@@ -87,6 +86,7 @@ class SaveProductRequest extends FormRequest
     {
         return [
             'ean.regex' => __('The EAN/barcode must be 8, 12, 13, or 14 digits.'),
+            'brand_id.exists' => __('Select one of the available brands.'),
             'product_category_id.exists' => __('Select one of the available categories.'),
             'supplier_connection_id.required' => __('Select the supplier responsible for this product.'),
             'supplier_connection_id.exists' => __('Select one of your connected suppliers.'),
@@ -102,6 +102,7 @@ class SaveProductRequest extends FormRequest
     {
         return [
             'ean' => __('EAN/barcode'),
+            'brand_id' => __('brand'),
             'product_category_id' => __('category'),
             'internal_article_number' => __('internal article number'),
             'supplier_article_number' => __('supplier article number'),

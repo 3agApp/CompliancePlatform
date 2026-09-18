@@ -79,6 +79,38 @@ test('a distributor narrows the product list with the category filter', function
         ->assertNoJavaScriptErrors();
 });
 
+test('a distributor narrows the product list with the brand filter', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
+
+    $magnaTiles = $distributor->brands()->create(['name' => 'Magna-Tiles']);
+    $tigerbox = $distributor->brands()->create(['name' => 'tigerbox']);
+
+    Product::factory()->for($distributor)->ofBrand($magnaTiles)->create([
+        'name' => 'Clear Colors 32',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->ofBrand($tigerbox)->create([
+        'name' => 'tigercard Bundle',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.index', ['current_organization' => $distributor->slug]));
+
+    $page->assertSee('Clear Colors 32')
+        ->assertSee('tigercard Bundle')
+        ->click('@product-filter-brand')
+        ->click('[role="option"]:has-text("Magna-Tiles")')
+        ->assertSee('Clear Colors 32')
+        ->assertDontSee('tigercard Bundle')
+        ->click('@product-filter-clear')
+        ->assertSee('tigercard Bundle')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the product list is searched by an article number', function () {
     [$user, $distributor] = newOrganizationMember();
 

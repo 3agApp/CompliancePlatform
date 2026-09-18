@@ -10,6 +10,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type {
+    BrandOption,
     CountryOfOrigin,
     CountryOption,
     OrganizationType,
@@ -20,7 +21,7 @@ import type {
 
 type FieldName =
     | 'name'
-    | 'brand'
+    | 'brand_id'
     | 'product_category_id'
     | 'ean'
     | 'internal_article_number'
@@ -33,6 +34,7 @@ type Props = {
     errors: Partial<Record<FieldName, string>>;
     availableCountries: CountryOption[];
     availableCategories: ProductCategoryOption[];
+    availableBrands: BrandOption[];
     availableConnections: SupplierConnectionOption[];
     viewerType: OrganizationType;
     product?: Product;
@@ -54,6 +56,7 @@ export default function ProductFormFields({
     errors,
     availableCountries,
     availableCategories,
+    availableBrands,
     availableConnections,
     viewerType,
     product,
@@ -62,6 +65,10 @@ export default function ProductFormFields({
 }: Props) {
     const [country, setCountry] = useState<CountryOfOrigin | undefined>(
         product?.country_of_origin ?? undefined,
+    );
+
+    const [brandId, setBrandId] = useState<string | undefined>(
+        product?.brand_id ? String(product.brand_id) : undefined,
     );
 
     const [categoryId, setCategoryId] = useState<string | undefined>(
@@ -104,16 +111,40 @@ export default function ProductFormFields({
                     <Label htmlFor={`${idPrefix}-brand`}>
                         Brand <Optional />
                     </Label>
-                    <Input
-                        id={`${idPrefix}-brand`}
-                        name="brand"
-                        data-test="product-brand"
-                        defaultValue={product?.brand ?? ''}
-                        placeholder="Magna-Tiles"
-                        autoComplete="off"
-                        disabled={disabled}
+                    <Select
+                        value={brandId}
+                        onValueChange={setBrandId}
+                        disabled={disabled || availableBrands.length === 0}
+                    >
+                        <SelectTrigger
+                            id={`${idPrefix}-brand`}
+                            data-test="product-brand"
+                            className="w-full"
+                        >
+                            <SelectValue placeholder="Select a brand" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableBrands.map((brand) => (
+                                <SelectItem
+                                    key={brand.id}
+                                    value={String(brand.id)}
+                                >
+                                    {brand.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <input
+                        type="hidden"
+                        name="brand_id"
+                        value={brandId ?? ''}
                     />
-                    <InputError message={errors.brand} />
+                    <p className="text-muted-foreground text-xs">
+                        {availableBrands.length === 0
+                            ? 'No brands yet — add them under Brands.'
+                            : 'The maker of the product.'}
+                    </p>
+                    <InputError message={errors.brand_id} />
                 </div>
 
                 <div className="grid content-start gap-2">

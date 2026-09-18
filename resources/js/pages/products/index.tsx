@@ -14,6 +14,7 @@ import {
 import { edit } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
+    BrandOption,
     CountryOption,
     OrganizationType,
     Product,
@@ -29,9 +30,11 @@ type Props = {
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
     availableCategories: ProductCategoryOption[];
+    availableBrands: BrandOption[];
     availableConnections: SupplierConnectionOption[];
     counterparties: ProductCounterparty[];
     filterableCategories: ProductCategoryOption[];
+    filterableBrands: BrandOption[];
     filters: ProductFilters;
     hasProducts: boolean;
     viewerType: OrganizationType;
@@ -42,9 +45,11 @@ export default function ProductsIndex({
     permissions,
     availableCountries,
     availableCategories,
+    availableBrands,
     availableConnections,
     counterparties,
     filterableCategories,
+    filterableBrands,
     filters,
     hasProducts,
     viewerType,
@@ -58,6 +63,7 @@ export default function ProductsIndex({
     const isFiltered =
         filters.connection !== null ||
         filters.category !== null ||
+        filters.brand !== null ||
         filters.search !== null;
 
     /**
@@ -109,6 +115,7 @@ export default function ProductsIndex({
                             organizationSlug={organizationSlug}
                             availableCountries={availableCountries}
                             availableCategories={availableCategories}
+                            availableBrands={availableBrands}
                             availableConnections={availableConnections}
                         >
                             <Button data-test="products-new-product-button">
@@ -134,6 +141,7 @@ export default function ProductsIndex({
                         counterparties={counterparties}
                         counterpartyLabel={counterpartyLabel}
                         filterableCategories={filterableCategories}
+                        filterableBrands={filterableBrands}
                     />
                 ) : null}
 
@@ -189,7 +197,7 @@ export default function ProductsIndex({
                                                 ) : null}
                                             </td>
                                             <td className="text-muted-foreground px-6 break-words">
-                                                {product.brand ?? '—'}
+                                                {product.brand_label ?? '—'}
                                             </td>
                                             <td
                                                 className="text-muted-foreground px-6"

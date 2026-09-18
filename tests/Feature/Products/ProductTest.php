@@ -2,6 +2,7 @@
 
 use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
+use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -31,7 +32,7 @@ function productPayload(SupplierConnection $connection, array $overrides = []): 
 {
     return [
         'name' => 'Organic Oat Milk',
-        'brand' => 'Alpro',
+        'brand_id' => carriedBrand($connection->distributorOrganization)->id,
         'product_category_id' => legalFamily($connection->distributorOrganization)->id,
         'ean' => '4006381333931',
         'internal_article_number' => 'ART-10294',
@@ -53,6 +54,18 @@ function productPayload(SupplierConnection $connection, array $overrides = []): 
 function legalFamily(Organization $organization, string $name = 'Toy'): ProductCategory
 {
     return $organization->productCategories()->where('name', $name)->sole();
+}
+
+/**
+ * Get a brand on the organization's list, adding it the first time it is
+ * asked for.
+ *
+ * Unlike the legal families an organization starts with none, so a test that
+ * wants to put a brand on a product has to put it on the list first.
+ */
+function carriedBrand(Organization $organization, string $name = 'Alpro'): Brand
+{
+    return $organization->brands()->firstOrCreate(['name' => $name]);
 }
 
 test('the products index page lists the products of the current organization', function () {
@@ -85,7 +98,7 @@ test('products can be created', function () {
     $this->assertDatabaseHas('products', [
         'organization_id' => $organization->id,
         'name' => 'Organic Oat Milk',
-        'brand' => 'Alpro',
+        'brand_id' => carriedBrand($connection->distributorOrganization)->id,
         'product_category_id' => legalFamily($connection->distributorOrganization)->id,
         'ean' => '4006381333931',
         'internal_article_number' => 'ART-10294',
@@ -101,7 +114,7 @@ test('products can be created without any of the optional identification details
     $this
         ->actingAs($user)
         ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
-            'brand' => null,
+            'brand_id' => null,
             'product_category_id' => null,
             'internal_article_number' => null,
             'supplier_article_number' => null,
@@ -111,7 +124,7 @@ test('products can be created without any of the optional identification details
 
     $this->assertDatabaseHas('products', [
         'name' => 'Organic Oat Milk',
-        'brand' => null,
+        'brand_id' => null,
         'product_category_id' => null,
         'internal_article_number' => null,
         'supplier_article_number' => null,
@@ -133,7 +146,7 @@ test('an identification field can be cleared by submitting an empty value', func
 
     expect($product->fresh()->{$field})->toBeNull();
 })->with([
-    'brand',
+    'brand_id',
     'product_category_id',
     'internal_article_number',
     'supplier_article_number',
@@ -152,7 +165,6 @@ test('an identification field is limited to the column length', function (string
 
     $this->assertDatabaseCount('products', 0);
 })->with([
-    'brand',
     'internal_article_number',
     'supplier_article_number',
     'order_number',
@@ -169,6 +181,51 @@ test('the category must be one of the legal families on the platform', function 
         ->assertSessionHasErrors('product_category_id');
 
     $this->assertDatabaseCount('products', 0);
+});
+
+test('a product cannot carry another organization brand', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+    [, $otherDistributor] = newOrganizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
+            'brand_id' => carriedBrand($otherDistributor, 'tigerbox')->id,
+        ]))
+        ->assertSessionHasErrors('brand_id');
+
+    $this->assertDatabaseCount('products', 0);
+});
+
+test('the brands offered on the product pages are the owning distributor list', function () {
+    [$supplierUser, $supplier] = newSupplierMember();
+    [, $distributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+    $brand = carriedBrand($distributor, 'Magna-Tiles');
+
+    $product = Product::factory()->for($distributor)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this
+        ->actingAs($supplierUser)
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('availableBrands', 1)
+            ->where('availableBrands.0.label', 'Magna-Tiles'),
+        );
+
+    $this
+        ->actingAs($supplierUser)
+        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
+            'name' => $product->name,
+            'brand_id' => $brand->id,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($product->fresh()->brand_id)->toBe($brand->id);
 });
 
 test('a product cannot be filed under another organization category', function () {
@@ -410,7 +467,7 @@ test('products can be updated', function () {
 
     expect($product->fresh())
         ->name->toBe('Organic Oat Milk')
-        ->brand->toBe('Alpro')
+        ->brand_id->toBe(carriedBrand($organization)->id)
         ->product_category_id->toBe(legalFamily($organization)->id)
         ->ean->toBe('4006381333931')
         ->internal_article_number->toBe('ART-10294')

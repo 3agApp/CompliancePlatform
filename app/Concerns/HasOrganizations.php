@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Data\BrandPermissions;
 use App\Data\OrganizationPermissions;
 use App\Data\ProductCategoryPermissions;
 use App\Data\ProductPermissions;
@@ -249,6 +250,24 @@ trait HasOrganizations
             canCreateCategory: $keepsCategories && ($role?->hasPermission(OrganizationPermission::CreateProductCategory) ?? false),
             canUpdateCategory: $keepsCategories && ($role?->hasPermission(OrganizationPermission::UpdateProductCategory) ?? false),
             canDeleteCategory: $keepsCategories && ($role?->hasPermission(OrganizationPermission::DeleteProductCategory) ?? false),
+        );
+    }
+
+    /**
+     * Get what the user may do with the organization's brand list.
+     *
+     * Only a distributor keeps a list, which gates the whole screen the same
+     * way BrandPolicy does.
+     */
+    public function toBrandPermissions(Organization $organization): BrandPermissions
+    {
+        $role = $this->organizationRole($organization);
+        $keepsBrands = $organization->isDistributor();
+
+        return new BrandPermissions(
+            canCreateBrand: $keepsBrands && ($role?->hasPermission(OrganizationPermission::CreateBrand) ?? false),
+            canUpdateBrand: $keepsBrands && ($role?->hasPermission(OrganizationPermission::UpdateBrand) ?? false),
+            canDeleteBrand: $keepsBrands && ($role?->hasPermission(OrganizationPermission::DeleteBrand) ?? false),
         );
     }
 

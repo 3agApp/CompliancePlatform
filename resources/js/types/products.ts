@@ -16,6 +16,23 @@ export type ProductCategory = {
     products_count: number;
 };
 
+export type Brand = {
+    id: number;
+    name: string;
+    products_count: number;
+};
+
+export type BrandOption = {
+    id: number;
+    label: string;
+};
+
+export type BrandPermissions = {
+    canCreateBrand: boolean;
+    canUpdateBrand: boolean;
+    canDeleteBrand: boolean;
+};
+
 export type ProductCategoryPermissions = {
     canCreateCategory: boolean;
     canUpdateCategory: boolean;
@@ -25,7 +42,8 @@ export type ProductCategoryPermissions = {
 export type Product = {
     id: number;
     name: string;
-    brand: string | null;
+    brand_id: number | null;
+    brand_label: string | null;
     product_category_id: number | null;
     category_label: string | null;
     ean: string | null;
@@ -49,6 +67,7 @@ export type ProductPermissions = {
 export type ProductFilters = {
     connection: number | null;
     category: number | null;
+    brand: number | null;
     search: string | null;
 };
 

@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Copyright,
     Factory,
     LayoutGrid,
     Mail,
@@ -24,6 +25,7 @@ import {
 import { dashboard, onboarding } from '@/routes';
 import { index as invitationsIndex } from '@/routes/invitations';
 import { edit as editOrganization } from '@/routes/organizations';
+import { index as brandsIndex } from '@/routes/brands';
 import { index as categoriesIndex } from '@/routes/categories';
 import { index as distributorsIndex } from '@/routes/distributors';
 import { index as productsIndex } from '@/routes/products';
@@ -58,6 +60,12 @@ export function AppSidebar() {
                 title: 'Categories',
                 href: categoriesIndex(currentOrganization.slug),
                 icon: Tags,
+            });
+
+            mainNavItems.push({
+                title: 'Brands',
+                href: brandsIndex(currentOrganization.slug),
+                icon: Copyright,
             });
         }
 

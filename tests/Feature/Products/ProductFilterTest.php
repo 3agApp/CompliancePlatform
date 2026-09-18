@@ -208,6 +208,134 @@ test('a category filter that names no row is treated as no filter', function (st
     'zero' => '0',
 ]);
 
+test('a distributor filters the product list by one of its brands', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $magnaTiles = $distributor->brands()->create(['name' => 'Magna-Tiles']);
+    $tigerbox = $distributor->brands()->create(['name' => 'tigerbox']);
+
+    Product::factory()->for($distributor)->ofBrand($magnaTiles)->create([
+        'name' => 'Clear Colors 32',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->ofBrand($tigerbox)->create([
+        'name' => 'tigercard Bundle',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->create([
+        'name' => 'Unbranded Thing',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['brand' => (string) $magnaTiles->id])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Clear Colors 32')
+            ->where('products.0.brand_label', 'Magna-Tiles')
+            ->where('filters.brand', $magnaTiles->id),
+        );
+});
+
+test('a distributor is offered its whole brand list to filter by', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $distributor->brands()->create(['name' => 'tigerbox']);
+    $distributor->brands()->create(['name' => 'Magna-Tiles']);
+
+    filteredProducts($user, $distributor, [])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('filterableBrands', 2)
+            ->where('filterableBrands.0.label', 'Magna-Tiles')
+            ->where('filterableBrands.1.label', 'tigerbox'),
+        );
+});
+
+test('the brand filter composes with the category filter', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $magnaTiles = $distributor->brands()->create(['name' => 'Magna-Tiles']);
+    $magnetic = $distributor->productCategories()->where('name', 'Magnetic toy')->sole();
+    $toy = $distributor->productCategories()->where('name', 'Toy')->sole();
+
+    Product::factory()->for($distributor)->ofBrand($magnaTiles)->inCategory($magnetic)->create([
+        'name' => 'Clear Colors 32',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->ofBrand($magnaTiles)->inCategory($toy)->create([
+        'name' => 'Plain Blocks',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, [
+        'brand' => (string) $magnaTiles->id,
+        'category' => (string) $magnetic->id,
+    ])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Clear Colors 32'),
+        );
+});
+
+test('a supplier is offered the brands on the products assigned to it, named with the distributor', function () {
+    [$supplierUser, $supplier] = newSupplierMember();
+    [, $distributorA] = newOrganizationMember(organizationAttributes: ['name' => 'Alpine Trading AG']);
+    [, $distributorB] = newOrganizationMember(organizationAttributes: ['name' => 'Coop Trading AG']);
+
+    $connectionA = newSupplierConnection($distributorA, $supplier);
+    $connectionB = newSupplierConnection($distributorB, $supplier);
+
+    $brandA = $distributorA->brands()->create(['name' => 'Magna-Tiles']);
+    $brandB = $distributorB->brands()->create(['name' => 'Magna-Tiles']);
+    $distributorA->brands()->create(['name' => 'Nothing Assigned']);
+
+    Product::factory()->for($distributorA)->ofBrand($brandA)->create([
+        'name' => 'Clear Colors 32',
+        'supplier_connection_id' => $connectionA->id,
+    ]);
+    Product::factory()->for($distributorB)->ofBrand($brandB)->create([
+        'name' => 'Stardust 15',
+        'supplier_connection_id' => $connectionB->id,
+    ]);
+
+    filteredProducts($supplierUser, $supplier, [])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('filterableBrands', 2)
+            ->where('filterableBrands.0.label', 'Magna-Tiles (Alpine Trading AG)')
+            ->where('filterableBrands.1.label', 'Magna-Tiles (Coop Trading AG)'),
+        );
+
+    filteredProducts($supplierUser, $supplier, ['brand' => (string) $brandA->id])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Clear Colors 32'),
+        );
+});
+
+test('filtering by another organization brand shows no products', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $otherDistributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor);
+    $own = $distributor->brands()->create(['name' => 'Magna-Tiles']);
+    $foreign = $otherDistributor->brands()->create(['name' => 'Magna-Tiles']);
+
+    Product::factory()->for($distributor)->ofBrand($own)->create([
+        'name' => 'Clear Colors 32',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['brand' => (string) $foreign->id])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+});
+
 test('the product search matches a product name', function () {
     [$user, $distributor] = newOrganizationMember();
     $connection = newSupplierConnection($distributor);

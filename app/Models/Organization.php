@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, Product> $products
  * @property-read Collection<int, ProductCategory> $productCategories
+ * @property-read Collection<int, Brand> $brands
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, SupplierConnection> $supplierConnections
  * @property-read Collection<int, SupplierConnection> $distributorConnections
@@ -143,6 +144,19 @@ class Organization extends Model
     public function productCategories(): HasMany
     {
         return $this->hasMany(ProductCategory::class);
+    }
+
+    /**
+     * Get the organization's own list of brands.
+     *
+     * There is no starting list to match the legal families: a family comes
+     * from regulation, while the makers an organization carries are its own.
+     *
+     * @return HasMany<Brand, $this>
+     */
+    public function brands(): HasMany
+    {
+        return $this->hasMany(Brand::class);
     }
 
     /**
