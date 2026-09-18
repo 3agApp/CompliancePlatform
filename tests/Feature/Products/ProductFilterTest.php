@@ -59,6 +59,155 @@ test('a supplier filters the product list by one of its distributors', function 
         );
 });
 
+test('a distributor filters the product list by one of its categories', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $magnetic = $distributor->productCategories()->where('name', 'Magnetic toy')->sole();
+    $filter = $distributor->productCategories()->where('name', 'Filter')->sole();
+
+    Product::factory()->for($distributor)->inCategory($magnetic)->create([
+        'name' => 'Magna-Tiles 32',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->inCategory($filter)->create([
+        'name' => 'Water Filter Cartridge',
+        'supplier_connection_id' => $connection->id,
+    ]);
+    Product::factory()->for($distributor)->create([
+        'name' => 'Uncategorised Thing',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['category' => (string) $magnetic->id])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Magna-Tiles 32')
+            ->where('filters.category', $magnetic->id),
+        );
+});
+
+test('a distributor is offered its whole category list to filter by', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    filteredProducts($user, $distributor, [])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('filterableCategories', 3)
+            ->where('filterableCategories.0.label', 'Filter')
+            ->where('filterableCategories.2.label', 'Toy'),
+        );
+});
+
+test('the category filter composes with the supplier filter', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $acme = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
+    $other = newSupplierConnection($distributor, attributes: ['contact_email' => 'other@supplier.test']);
+
+    $magnetic = $distributor->productCategories()->where('name', 'Magnetic toy')->sole();
+
+    Product::factory()->for($distributor)->inCategory($magnetic)->create([
+        'name' => 'Magna-Tiles 32',
+        'supplier_connection_id' => $acme->id,
+    ]);
+    Product::factory()->for($distributor)->inCategory($magnetic)->create([
+        'name' => 'Magnetic Letters',
+        'supplier_connection_id' => $other->id,
+    ]);
+
+    filteredProducts($user, $distributor, [
+        'category' => (string) $magnetic->id,
+        'connection' => (string) $acme->id,
+    ])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Magna-Tiles 32'),
+        );
+});
+
+test('a supplier filters by a category of one of its distributors', function () {
+    [$supplierUser, $supplier] = newSupplierMember();
+    [, $distributorA] = newOrganizationMember(organizationAttributes: ['name' => 'Alpine Trading AG']);
+    [, $distributorB] = newOrganizationMember(organizationAttributes: ['name' => 'Coop Trading AG']);
+
+    $connectionA = newSupplierConnection($distributorA, $supplier);
+    $connectionB = newSupplierConnection($distributorB, $supplier);
+
+    $magneticA = $distributorA->productCategories()->where('name', 'Magnetic toy')->sole();
+    $magneticB = $distributorB->productCategories()->where('name', 'Magnetic toy')->sole();
+
+    Product::factory()->for($distributorA)->inCategory($magneticA)->create([
+        'name' => 'Magna-Tiles 32',
+        'supplier_connection_id' => $connectionA->id,
+    ]);
+    Product::factory()->for($distributorB)->inCategory($magneticB)->create([
+        'name' => 'Magnetic Letters',
+        'supplier_connection_id' => $connectionB->id,
+    ]);
+
+    /**
+     * The two distributors both call the family "Magnetic toy" and they are
+     * still two different rows, so the options say which distributor each one
+     * came from and filtering by one never reaches the other.
+     */
+    filteredProducts($supplierUser, $supplier, [])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('filterableCategories', 2)
+            ->where('filterableCategories.0.label', 'Magnetic toy (Alpine Trading AG)')
+            ->where('filterableCategories.1.label', 'Magnetic toy (Coop Trading AG)'),
+        );
+
+    filteredProducts($supplierUser, $supplier, ['category' => (string) $magneticA->id])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 1)
+            ->where('products.0.name', 'Magna-Tiles 32'),
+        );
+});
+
+test('filtering by another organization category shows no products', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $otherDistributor] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor);
+    $own = $distributor->productCategories()->where('name', 'Toy')->sole();
+    $foreign = $otherDistributor->productCategories()->where('name', 'Toy')->sole();
+
+    Product::factory()->for($distributor)->inCategory($own)->create([
+        'name' => 'Wooden Train',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['category' => (string) $foreign->id])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+});
+
+test('a category filter that names no row is treated as no filter', function (string $category) {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    Product::factory()->count(2)->for($distributor)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    filteredProducts($user, $distributor, ['category' => $category])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products', 2)
+            ->where('filters.category', null),
+        );
+})->with([
+    'blank' => '',
+    'not a number' => 'magnetic-toy',
+    'a leftover uuid' => '9f8d4c2e-1a3b-4c5d-8e9f-0a1b2c3d4e5f',
+    'zero' => '0',
+]);
+
 test('the product search matches a product name', function () {
     [$user, $distributor] = newOrganizationMember();
     $connection = newSupplierConnection($distributor);

@@ -46,6 +46,7 @@ class ProductController extends Controller
             'availableCategories' => $this->availableCategories($currentOrganization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
             'counterparties' => $this->counterparties($currentOrganization, $isSupplier),
+            'filterableCategories' => $this->filterableCategories($currentOrganization, $isSupplier),
             'filters' => $filters,
             'hasProducts' => $products->isNotEmpty()
                 || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
@@ -152,6 +153,7 @@ class ProductController extends Controller
     {
         return $this->visibleProducts($organization, $asSupplier)
             ->when($filters->connection, fn ($query, int $connectionId) => $query->assignedTo($connectionId))
+            ->when($filters->category, fn ($query, int $categoryId) => $query->inCategory($categoryId))
             ->when($filters->search, fn ($query, string $term) => $query->matching($term))
             ->orderBy('products.name')
             ->get();
@@ -185,6 +187,42 @@ class ProductController extends Controller
                     : $this->connectionLabel($connection),
             ])
             ->sortBy('label')
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get the legal families the product list can be filtered by.
+     *
+     * A distributor is offered its whole list, including families nothing is
+     * filed under yet -- an empty result is itself an answer. A supplier has
+     * no list of its own, so it is offered the families actually present on
+     * the products assigned to it, each named with the distributor it came
+     * from: two distributors both calling a family "Toy" are two different
+     * rows, and a bare name would make them look like one.
+     *
+     * @return array<array{id: int, label: string}>
+     */
+    protected function filterableCategories(Organization $organization, bool $asSupplier): array
+    {
+        if (! $asSupplier) {
+            return $this->availableCategories($organization);
+        }
+
+        $categoryIds = $organization->suppliedProducts()
+            ->whereNotNull('products.product_category_id')
+            ->distinct()
+            ->pluck('products.product_category_id');
+
+        return ProductCategory::query()
+            ->whereIn('id', $categoryIds)
+            ->with('organization')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (ProductCategory $category) => [
+                'id' => $category->id,
+                'label' => "{$category->name} ({$category->organization->name})",
+            ])
             ->values()
             ->toArray();
     }

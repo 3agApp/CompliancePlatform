@@ -21,6 +21,7 @@ readonly class ProductFilters
 
     public function __construct(
         public ?int $connection = null,
+        public ?int $category = null,
         public ?string $search = null,
     ) {
         //
@@ -33,6 +34,7 @@ readonly class ProductFilters
     {
         return new self(
             connection: self::id($request, 'connection'),
+            category: self::id($request, 'category'),
             search: self::value($request, 'search', self::MAX_SEARCH_LENGTH),
         );
     }

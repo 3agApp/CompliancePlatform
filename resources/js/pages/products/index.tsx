@@ -31,6 +31,7 @@ type Props = {
     availableCategories: ProductCategoryOption[];
     availableConnections: SupplierConnectionOption[];
     counterparties: ProductCounterparty[];
+    filterableCategories: ProductCategoryOption[];
     filters: ProductFilters;
     hasProducts: boolean;
     viewerType: OrganizationType;
@@ -43,6 +44,7 @@ export default function ProductsIndex({
     availableCategories,
     availableConnections,
     counterparties,
+    filterableCategories,
     filters,
     hasProducts,
     viewerType,
@@ -53,7 +55,10 @@ export default function ProductsIndex({
     const isSupplier = viewerType === 'supplier';
     const counterpartyLabel = isSupplier ? 'Distributor' : 'Supplier';
 
-    const isFiltered = filters.connection !== null || filters.search !== null;
+    const isFiltered =
+        filters.connection !== null ||
+        filters.category !== null ||
+        filters.search !== null;
 
     /**
      * A filter bar over a catalogue that is empty for want of products, not
@@ -128,6 +133,7 @@ export default function ProductsIndex({
                         filters={filters}
                         counterparties={counterparties}
                         counterpartyLabel={counterpartyLabel}
+                        filterableCategories={filterableCategories}
                     />
                 ) : null}
 
@@ -306,9 +312,9 @@ export default function ProductsIndex({
                                 No products match these filters
                             </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {filters.search === null
-                                    ? `Nothing is assigned to this ${counterpartyLabel.toLowerCase()} yet.`
-                                    : 'Try a different name, barcode or article number, or clear the filters.'}
+                                {filters.search !== null
+                                    ? 'Try a different name, barcode or article number, or clear the filters.'
+                                    : 'Nothing matches the filters you have set. Try clearing one.'}
                             </p>
                         </div>
                     </div>
