@@ -165,7 +165,7 @@ export default function ProductsIndex({
                                 <tbody>
                                     {products.map((product) => (
                                         <tr
-                                            key={product.uuid}
+                                            key={product.id}
                                             data-test="product-row"
                                             className="border-t"
                                         >
@@ -234,7 +234,7 @@ export default function ProductsIndex({
                                                                 <Link
                                                                     href={edit([
                                                                         organizationSlug,
-                                                                        product.uuid,
+                                                                        product.id,
                                                                     ])}
                                                                 >
                                                                     <Pencil className="h-4 w-4" />

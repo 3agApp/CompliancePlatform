@@ -33,7 +33,7 @@ export default function RevokeSupplierModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <Form
-                    {...revoke.form([organizationSlug, connection.uuid])}
+                    {...revoke.form([organizationSlug, connection.id])}
                     className="space-y-6"
                     onSuccess={() => onOpenChange(false)}
                 >

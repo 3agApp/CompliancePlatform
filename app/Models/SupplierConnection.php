@@ -8,7 +8,6 @@ use Database\Factories\SupplierConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,7 +26,6 @@ use Illuminate\Support\Str;
  * supplier.
  *
  * @property int $id
- * @property string $uuid
  * @property string $code
  * @property int $distributor_organization_id
  * @property int|null $supplier_organization_id
@@ -57,7 +55,7 @@ use Illuminate\Support\Str;
 class SupplierConnection extends Model
 {
     /** @use HasFactory<SupplierConnectionFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory;
 
     /**
      * The number of days a claim link stays usable.
@@ -76,16 +74,6 @@ class SupplierConnection extends Model
                 $connection->code = Str::random(64);
             }
         });
-    }
-
-    /**
-     * Get the columns that should receive a unique identifier.
-     *
-     * @return array<int, string>
-     */
-    public function uniqueIds(): array
-    {
-        return ['uuid'];
     }
 
     /**
@@ -237,13 +225,5 @@ class SupplierConnection extends Model
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
         ];
-    }
-
-    /**
-     * Get the route key for the model.
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'uuid';
     }
 }

@@ -20,7 +20,7 @@ readonly class ProductFilters
     protected const int MAX_SEARCH_LENGTH = 100;
 
     public function __construct(
-        public ?string $connection = null,
+        public ?int $connection = null,
         public ?string $search = null,
     ) {
         //
@@ -32,9 +32,23 @@ readonly class ProductFilters
     public static function fromRequest(Request $request): self
     {
         return new self(
-            connection: self::value($request, 'connection'),
+            connection: self::id($request, 'connection'),
             search: self::value($request, 'search', self::MAX_SEARCH_LENGTH),
         );
+    }
+
+    /**
+     * Read one filter that names a row by its key.
+     *
+     * Anything that is not a plain positive integer cannot name a row, so it
+     * is not a filter either. That covers a blank value, a hand-edited URL
+     * and a uuid left over from an old bookmark alike.
+     */
+    protected static function id(Request $request, string $key): ?int
+    {
+        $value = trim((string) $request->query($key, ''));
+
+        return ctype_digit($value) && (int) $value > 0 ? (int) $value : null;
     }
 
     /**

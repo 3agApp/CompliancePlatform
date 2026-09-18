@@ -155,7 +155,7 @@ test('a supplier edits an assigned product without being able to reassign it', f
 
     $this->actingAs($supplierUser);
 
-    visit(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+    visit(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertSee($distributor->name)
         ->assertMissing('@product-supplier')
         ->fill('@product-name', 'Organic Oat Milk')
@@ -175,7 +175,7 @@ test('a distributor assigns a supplier from the product edit page', function () 
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $distributor->slug, 'product' => $product->uuid]))
+    visit(route('products.edit', ['current_organization' => $distributor->slug, 'product' => $product->id]))
         ->click('@product-supplier')
         ->click('[role="option"]:has-text("Acme Supplies AG")')
         ->click('@update-product-submit')

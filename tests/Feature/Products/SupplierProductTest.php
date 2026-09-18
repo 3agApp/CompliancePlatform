@@ -41,12 +41,12 @@ test('two distributors sharing one supplier never see each other products', func
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('products', 1)
-            ->where('products.0.uuid', $productA->uuid),
+            ->where('products.0.id', $productA->id),
         );
 
     $this
         ->actingAs($userA)
-        ->get(route('products.edit', ['current_organization' => $distributorA->slug, 'product' => $productB->uuid]))
+        ->get(route('products.edit', ['current_organization' => $distributorA->slug, 'product' => $productB->id]))
         ->assertNotFound();
 });
 
@@ -80,7 +80,7 @@ test('a product assigned to an unclaimed connection becomes visible once the con
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('products', 1)
-            ->where('products.0.uuid', $product->uuid),
+            ->where('products.0.id', $product->id),
         );
 
     expect($product->fresh())
@@ -107,7 +107,7 @@ test('a pending connection does not expose products to the supplier organization
 
     $this
         ->actingAs($supplierUser)
-        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertNotFound();
 });
 
@@ -123,7 +123,7 @@ test('a supplier can update an assigned product', function () {
 
     $this
         ->actingAs($supplierUser)
-        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->uuid]), [
+        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => 'Organic Oat Milk',
             'ean' => '4006381333931',
             'country_of_origin' => 'DE',
@@ -155,7 +155,7 @@ test('a supplier cannot delete an assigned product', function () {
 
     $this
         ->actingAs($supplierUser)
-        ->delete(route('products.destroy', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+        ->delete(route('products.destroy', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertForbidden();
 
     $this->assertModelExists($product);
@@ -174,7 +174,7 @@ test('a supplier cannot reassign a product to another connection', function () {
 
     $this
         ->actingAs($supplierUser)
-        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->uuid]), [
+        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => 'Oat Milk',
             'supplier_connection_id' => $otherConnection->id,
         ])
@@ -232,13 +232,13 @@ test('a supplier member can view but not update an assigned product', function (
 
     $this
         ->actingAs($supplierUser)
-        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('permissions.canUpdateProduct', false));
 
     $this
         ->actingAs($supplierUser)
-        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->uuid]), [
+        ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => 'Organic Oat Milk',
         ])
         ->assertForbidden();
@@ -259,7 +259,7 @@ test('a product of a revoked connection returns 404 for the supplier', function 
 
     $this
         ->actingAs($supplierUser)
-        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertNotFound();
 
     $this
@@ -280,7 +280,7 @@ test('a supplier gets a 404 for a product of a connection they do not hold', fun
 
     $this
         ->actingAs($supplierUser)
-        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $otherProduct->uuid]))
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $otherProduct->id]))
         ->assertNotFound();
 });
 

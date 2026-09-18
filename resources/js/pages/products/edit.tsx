@@ -81,7 +81,7 @@ export default function ProductEdit({
 
                 <div className="workspace-panel max-w-2xl p-6">
                     <Form
-                        {...update.form([organizationSlug, product.uuid])}
+                        {...update.form([organizationSlug, product.id])}
                         options={{ preserveScroll: true }}
                         className="space-y-6"
                     >

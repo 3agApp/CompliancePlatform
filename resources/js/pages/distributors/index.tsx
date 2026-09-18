@@ -46,7 +46,7 @@ export default function DistributorsIndex({ connections }: Props) {
                                 <tbody>
                                     {connections.map((connection) => (
                                         <tr
-                                            key={connection.uuid}
+                                            key={connection.id}
                                             data-test="distributor-row"
                                             className="border-t"
                                         >
@@ -57,7 +57,7 @@ export default function DistributorsIndex({ connections }: Props) {
                                                         {
                                                             query: {
                                                                 connection:
-                                                                    connection.uuid,
+                                                                    connection.id,
                                                             },
                                                         },
                                                     )}

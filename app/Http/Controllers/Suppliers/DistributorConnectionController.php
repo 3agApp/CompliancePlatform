@@ -33,7 +33,7 @@ class DistributorConnectionController extends Controller
                 ->withCount('products')
                 ->get()
                 ->map(fn (SupplierConnection $connection) => [
-                    'uuid' => $connection->uuid,
+                    'id' => $connection->id,
                     'distributorName' => $connection->distributorOrganization->name,
                     'productsCount' => (int) ($connection->products_count ?? 0),
                     'connectedAt' => $connection->accepted_at?->toIso8601String(),

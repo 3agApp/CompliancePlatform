@@ -101,7 +101,7 @@ class ProductController extends Controller
 
         return to_route('products.edit', [
             'current_organization' => $currentOrganization->slug,
-            'product' => $product->uuid,
+            'product' => $product->id,
         ]);
     }
 
@@ -144,14 +144,14 @@ class ProductController extends Controller
      * Get the products the organization can see, narrowed by the filters.
      *
      * Columns are qualified because the supplier side joins products and
-     * supplier_connections, which share id, uuid and both timestamps.
+     * supplier_connections, which share id and both timestamps.
      *
      * @return Collection<int, Product>
      */
     protected function products(Organization $organization, bool $asSupplier, ProductFilters $filters): Collection
     {
         return $this->visibleProducts($organization, $asSupplier)
-            ->when($filters->connection, fn ($query, string $uuid) => $query->assignedTo($uuid))
+            ->when($filters->connection, fn ($query, int $connectionId) => $query->assignedTo($connectionId))
             ->when($filters->search, fn ($query, string $term) => $query->matching($term))
             ->orderBy('products.name')
             ->get();
@@ -162,11 +162,11 @@ class ProductController extends Controller
      *
      * Every connection that can hold a visible product is offered, including
      * a distributor's revoked ones: their products stay in the list, so they
-     * have to stay reachable. The connection is named by its uuid rather than
-     * by an organization, because a supplier a distributor has invited may
-     * not have an organization yet.
+     * have to stay reachable. The connection names itself rather than naming
+     * an organization, because a supplier a distributor has invited may not
+     * have an organization yet.
      *
-     * @return array<array{uuid: string, label: string}>
+     * @return array<array{id: int, label: string}>
      */
     protected function counterparties(Organization $organization, bool $asSupplier): array
     {
@@ -179,7 +179,7 @@ class ProductController extends Controller
 
         return $connections
             ->map(fn (SupplierConnection $connection) => [
-                'uuid' => $connection->uuid,
+                'id' => $connection->id,
                 'label' => $asSupplier
                     ? $connection->distributorOrganization->name
                     : $this->connectionLabel($connection),
@@ -257,14 +257,14 @@ class ProductController extends Controller
     /**
      * Transform the product for the frontend.
      *
-     * @return array{uuid: string, name: string, brand: string|null, product_category_id: int|null, category_label: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
+     * @return array{id: int, name: string, brand: string|null, product_category_id: int|null, category_label: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
      */
     protected function toProductArray(Product $product, bool $asSupplier = false): array
     {
         $connection = $product->supplierConnection;
 
         return [
-            'uuid' => $product->uuid,
+            'id' => $product->id,
             'name' => $product->name,
             'brand' => $product->brand,
             'product_category_id' => $product->product_category_id,

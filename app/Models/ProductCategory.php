@@ -6,7 +6,6 @@ use Carbon\CarbonImmutable;
 use Database\Factories\ProductCategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,7 +21,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * else's catalog by renaming or deleting one.
  *
  * @property int $id
- * @property string $uuid
  * @property int $organization_id
  * @property string $name
  * @property CarbonImmutable|null $created_at
@@ -35,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProductCategory extends Model
 {
     /** @use HasFactory<ProductCategoryFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory;
 
     /**
      * The legal families every new distributor starts with.
@@ -47,16 +45,6 @@ class ProductCategory extends Model
         'Magnetic toy',
         'Filter',
     ];
-
-    /**
-     * Get the columns that should receive a unique identifier.
-     *
-     * @return array<int, string>
-     */
-    public function uniqueIds(): array
-    {
-        return ['uuid'];
-    }
 
     /**
      * Get the organization whose list this category belongs to.
@@ -86,13 +74,5 @@ class ProductCategory extends Model
     public function toOption(): array
     {
         return ['id' => $this->id, 'label' => $this->name];
-    }
-
-    /**
-     * Get the route key for the model.
-     */
-    public function getRouteKeyName(): string
-    {
-        return 'uuid';
     }
 }

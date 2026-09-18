@@ -40,7 +40,7 @@ export default function DeleteCategoryModal({
             return;
         }
 
-        router.visit(destroy([organizationSlug, category.uuid]), {
+        router.visit(destroy([organizationSlug, category.id]), {
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => onOpenChange(false),

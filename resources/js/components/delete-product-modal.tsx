@@ -33,7 +33,7 @@ export default function DeleteProductModal({
             return;
         }
 
-        router.visit(destroy([organizationSlug, product.uuid]), {
+        router.visit(destroy([organizationSlug, product.id]), {
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => onOpenChange(false),

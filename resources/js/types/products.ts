@@ -11,7 +11,7 @@ export type ProductCategoryOption = {
 };
 
 export type ProductCategory = {
-    uuid: string;
+    id: number;
     name: string;
     products_count: number;
 };
@@ -23,7 +23,7 @@ export type ProductCategoryPermissions = {
 };
 
 export type Product = {
-    uuid: string;
+    id: number;
     name: string;
     brand: string | null;
     product_category_id: number | null;
@@ -47,11 +47,11 @@ export type ProductPermissions = {
 };
 
 export type ProductFilters = {
-    connection: string | null;
+    connection: number | null;
     search: string | null;
 };
 
 export type ProductCounterparty = {
-    uuid: string;
+    id: number;
     label: string;
 };

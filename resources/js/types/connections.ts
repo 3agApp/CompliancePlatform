@@ -5,7 +5,7 @@ export type SupplierConnectionStatus =
     | 'revoked';
 
 export type SupplierConnection = {
-    uuid: string;
+    id: number;
     companyName: string;
     contactEmail: string;
     status: SupplierConnectionStatus;
@@ -20,7 +20,7 @@ export type SupplierConnection = {
 };
 
 export type DistributorConnection = {
-    uuid: string;
+    id: number;
     distributorName: string;
     productsCount: number;
     connectedAt: string | null;

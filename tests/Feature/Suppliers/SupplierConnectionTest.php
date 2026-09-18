@@ -172,7 +172,7 @@ test('a distributor revokes an active connection and the products keep their ass
         ->actingAs($user)
         ->patch(route('suppliers.revoke', [
             'current_organization' => $distributor->slug,
-            'supplier_connection' => $connection->uuid,
+            'supplier_connection' => $connection->id,
         ]))
         ->assertRedirect(route('suppliers.index', ['current_organization' => $distributor->slug]));
 
@@ -194,7 +194,7 @@ test('a distributor restores a revoked connection', function () {
         ->actingAs($user)
         ->patch(route('suppliers.restore', [
             'current_organization' => $distributor->slug,
-            'supplier_connection' => $connection->uuid,
+            'supplier_connection' => $connection->id,
         ]))
         ->assertSessionHasNoErrors();
 
@@ -211,7 +211,7 @@ test('a distributor cannot reach a connection belonging to another distributor',
         ->actingAs($user)
         ->patch(route('suppliers.revoke', [
             'current_organization' => $distributor->slug,
-            'supplier_connection' => $foreignConnection->uuid,
+            'supplier_connection' => $foreignConnection->id,
         ]))
         ->assertNotFound();
 
@@ -236,7 +236,7 @@ test('deleting a distributor organization revokes its supplier connections', fun
 
     $this
         ->actingAs($supplierUser)
-        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->uuid]))
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertNotFound();
 });
 
@@ -262,7 +262,7 @@ test('a distributor sends the invitation again for a connection revoked before i
         ->actingAs($user)
         ->post(route('suppliers.resend', [
             'current_organization' => $distributor->slug,
-            'supplier_connection' => $connection->uuid,
+            'supplier_connection' => $connection->id,
         ]))
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('suppliers.index', ['current_organization' => $distributor->slug]));
@@ -286,7 +286,7 @@ test('a claimed connection cannot be invited again', function () {
         ->actingAs($user)
         ->post(route('suppliers.resend', [
             'current_organization' => $distributor->slug,
-            'supplier_connection' => $connection->uuid,
+            'supplier_connection' => $connection->id,
         ]))
         ->assertNotFound();
 
@@ -306,7 +306,7 @@ test('a declined connection cannot be invited again', function () {
         ->actingAs($user)
         ->post(route('suppliers.resend', [
             'current_organization' => $distributor->slug,
-            'supplier_connection' => $connection->uuid,
+            'supplier_connection' => $connection->id,
         ]))
         ->assertNotFound();
 
