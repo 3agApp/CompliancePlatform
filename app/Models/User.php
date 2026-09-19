@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Concerns\HasOrganizations;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
@@ -12,19 +11,14 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\Contracts\PasskeyUser;
-use Laravel\Fortify\PasskeyAuthenticatable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
  * @property int $id
+ * @property string|null $sso_id
  * @property string $name
  * @property string $email
  * @property CarbonImmutable|null $email_verified_at
  * @property string $password
- * @property string|null $two_factor_secret
- * @property string|null $two_factor_recovery_codes
- * @property CarbonImmutable|null $two_factor_confirmed_at
  * @property string|null $remember_token
  * @property int|null $current_organization_id
  * @property CarbonImmutable|null $created_at
@@ -34,12 +28,15 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Collection<int, Membership> $organizationMemberships
  * @property-read Collection<int, Organization> $organizations
  */
-#[Fillable(['name', 'email', 'password', 'current_organization_id'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+#[Fillable(['name', 'email', 'password', 'current_organization_id', 'sso_id'])]
+// two_factor_* are the columns Fortify left behind. Nothing reads them any
+// more, but they outlive the feature in the database, and every page shares
+// this model as the 'auth.user' prop -- so they stay hidden until dropped.
+#[Hidden(['password', 'remember_token', 'sso_id', 'two_factor_secret', 'two_factor_recovery_codes', 'two_factor_confirmed_at'])]
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasOrganizations, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, HasOrganizations, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -51,7 +48,6 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 }
