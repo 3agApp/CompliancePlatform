@@ -36,12 +36,6 @@ export type OrganizationInvitation = {
     created_at: string;
 };
 
-export type OrganizationInvitationContext = {
-    code: string;
-    organizationName: string;
-    kind: 'organization' | 'supplier_connection';
-};
-
 export type PendingInvitation = {
     code: string;
     inviterName: string;
