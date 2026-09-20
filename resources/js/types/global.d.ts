@@ -4,6 +4,12 @@ import type {
     OrganizationTypeOption,
 } from '@/types/organizations';
 
+declare module 'react' {
+    interface InputHTMLAttributes<T> {
+        passwordrules?: string;
+    }
+}
+
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
@@ -14,7 +20,6 @@ declare module '@inertiajs/core' {
             organizations: Organization[];
             organizationTypes: OrganizationTypeOption[];
             pendingInvitationsCount: number;
-            accountsUrl: string;
             [key: string]: unknown;
         };
     }

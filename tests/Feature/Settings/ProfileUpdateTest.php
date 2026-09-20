@@ -4,8 +4,6 @@ use App\Enums\OrganizationRole;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\User;
-use Illuminate\Support\Facades\Route;
-use Inertia\Testing\AssertableInertia as Assert;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -17,35 +15,42 @@ test('profile page is displayed', function () {
     $response->assertOk();
 });
 
-test('the profile page shows the identity accounts holds, read only', function () {
-    $user = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@3ag.local']);
+test('profile information can be updated', function () {
+    $user = User::factory()->create();
 
-    $this->actingAs($user)
-        ->get(route('profile.edit'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('settings/profile')
-            ->where('auth.user.name', 'Ada Lovelace')
-            ->where('auth.user.email', 'ada@3ag.local'),
-        );
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    $user->refresh();
+
+    expect($user->name)->toBe('Test User');
+    expect($user->email)->toBe('test@example.com');
+    expect($user->email_verified_at)->toBeNull();
 });
 
-test('there is no route left to edit the profile with', function () {
-    expect(Route::has('profile.update'))->toBeFalse();
+test('email verification status is unchanged when the email address is unchanged', function () {
+    $user = User::factory()->create();
 
-    $this->actingAs(User::factory()->create())
-        ->patch('/settings/profile', ['name' => 'Someone Else', 'email' => 'someone-else@3ag.local'])
-        ->assertMethodNotAllowed();
-});
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => $user->email,
+        ]);
 
-test('the email address a user signs in with cannot be changed from here', function () {
-    $user = User::factory()->create(['email' => 'ada@3ag.local']);
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
 
-    $this->actingAs($user)
-        ->post('/settings/profile', ['name' => 'Someone Else', 'email' => 'victim@3ag.local'])
-        ->assertMethodNotAllowed();
-
-    expect($user->fresh()->email)->toBe('ada@3ag.local');
+    expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
 test('user can delete their account', function () {
@@ -54,7 +59,7 @@ test('user can delete their account', function () {
     $response = $this
         ->actingAs($user)
         ->delete(route('profile.destroy'), [
-            'confirmation' => 'DELETE',
+            'password' => 'password',
         ]);
 
     $response
@@ -65,23 +70,22 @@ test('user can delete their account', function () {
     expect($user->fresh())->toBeNull();
 });
 
-test('the confirmation word must be typed to delete the account', function () {
+test('correct password must be provided to delete account', function () {
     $user = User::factory()->create();
 
     $response = $this
         ->actingAs($user)
         ->from(route('profile.edit'))
         ->delete(route('profile.destroy'), [
-            'confirmation' => 'delete my account',
+            'password' => 'wrong-password',
         ]);
 
     $response
-        ->assertSessionHasErrors('confirmation')
+        ->assertSessionHasErrors('password')
         ->assertRedirect(route('profile.edit'));
 
     expect($user->fresh())->not->toBeNull();
 });
-
 test('deleting an account hands its organizations to the longest standing admin', function () {
     [$owner, $organization] = newOrganizationMember();
 
@@ -98,7 +102,7 @@ test('deleting an account hands its organizations to the longest standing admin'
         ->forceFill(['created_at' => now()->subDay()])->save();
 
     $this->actingAs($owner)
-        ->delete(route('profile.destroy'), ['confirmation' => 'DELETE'])
+        ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
     expect($organization->fresh()->owner()?->id)->toBe($oldestAdmin->id)
@@ -117,7 +121,7 @@ test('deleting an account falls back to the longest standing member', function (
         ->forceFill(['created_at' => now()->subDay()])->save();
 
     $this->actingAs($owner)
-        ->delete(route('profile.destroy'), ['confirmation' => 'DELETE'])
+        ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
     expect($organization->fresh()->owner()?->id)->toBe($first->id);
@@ -127,7 +131,7 @@ test('deleting an account winds up an organization nobody else is in', function 
     [$owner, $organization] = newOrganizationMember();
 
     $this->actingAs($owner)
-        ->delete(route('profile.destroy'), ['confirmation' => 'DELETE'])
+        ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
     expect(Organization::withTrashed()->find($organization->id)->trashed())->toBeTrue();
@@ -142,7 +146,7 @@ test('winding up a distributor revokes the connections its suppliers held', func
     expect($connection->fresh()->status)->toBe(SupplierConnectionStatus::Active);
 
     $this->actingAs($owner)
-        ->delete(route('profile.destroy'), ['confirmation' => 'DELETE'])
+        ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
     // The distributor is only soft deleted, so nothing cascades. Left live,
@@ -158,7 +162,7 @@ test('deleting an account leaves organizations it only belonged to alone', funct
     $organization->memberships()->create(['user_id' => $member->id, 'role' => OrganizationRole::Member]);
 
     $this->actingAs($member)
-        ->delete(route('profile.destroy'), ['confirmation' => 'DELETE'])
+        ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
     expect($organization->fresh()->owner()?->id)->toBe($owner->id)
@@ -172,7 +176,7 @@ test('no organization is left without an owner when its owner goes', function ()
     $organization->memberships()->create(['user_id' => $member->id, 'role' => OrganizationRole::Member]);
 
     $this->actingAs($owner)
-        ->delete(route('profile.destroy'), ['confirmation' => 'DELETE'])
+        ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
     expect($organization->fresh()->trashed())->toBeFalse()
