@@ -34,3 +34,20 @@ test('the login form shows the validation message when the password is wrong', f
 
     $this->assertGuest();
 });
+
+test('an unverified user is held at the verification prompt until they verify', function () {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user);
+
+    visit(route('dashboard', $user->currentOrganization))
+        ->assertPathIs('/email/verify')
+        ->assertSee('Resend verification email')
+        ->assertNoJavaScriptErrors();
+
+    $user->markEmailAsVerified();
+
+    visit(route('dashboard', $user->currentOrganization))
+        ->assertPathIs("/{$user->currentOrganization->slug}/dashboard")
+        ->assertNoJavaScriptErrors();
+});
