@@ -224,6 +224,9 @@ trait HasOrganizations
         );
     }
 
+    /**
+     * Get the organization to fall back on, ignoring the one being left.
+     */
     public function fallbackOrganization(?Organization $excluding = null): ?Organization
     {
         return $this->organizations()
@@ -232,9 +235,6 @@ trait HasOrganizations
             ->first();
     }
 
-    /**
-     * Determine if the user has the given permission on the organization.
-     */
     /**
      * Get what the user may do with the organization's category list.
      *
@@ -271,6 +271,9 @@ trait HasOrganizations
         );
     }
 
+    /**
+     * Determine if the user has the given permission on the organization.
+     */
     public function hasOrganizationPermission(Organization $organization, OrganizationPermission $permission): bool
     {
         return $this->organizationRole($organization)?->hasPermission($permission) ?? false;
