@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SupplierConnection;
+use Illuminate\Support\Facades\Notification;
 
 test('a product is created through the new product dialog', function () {
     [$user, $organization] = newOrganizationMember();
@@ -151,5 +152,47 @@ test('a member sees the product list without the create and delete controls', fu
         ->assertMissing('@products-new-product-button')
         ->assertMissing('@product-delete-button')
         ->assertPresent('@product-edit-button')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a supplier invited from the products page can be assigned without a refresh', function () {
+    Notification::fake();
+
+    [$user, $distributor] = newOrganizationMember();
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.index', ['current_organization' => $distributor->slug]));
+
+    $page->assertPresent('@products-invite-supplier-button')
+        ->assertMissing('@products-new-product-button')
+        ->click('@products-invite-supplier-button')
+        ->assertSee('No suppliers yet')
+        /**
+         * Poison the cache the way a real mouse does on the way to the invite
+         * button: the sidebar links prefetch on hover and hold the response
+         * for 30 seconds. Inertia refuses to prefetch the page it is already
+         * on, so this only works from another page — which is exactly where
+         * the user is when they invite. Without it the click below would send
+         * a fresh request and the test would pass either way.
+         */
+        ->hover('@nav-products')
+        ->wait(1.5)
+        ->click('@invite-supplier-button')
+        ->fill('@supplier-company-name', 'Acme Supplies AG')
+        ->fill('@supplier-contact-email', 'compliance@acme.test')
+        ->click('@invite-supplier-submit')
+        ->assertSee('Acme Supplies AG')
+        /**
+         * Back to products the way the user does it: a sidebar click, with no
+         * reload. The invitation is still pending, so this covers both that
+         * the stale copy was dropped and that a pending supplier is offered.
+         */
+        ->click('@nav-products')
+        ->assertPresent('@products-new-product-button')
+        ->assertMissing('@products-invite-supplier-button')
+        ->click('@products-new-product-button')
+        ->click('@product-supplier')
+        ->assertSee('Acme Supplies AG (invitation pending)')
         ->assertNoJavaScriptErrors();
 });
