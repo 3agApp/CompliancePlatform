@@ -116,11 +116,6 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     /**
-     * Get the pending organization invitation context for auth pages.
-     *
-     * @return array{code: string, organizationName: string}|null
-     */
-    /**
      * Get the invitation context for the login and register pages.
      *
      * Supplier connections reuse the same "?invitation=" parameter as member
