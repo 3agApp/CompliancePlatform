@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Organizations;
 
 use App\Actions\Organizations\CreateOrganization;
+use App\Actions\Organizations\DeleteOrganization;
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
-use App\Enums\SupplierConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organizations\DeleteOrganizationRequest;
 use App\Http\Requests\Organizations\SaveOrganizationRequest;
@@ -149,28 +149,14 @@ class OrganizationController extends Controller
     /**
      * Delete the specified organization.
      */
-    public function destroy(DeleteOrganizationRequest $request, Organization $organization): RedirectResponse
-    {
+    public function destroy(
+        DeleteOrganizationRequest $request,
+        Organization $organization,
+        DeleteOrganization $deleteOrganization,
+    ): RedirectResponse {
         $user = $request->user();
 
-        DB::transaction(function () use ($user, $organization) {
-            User::where('current_organization_id', $organization->id)
-                ->where('id', '!=', $user->id)
-                ->each(fn (User $affectedUser) => $affectedUser->switchToFallbackOrganization($organization));
-
-            $organization->invitations()->delete();
-            $organization->memberships()->delete();
-
-            /**
-             * Organizations are soft deleted, so the cascade on the foreign
-             * key never fires. Left alone, an active connection would keep a
-             * supplier reading and writing a deleted distributor's products.
-             */
-            $organization->supplierConnections()->update(['status' => SupplierConnectionStatus::Revoked]);
-            $organization->distributorConnections()->update(['status' => SupplierConnectionStatus::Revoked]);
-
-            $organization->delete();
-        });
+        $deleteOrganization->handle($organization, keeping: $user);
 
         if ($user->isCurrentOrganization($organization)) {
             $user->switchToFallbackOrganization($organization);
