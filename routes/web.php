@@ -3,6 +3,7 @@
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
@@ -16,6 +17,10 @@ use App\Http\Middleware\EnsureOrganizationType;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::delete('impersonation', [ImpersonationController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('impersonation.destroy');
 
 Route::get('onboarding', OnboardingController::class)
     ->middleware(['auth', 'verified'])
