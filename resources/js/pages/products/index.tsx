@@ -97,11 +97,6 @@ export default function ProductsIndex({
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                            {isSupplier
-                                ? 'Assigned to you'
-                                : 'Organization catalog'}
-                        </p>
                         <h1 className="page-title">Products</h1>
                         <p className="text-muted-foreground text-sm">
                             {isSupplier

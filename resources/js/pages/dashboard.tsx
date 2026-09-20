@@ -124,11 +124,6 @@ export default function Dashboard({ viewerType, stats }: Props) {
 
             <div className="workspace-page">
                 <div className="page-heading">
-                    <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                        {isSupplier
-                            ? 'Supplier overview'
-                            : 'Distributor overview'}
-                    </p>
                     <h1 className="page-title">Dashboard</h1>
                     <p className="text-muted-foreground text-sm">
                         You're working in {currentOrganization?.name}.

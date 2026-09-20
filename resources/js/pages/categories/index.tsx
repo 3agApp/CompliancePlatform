@@ -51,9 +51,6 @@ export default function CategoriesIndex({ categories, permissions }: Props) {
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                            Organization catalog
-                        </p>
                         <h1 className="page-title">Categories</h1>
                         <p className="text-muted-foreground text-sm">
                             The legal families {currentOrganization?.name} files

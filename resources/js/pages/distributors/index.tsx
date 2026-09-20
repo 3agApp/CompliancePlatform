@@ -18,9 +18,6 @@ export default function DistributorsIndex({ connections }: Props) {
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                            Supply chain
-                        </p>
                         <h1 className="page-title">Distributors</h1>
                         <p className="text-muted-foreground text-sm">
                             The companies {currentOrganization?.name} supplies

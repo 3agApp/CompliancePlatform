@@ -50,9 +50,6 @@ export default function BrandsIndex({ brands, permissions }: Props) {
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <p className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
-                            Organization catalog
-                        </p>
                         <h1 className="page-title">Brands</h1>
                         <p className="text-muted-foreground text-sm">
                             The makers whose products{' '}
