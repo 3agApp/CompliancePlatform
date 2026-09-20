@@ -54,7 +54,6 @@ class HandleInertiaRequests extends Middleware
                 ? OrganizationInvitation::query()->pendingFor($user->email)->count()
                     + SupplierConnection::query()->pendingFor($user->email)->count()
                 : 0,
-            'accountsUrl' => rtrim((string) config('oidc.connections.accounts.base_url'), '/'),
         ];
     }
 }
