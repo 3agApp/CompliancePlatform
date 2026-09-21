@@ -25,7 +25,7 @@ use BackedEnum;
 readonly class ProductCompleteness
 {
     /**
-     * @param  array<array{requirement: string, label: string, group: string, weight: int, satisfied: bool}>  $items
+     * @param  array<array{requirement: string, label: string, group: string, document_type: string|null, weight: int, satisfied: bool}>  $items
      */
     public function __construct(
         public int $score,
@@ -55,6 +55,12 @@ readonly class ProductCompleteness
                 'requirement' => $requirement->value,
                 'label' => $requirement->label(),
                 'group' => $requirement->group(),
+                /**
+                 * The kind of paper it asks for, so the page that files
+                 * them can offer the kinds still owed rather than making
+                 * somebody match the checklist to the list by eye.
+                 */
+                'document_type' => $requirement->documentType()?->value,
                 'weight' => $requirement->weight(),
                 'satisfied' => self::isSatisfied($product, $requirement, $filedTypes),
             ])

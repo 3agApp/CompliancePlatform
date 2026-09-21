@@ -156,6 +156,21 @@ export default function ProductEdit({
     );
 
     /**
+     * The kinds of paper the template asks for and has not been given, in
+     * the order the checklist lists them, so the panel that files them can
+     * offer them directly.
+     */
+    const outstandingDocumentTypes = completeness.items.flatMap((item) => {
+        if (item.satisfied || item.document_type === null) {
+            return [];
+        }
+
+        const type = item.document_type;
+
+        return availableDocumentTypes.filter((option) => option.value === type);
+    });
+
+    /**
      * Four sets of questions -- who supplies it, what it is, what it
      * claims, and the papers behind it -- stacked down one page in the
      * order a product is usually filled in. The links beside them move the
@@ -411,6 +426,7 @@ export default function ProductEdit({
                                 productId={product.id}
                                 documents={product.documents}
                                 availableDocumentTypes={availableDocumentTypes}
+                                outstandingTypes={outstandingDocumentTypes}
                                 canUpload={permissions.canUpdateProduct}
                             />
                         </section>

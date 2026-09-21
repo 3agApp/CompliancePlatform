@@ -2,8 +2,10 @@
 
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
+use App\Enums\ProductRequirement;
 use App\Models\Product;
 use App\Models\ProductDocument;
+use App\Models\ProductTemplate;
 
 test('the compliance details of a product are filled in on its own page', function () {
     [$user, $organization] = newOrganizationMember();
@@ -122,6 +124,58 @@ test('documents of the same kind are listed together under their heading', funct
         ->assertSee('ce-marking.pdf')
         ->assertSee('Test report')
         ->assertSee('Certificate')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * The upload area answers the checklist: it offers the kinds still owed,
+ * takes a file by drag or by browse, and stays shut until it has both.
+ */
+test('the documents panel offers the kinds the template is still waiting for', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $template = ProductTemplate::factory()
+        ->requiring(
+            ProductRequirement::TestReport,
+            ProductRequirement::Certificate,
+            ProductRequirement::WarningText,
+        )
+        ->create([
+            'product_category_id' => legalFamily($organization)->id,
+            'name' => 'EU toy safety',
+        ]);
+
+    $product = Product::factory()
+        ->for($organization)
+        ->usingTemplate($template)
+        ->create(['supplier_connection_id' => $connection->id]);
+
+    ProductDocument::factory()
+        ->for($product)
+        ->ofType(ProductDocumentType::TestReport)
+        ->create(['name' => 'en71-part-1.pdf', 'uploaded_by' => $user->id]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->assertSee('Still needed')
+        /** The report has been filed, so only the certificate is offered. */
+        ->assertMissing('@document-kind-test_report')
+        ->assertPresent('@document-kind-certificate')
+        /** And the warning text is typed into the form, not filed here. */
+        ->assertMissing('@document-kind-warning_text')
+        ->assertSee('Drag a file here')
+        /** Nothing is chosen yet, so there is nothing to upload. */
+        ->assertButtonDisabled('@upload-document-submit')
+        ->assertMissing('@document-chosen-file')
+        /** One click names the kind the checklist was asking for. */
+        ->click('@document-kind-certificate')
+        ->assertSeeIn('@document-type', 'Certificate')
+        ->assertButtonDisabled('@upload-document-submit')
         ->assertNoJavaScriptErrors();
 });
 

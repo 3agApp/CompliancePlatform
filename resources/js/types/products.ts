@@ -86,6 +86,8 @@ export type ProductCompletenessItem = {
     requirement: ProductRequirementKey;
     label: string;
     group: ProductRequirementGroup;
+    /** The kind of paper it asks for, on a document requirement. */
+    document_type: ProductDocumentType | null;
     weight: number;
     satisfied: boolean;
 };

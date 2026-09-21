@@ -180,6 +180,8 @@ test('the checklist lists every requirement the template asks for, answered or n
                     'requirement' => 'requires_test_report',
                     'label' => 'Test report',
                     'group' => 'document',
+                    /** The kind the documents panel offers to file. */
+                    'document_type' => 'test_report',
                     'weight' => 3,
                     'satisfied' => false,
                 ],
@@ -187,6 +189,8 @@ test('the checklist lists every requirement the template asks for, answered or n
                     'requirement' => 'requires_warning_text',
                     'label' => 'Warning text',
                     'group' => 'data',
+                    /** Nothing to file: this one is typed into the form. */
+                    'document_type' => null,
                     'weight' => 1,
                     'satisfied' => true,
                 ],
