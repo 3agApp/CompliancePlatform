@@ -48,6 +48,15 @@ Route::prefix('{current_organization}')
             Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
             Route::post('products/{product}/documents', [ProductDocumentController::class, 'store'])->name('products.documents.store');
+
+            /**
+             * Declared before documents/{document} so "suggestions" is a
+             * question about the batch, not a document key.
+             */
+            Route::post('products/{product}/documents/suggestions', [ProductDocumentController::class, 'suggest'])
+                ->middleware('throttle:ai-suggestions')
+                ->name('products.documents.suggest');
+
             Route::get('products/{product}/documents/{document}', [ProductDocumentController::class, 'show'])->name('products.documents.show');
             Route::delete('products/{product}/documents/{document}', [ProductDocumentController::class, 'destroy'])->name('products.documents.destroy');
 

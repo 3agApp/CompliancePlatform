@@ -1,11 +1,29 @@
 <?php
 
+use App\Ai\Agents\DocumentKindAgent;
+use App\Enums\AiProvider;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductRequirement;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductTemplate;
+
+/**
+ * Write a real PDF somewhere the browser can pick it up from.
+ *
+ * The bytes never matter -- the suggestion call sends the name, the type and
+ * the size -- but the file has to exist for the picker to take it.
+ */
+function aPdfNamed(string $name): string
+{
+    $path = sys_get_temp_dir().'/pest-documents/'.$name;
+
+    @mkdir(dirname($path), 0777, true);
+    file_put_contents($path, "%PDF-1.4\n% a file with a name and a size\n");
+
+    return $path;
+}
 
 test('the compliance details of a product are filled in on its own page', function () {
     [$user, $organization] = newOrganizationMember();
@@ -168,14 +186,12 @@ test('the documents panel offers the kinds the template is still waiting for', f
         ->assertPresent('@document-kind-certificate')
         /** And the warning text is typed into the form, not filed here. */
         ->assertMissing('@document-kind-warning_text')
-        ->assertSee('Drag a file here')
+        ->assertSee('Drag files here')
         /** Nothing is chosen yet, so there is nothing to upload. */
         ->assertButtonDisabled('@upload-document-submit')
-        ->assertMissing('@document-chosen-file')
-        /** One click names the kind the checklist was asking for. */
-        ->click('@document-kind-certificate')
-        ->assertSeeIn('@document-type', 'Certificate')
-        ->assertButtonDisabled('@upload-document-submit')
+        ->assertMissing('@document-review-table')
+        /** And nothing for a chip to name, so it is not offering either. */
+        ->assertButtonDisabled('@document-kind-certificate')
         ->assertNoJavaScriptErrors();
 });
 
@@ -200,6 +216,111 @@ test('a member sees the documents without the upload and delete controls', funct
     ]))
         ->assertSee('ce-marking.pdf')
         ->assertMissing('@document-file')
+        ->assertMissing('@document-review-table')
         ->assertMissing('@product-document-delete-button')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * The half of the upload the browser can actually drive.
+ *
+ * Choosing files, asking what they look like, correcting the answer and
+ * being held back until every row has a kind all happen without a file ever
+ * being posted -- the suggestion call carries names and sizes as JSON. Only
+ * the final submit carries bytes, and that is covered in
+ * tests/Feature/Products/ProductDocumentTest.php for the reason given above.
+ */
+test('the kind of a chosen file is proposed for the person to confirm', function () {
+    DocumentKindAgent::fake([['guesses' => [
+        ['index' => 0, 'type' => 'declaration_of_conformity', 'confidence' => 'high'],
+    ]]]);
+
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $organization->aiSetting()->create([
+        'provider' => AiProvider::Gemini,
+        'model' => AiProvider::Gemini->defaultModel(),
+        'api_key' => 'AIzaSyD-ExampleKeyForTests-0123456789',
+    ]);
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->assertButtonDisabled('@upload-document-submit')
+        ->attach('@document-file', aPdfNamed('DoC-2026.pdf'))
+        ->assertPresent('@document-review-table')
+        ->assertSee('DoC-2026.pdf')
+        /** The kind came back filled in, and says so rather than pretending. */
+        ->assertSeeIn('@pending-document-type-0', 'Declaration of conformity')
+        ->assertSeeIn('@pending-document-guessed-0', 'Proposed')
+        /** With a kind on every row, the batch may go. */
+        ->assertButtonEnabled('@upload-document-submit')
+        /** And it can be taken back off again. */
+        ->click('@pending-document-remove-0')
+        ->assertMissing('@document-review-table')
+        ->assertButtonDisabled('@upload-document-submit')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a file the AI cannot place is left for the person to name', function () {
+    DocumentKindAgent::fake([['guesses' => [
+        ['index' => 0, 'type' => 'unknown', 'confidence' => 'low'],
+    ]]]);
+
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $organization->aiSetting()->create([
+        'provider' => AiProvider::Gemini,
+        'model' => AiProvider::Gemini->defaultModel(),
+        'api_key' => 'AIzaSyD-ExampleKeyForTests-0123456789',
+    ]);
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->attach('@document-file', aPdfNamed('scan_0012.pdf'))
+        ->assertPresent('@document-review-table')
+        ->assertSeeIn('@pending-document-unsure-0', 'Not sure')
+        /** No kind, so nothing may be filed yet. */
+        ->assertButtonDisabled('@upload-document-submit')
+        ->assertNoJavaScriptErrors();
+});
+
+test('an organization with no AI provider is told the kinds are its own to pick', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->attach('@document-file', aPdfNamed('DoC-2026.pdf'))
+        ->assertPresent('@document-review-table')
+        ->assertSeeIn('@document-upload-notice', 'an owner or admin can connect an AI provider')
+        /** The file is still there to be filed, by hand. */
+        ->assertSee('DoC-2026.pdf')
+        ->assertButtonDisabled('@upload-document-submit')
         ->assertNoJavaScriptErrors();
 });

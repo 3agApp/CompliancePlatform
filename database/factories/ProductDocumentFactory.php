@@ -31,7 +31,15 @@ class ProductDocumentFactory extends Factory
             'uploaded_by' => User::factory(),
             'type' => fake()->randomElement(ProductDocumentType::cases()),
             'name' => $name,
-            'path' => 'product-documents/'.fake()->numberBetween(1, 1000).'/'.fake()->sha1().'.pdf',
+            /**
+             * The directory the model would really have put it in. A made-up
+             * one reads the same in a listing but quietly passes any test
+             * about clearing files off the disk, because nothing was ever
+             * where the code goes looking.
+             */
+            'path' => fn (array $attributes): string => 'product-documents/'
+                .(is_int($attributes['product_id']) ? $attributes['product_id'] : Product::factory()->create()->id)
+                .'/'.fake()->sha1().'.pdf',
             'mime_type' => 'application/pdf',
             'size' => fake()->numberBetween(1024, 2_000_000),
         ];
