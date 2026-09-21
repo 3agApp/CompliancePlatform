@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
  * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, ProductTemplate> $templates
  * @property-read int|null $products_count
  */
 #[Fillable(['name'])]
@@ -64,6 +65,19 @@ class ProductCategory extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Get the homework sheets kept under this family.
+     *
+     * Ordered by name, because the list is only ever read as a list: a
+     * category holds a handful of these and they are chosen from a select.
+     *
+     * @return HasMany<ProductTemplate, $this>
+     */
+    public function templates(): HasMany
+    {
+        return $this->hasMany(ProductTemplate::class)->orderBy('name');
     }
 
     /**

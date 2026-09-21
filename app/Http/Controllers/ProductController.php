@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Data\ProductFilters;
 use App\Enums\CountryOfOrigin;
 use App\Enums\ProductDocumentType;
+use App\Enums\ProductRequirement;
 use App\Enums\SupplierConnectionStatus;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Brand;
@@ -12,6 +13,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductDocument;
+use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -46,10 +48,15 @@ class ProductController extends Controller
         return Inertia::render('products/index', [
             'products' => $products->map(fn (Product $product) => $this->toProductArray($product, $isSupplier)),
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
-            'availableCountries' => CountryOfOrigin::options(),
-            'availableCategories' => $this->availableCategories($currentOrganization),
-            'availableBrands' => $this->availableBrands($currentOrganization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
+            /**
+             * A product cannot be created without a template, so the list
+             * has to be able to say so before sending anyone to a form they
+             * would be stuck on. The flag rather than the templates: the
+             * list itself has no use for them.
+             */
+            'hasTemplates' => $currentOrganization->isDistributor()
+                && $currentOrganization->productTemplates()->exists(),
             'counterparties' => $this->counterparties($currentOrganization, $isSupplier),
             'filterableCategories' => $this->filterableCategories($currentOrganization, $isSupplier),
             'filterableBrands' => $this->filterableBrands($currentOrganization, $isSupplier),
@@ -57,6 +64,30 @@ class ProductController extends Controller
             'hasProducts' => $products->isNotEmpty()
                 || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
             'viewerType' => $currentOrganization->type->value,
+        ]);
+    }
+
+    /**
+     * Show the page a product is created from.
+     *
+     * A page rather than a dialog, because creating a product now begins
+     * with classifying it -- supplier, legal family, template -- and only
+     * then asks for the details, which the template has a say in. Every
+     * template the organization keeps goes down with it, so choosing a
+     * family narrows the sheets without another trip to the server.
+     */
+    public function create(Request $request, Organization $currentOrganization): Response
+    {
+        Gate::authorize('create', [Product::class, $currentOrganization]);
+
+        return Inertia::render('products/create', [
+            'availableCountries' => CountryOfOrigin::options(),
+            'availableCategories' => $this->availableCategories($currentOrganization),
+            'availableTemplates' => $this->availableTemplates($currentOrganization),
+            'availableBrands' => $this->availableBrands($currentOrganization),
+            'availableConnections' => $this->assignableConnections($currentOrganization),
+            'availableRequirements' => ProductRequirement::options(),
+            'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
         ]);
     }
 
@@ -83,7 +114,7 @@ class ProductController extends Controller
 
         $isSupplier = $currentOrganization->isSupplier();
 
-        $product->load(['organization', 'brand', 'category', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader']);
+        $product->load(['organization', 'brand', 'category', 'template', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader']);
 
         return Inertia::render('products/edit', [
             'product' => [
@@ -95,8 +126,12 @@ class ProductController extends Controller
             'availableCountries' => CountryOfOrigin::options(),
             'availableDocumentTypes' => ProductDocumentType::options(),
             'availableCategories' => $this->availableCategories($product->organization),
+            'availableTemplates' => $this->availableTemplates($product->organization),
             'availableBrands' => $this->availableBrands($product->organization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
+            'availableRequirements' => ProductRequirement::options(),
+            'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
+            'completeness' => $product->completeness(),
             'viewerType' => $currentOrganization->type->value,
         ]);
     }
@@ -150,13 +185,20 @@ class ProductController extends Controller
      */
     protected function visibleProducts(Organization $organization, bool $asSupplier): HasMany|HasManyThrough
     {
+        /**
+         * The template and the kinds of paper already filed come along on
+         * every read, because each row is scored against its sheet before
+         * it is sent. Without them that is two queries a product.
+         */
+        $scoring = ['template', 'documents:id,product_id,type'];
+
         if ($asSupplier) {
             return $organization->suppliedProducts()
-                ->with(['brand', 'category', 'supplierConnection.distributorOrganization']);
+                ->with([...$scoring, 'brand', 'category', 'supplierConnection.distributorOrganization']);
         }
 
         return $organization->products()
-            ->with(['brand', 'category', 'supplierConnection.supplierOrganization']);
+            ->with([...$scoring, 'brand', 'category', 'supplierConnection.supplierOrganization']);
     }
 
     /**
@@ -249,9 +291,10 @@ class ProductController extends Controller
     /**
      * Get the brands the product list can be filtered by.
      *
-     * Read the same way the categories are: a distributor is offered its
-     * whole list, a supplier only the brands present on the products
-     * assigned to it, each named with the distributor it came from.
+     * Read the same way the categories are: a distributor is offered
+     * everything its trades name, a supplier only the brands present on the
+     * products assigned to it, each named with the distributor whose
+     * catalog it sits in.
      *
      * @return array<array{id: int, label: string}>
      */
@@ -268,12 +311,12 @@ class ProductController extends Controller
 
         return Brand::query()
             ->whereIn('id', $brandIds)
-            ->with('organization')
+            ->with('supplierConnection.distributorOrganization')
             ->orderBy('name')
             ->get()
             ->map(fn (Brand $brand) => [
                 'id' => $brand->id,
-                'label' => "{$brand->name} ({$brand->organization->name})",
+                'label' => "{$brand->name} ({$brand->supplierConnection->distributorOrganization->name})",
             ])
             ->values()
             ->toArray();
@@ -282,10 +325,18 @@ class ProductController extends Controller
     /**
      * Get the brands a product may carry.
      *
-     * Like the categories, the list always comes from the organization that
-     * owns the product rather than from the one doing the looking.
+     * A maker is named under one trade, so a product may only carry one of
+     * its own supplier's. The whole set the distributor can reach goes down
+     * at once and each option carries its connection: the form narrows them
+     * to the supplier already chosen, the same way it narrows the templates
+     * to the family.
      *
-     * @return array<array{id: int, label: string}>
+     * The list always comes from the distributor that owns the product
+     * rather than from the organization doing the looking -- a supplier
+     * editing a product sees the brands of that trade, which is the trade
+     * they are on either way.
+     *
+     * @return array<array{id: int, label: string, supplier_connection_id: int}>
      */
     protected function availableBrands(Organization $organization): array
     {
@@ -294,7 +345,7 @@ class ProductController extends Controller
         }
 
         return $organization->brands()
-            ->orderBy('name')
+            ->orderBy('brands.name')
             ->get()
             ->map(fn (Brand $brand) => $brand->toOption())
             ->values()
@@ -321,6 +372,34 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get()
             ->map(fn (ProductCategory $category) => $category->toOption())
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get the homework sheets a product may be held to.
+     *
+     * The whole set for the organization, not one family's worth: the form
+     * narrows them to the chosen family on the client, so switching family
+     * does not cost a round trip. Each option carries its category and what
+     * it asks for, which is what does the narrowing and the marking.
+     *
+     * Read from the owner's list for the same reason the categories are --
+     * a supplier editing a product is choosing from their distributor's
+     * sheets, because that is whose catalog the answer lands in.
+     *
+     * @return array<array{id: int, label: string, product_category_id: int, requirements: array<int, string>}>
+     */
+    protected function availableTemplates(Organization $organization): array
+    {
+        if (! $organization->isDistributor()) {
+            return [];
+        }
+
+        return $organization->productTemplates()
+            ->orderBy('product_templates.name')
+            ->get()
+            ->map(fn (ProductTemplate $template) => $template->toOption())
             ->values()
             ->toArray();
     }
@@ -416,7 +495,11 @@ class ProductController extends Controller
     /**
      * Transform the product for the frontend.
      *
-     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int|null, category_label: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
+     * The completeness score travels with every row and the seven columns
+     * it is read from do not: the prose is scored here and left here, so a
+     * catalog listing names still carries nothing but the number.
+     *
+     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
      */
     protected function toProductArray(Product $product, bool $asSupplier = false): array
     {
@@ -428,7 +511,10 @@ class ProductController extends Controller
             'brand_id' => $product->brand_id,
             'brand_label' => $product->brand?->name,
             'product_category_id' => $product->product_category_id,
-            'category_label' => $product->category?->name,
+            'category_label' => $product->category->name,
+            'product_template_id' => $product->product_template_id,
+            'template_label' => $product->template->name,
+            'completeness_score' => $product->completeness()->score,
             'ean' => $product->ean,
             'internal_article_number' => $product->internal_article_number,
             'supplier_article_number' => $product->supplier_article_number,

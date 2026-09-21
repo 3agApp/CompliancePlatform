@@ -157,7 +157,9 @@ test('a supplier edits an assigned product without being able to reassign it', f
 
     visit(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
         ->assertSee($distributor->name)
+        ->click('@edit-product-tab-classification')
         ->assertMissing('@product-supplier')
+        ->click('@edit-product-tab-identification')
         ->fill('@product-name', 'Organic Oat Milk')
         ->click('@update-product-submit')
         ->assertNoJavaScriptErrors();
@@ -176,6 +178,7 @@ test('a distributor assigns a supplier from the product edit page', function () 
     $this->actingAs($user);
 
     visit(route('products.edit', ['current_organization' => $distributor->slug, 'product' => $product->id]))
+        ->click('@edit-product-tab-classification')
         ->click('@product-supplier')
         ->click('[role="option"]:has-text("Acme Supplies AG")')
         ->click('@update-product-submit')

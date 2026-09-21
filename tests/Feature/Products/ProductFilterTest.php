@@ -212,8 +212,8 @@ test('a distributor filters the product list by one of its brands', function () 
     [$user, $distributor] = newOrganizationMember();
     $connection = newSupplierConnection($distributor);
 
-    $magnaTiles = $distributor->brands()->create(['name' => 'Magna-Tiles']);
-    $tigerbox = $distributor->brands()->create(['name' => 'tigerbox']);
+    $magnaTiles = carriedBrand($connection, 'Magna-Tiles');
+    $tigerbox = carriedBrand($connection, 'tigerbox');
 
     Product::factory()->for($distributor)->ofBrand($magnaTiles)->create([
         'name' => 'Clear Colors 32',
@@ -240,9 +240,10 @@ test('a distributor filters the product list by one of its brands', function () 
 
 test('a distributor is offered its whole brand list to filter by', function () {
     [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
 
-    $distributor->brands()->create(['name' => 'tigerbox']);
-    $distributor->brands()->create(['name' => 'Magna-Tiles']);
+    carriedBrand($connection, 'tigerbox');
+    carriedBrand($connection, 'Magna-Tiles');
 
     filteredProducts($user, $distributor, [])
         ->assertOk()
@@ -257,7 +258,7 @@ test('the brand filter composes with the category filter', function () {
     [$user, $distributor] = newOrganizationMember();
     $connection = newSupplierConnection($distributor);
 
-    $magnaTiles = $distributor->brands()->create(['name' => 'Magna-Tiles']);
+    $magnaTiles = carriedBrand($connection, 'Magna-Tiles');
     $magnetic = $distributor->productCategories()->where('name', 'Magnetic toy')->sole();
     $toy = $distributor->productCategories()->where('name', 'Toy')->sole();
 
@@ -289,9 +290,9 @@ test('a supplier is offered the brands on the products assigned to it, named wit
     $connectionA = newSupplierConnection($distributorA, $supplier);
     $connectionB = newSupplierConnection($distributorB, $supplier);
 
-    $brandA = $distributorA->brands()->create(['name' => 'Magna-Tiles']);
-    $brandB = $distributorB->brands()->create(['name' => 'Magna-Tiles']);
-    $distributorA->brands()->create(['name' => 'Nothing Assigned']);
+    $brandA = carriedBrand($connectionA, 'Magna-Tiles');
+    $brandB = carriedBrand($connectionB, 'Magna-Tiles');
+    carriedBrand($connectionA, 'Nothing Assigned');
 
     Product::factory()->for($distributorA)->ofBrand($brandA)->create([
         'name' => 'Clear Colors 32',
@@ -323,8 +324,8 @@ test('filtering by another organization brand shows no products', function () {
     [, $otherDistributor] = newOrganizationMember();
 
     $connection = newSupplierConnection($distributor);
-    $own = $distributor->brands()->create(['name' => 'Magna-Tiles']);
-    $foreign = $otherDistributor->brands()->create(['name' => 'Magna-Tiles']);
+    $own = carriedBrand($connection, 'Magna-Tiles');
+    $foreign = carriedBrand(newSupplierConnection($otherDistributor), 'Magna-Tiles');
 
     Product::factory()->for($distributor)->ofBrand($own)->create([
         'name' => 'Clear Colors 32',

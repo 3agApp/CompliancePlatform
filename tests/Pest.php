@@ -2,7 +2,10 @@
 
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
+use App\Models\Brand;
 use App\Models\Organization;
+use App\Models\ProductCategory;
+use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,4 +97,44 @@ function newSupplierConnection(Organization $distributor, ?Organization $supplie
     }
 
     return $factory->create($attributes);
+}
+
+/**
+ * Get one of the legal families an organization is created with.
+ *
+ * The list is per organization, so the lookup has to be too: every
+ * distributor on the platform has a row called "Toy" and they are not
+ * interchangeable.
+ */
+function legalFamily(Organization $organization, string $name = 'Toy'): ProductCategory
+{
+    return $organization->productCategories()->where('name', $name)->sole();
+}
+
+/**
+ * Get a template under one of an organization's legal families, adding it
+ * the first time it is asked for.
+ *
+ * Organizations start with the families but with no templates: what a
+ * distributor holds a kind of product to is their own reading, so there is
+ * nothing sensible to hand them. Every product names one all the same, so
+ * every write test needs this.
+ */
+function familyTemplate(Organization $organization, string $family = 'Toy', string $name = 'Standard'): ProductTemplate
+{
+    return legalFamily($organization, $family)->templates()->firstOrCreate(['name' => $name]);
+}
+
+/**
+ * Get a maker named under one trade, adding it the first time it is asked
+ * for.
+ *
+ * A brand hangs off the supplier connection rather than off an
+ * organization, so a test that wants to put one on a product needs the
+ * trade that product sits on. Unlike the legal families nothing is created
+ * with the organization, so it has to be named first.
+ */
+function carriedBrand(SupplierConnection $connection, string $name = 'Alpro'): Brand
+{
+    return $connection->brands()->firstOrCreate(['name' => $name]);
 }

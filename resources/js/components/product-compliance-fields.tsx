@@ -1,14 +1,16 @@
 import InputError from '@/components/input-error';
-import { Optional } from '@/components/product-form-fields';
+import { FieldMarker } from '@/components/product-form-fields';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { ProductComplianceDetails } from '@/types';
+import type { ProductComplianceDetails, ProductRequirementKey } from '@/types';
 
 type FieldName = keyof ProductComplianceDetails;
 
 type Props = {
     errors: Partial<Record<FieldName, string>>;
+    /** What the product's template asks for, which is what marks the labels. */
+    requirements?: ProductRequirementKey[];
     product?: ProductComplianceDetails;
     disabled?: boolean;
     idPrefix?: string;
@@ -24,15 +26,20 @@ type Props = {
  */
 export default function ProductComplianceFields({
     errors,
+    requirements = [],
     product,
     disabled = false,
     idPrefix = 'product',
 }: Props) {
+    const needs = (requirement: ProductRequirementKey) =>
+        requirements.includes(requirement);
+
     return (
         <div className="grid gap-4">
             <div className="grid gap-2 sm:max-w-3xs">
                 <Label htmlFor={`${idPrefix}-age-grading`}>
-                    Age grading <Optional />
+                    Age grading{' '}
+                    <FieldMarker required={needs('requires_age_grading')} />
                 </Label>
                 <Input
                     id={`${idPrefix}-age-grading`}
@@ -51,7 +58,8 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-safety-notice`}>
-                    Safety notice <Optional />
+                    Safety notice{' '}
+                    <FieldMarker required={needs('requires_safety_notice')} />
                 </Label>
                 <Textarea
                     id={`${idPrefix}-safety-notice`}
@@ -67,7 +75,8 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-warning-text`}>
-                    Warning text <Optional />
+                    Warning text{' '}
+                    <FieldMarker required={needs('requires_warning_text')} />
                 </Label>
                 <Textarea
                     id={`${idPrefix}-warning-text`}
@@ -86,7 +95,10 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-material-information`}>
-                    Material information <Optional />
+                    Material information{' '}
+                    <FieldMarker
+                        required={needs('requires_material_information')}
+                    />
                 </Label>
                 <Textarea
                     id={`${idPrefix}-material-information`}
@@ -102,7 +114,10 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-usage-restrictions`}>
-                    Usage restrictions <Optional />
+                    Usage restrictions{' '}
+                    <FieldMarker
+                        required={needs('requires_usage_restrictions')}
+                    />
                 </Label>
                 <Textarea
                     id={`${idPrefix}-usage-restrictions`}
@@ -118,7 +133,10 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-safety-instructions`}>
-                    Safety instructions <Optional />
+                    Safety instructions{' '}
+                    <FieldMarker
+                        required={needs('requires_safety_instructions')}
+                    />
                 </Label>
                 <Textarea
                     id={`${idPrefix}-safety-instructions`}
@@ -134,7 +152,10 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-additional-notes`}>
-                    Additional notes <Optional />
+                    Additional notes{' '}
+                    <FieldMarker
+                        required={needs('requires_additional_notes')}
+                    />
                 </Label>
                 <Textarea
                     id={`${idPrefix}-additional-notes`}

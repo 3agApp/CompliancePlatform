@@ -12,19 +12,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A maker whose products an organization carries, such as tigerbox or
- * Magna-Tiles.
+ * A maker behind one trading relationship, such as tigerbox or Magna-Tiles.
  *
- * The list belongs to one organization. Two distributors carrying the same
- * maker keep a row each: neither can rename or delete the other's, and what
- * one of them calls it says nothing about the other's catalog.
+ * The brand is the supplier's to name: they know what they make, and the
+ * distributor sees it on the products that supplier answers for. It hangs
+ * off the connection rather than off the supplier organization, because a
+ * supplier who has not claimed their invitation yet has none, and their
+ * products still have to be able to name a brand.
+ *
+ * Two connections carrying the same maker keep a row each. Neither side can
+ * rename or delete the other trade's, and what one of them calls it says
+ * nothing about anybody else's catalog.
  *
  * @property int $id
- * @property int $organization_id
+ * @property int $supplier_connection_id
  * @property string $name
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property-read Organization $organization
+ * @property-read SupplierConnection $supplierConnection
  * @property-read Collection<int, Product> $products
  * @property-read int|null $products_count
  */
@@ -35,13 +40,13 @@ class Brand extends Model
     use HasFactory;
 
     /**
-     * Get the organization whose list this brand belongs to.
+     * Get the trade this brand is named under.
      *
-     * @return BelongsTo<Organization, $this>
+     * @return BelongsTo<SupplierConnection, $this>
      */
-    public function organization(): BelongsTo
+    public function supplierConnection(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(SupplierConnection::class);
     }
 
     /**
@@ -57,10 +62,18 @@ class Brand extends Model
     /**
      * Get the brand as an option for a product form.
      *
-     * @return array{id: int, label: string}
+     * The connection comes with it, because a product may only carry a
+     * brand of the supplier it is assigned to: the form narrows the list
+     * to the supplier already chosen rather than asking the server again.
+     *
+     * @return array{id: int, label: string, supplier_connection_id: int}
      */
     public function toOption(): array
     {
-        return ['id' => $this->id, 'label' => $this->name];
+        return [
+            'id' => $this->id,
+            'label' => $this->name,
+            'supplier_connection_id' => $this->supplier_connection_id,
+        ];
     }
 }

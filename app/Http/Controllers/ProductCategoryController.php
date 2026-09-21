@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ProductRequirement;
 use App\Http\Requests\ProductCategories\SaveProductCategoryRequest;
 use App\Models\Organization;
 use App\Models\ProductCategory;
+use App\Models\ProductTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -28,6 +30,7 @@ class ProductCategoryController extends Controller
         return Inertia::render('categories/index', [
             'categories' => $this->categories($currentOrganization),
             'permissions' => $request->user()->toProductCategoryPermissions($currentOrganization),
+            'availableRequirements' => ProductRequirement::options(),
         ]);
     }
 
@@ -101,18 +104,49 @@ class ProductCategoryController extends Controller
      * category is holding, and the delete dialog can explain itself before
      * the request that would be refused is ever sent.
      *
-     * @return array<array{id: int, name: string, products_count: int}>
+     * The templates come with them. A category is only half a thing without
+     * the sheets filed under it -- an empty one cannot take a product at all
+     * -- so the screen that manages one manages both, and the payload is
+     * shaped to match.
+     *
+     * @return array<array{id: int, name: string, products_count: int, templates: array<array{id: int, name: string, products_count: int, requirements: array<int, string>}>}>
      */
     protected function categories(Organization $organization): array
     {
         return $organization->productCategories()
             ->withCount('products')
+            ->with(['templates' => fn ($query) => $query->withCount('products')])
             ->orderBy('name')
             ->get()
             ->map(fn (ProductCategory $category) => [
                 'id' => $category->id,
                 'name' => $category->name,
                 'products_count' => (int) $category->products_count,
+                'templates' => $this->templates($category),
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Transform one category's templates for the frontend.
+     *
+     * Each carries what it asks for, so the list can summarize a sheet
+     * without a second request, and its product count, so the delete dialog
+     * can explain itself before a refusal.
+     *
+     * @return array<array{id: int, name: string, products_count: int, requirements: array<int, string>}>
+     */
+    protected function templates(ProductCategory $category): array
+    {
+        return $category->templates
+            ->map(fn (ProductTemplate $template) => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'products_count' => (int) $template->products_count,
+                'requirements' => $template->requirements()
+                    ->map(fn (ProductRequirement $requirement) => $requirement->value)
+                    ->all(),
             ])
             ->values()
             ->toArray();

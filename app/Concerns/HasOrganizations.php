@@ -262,12 +262,17 @@ trait HasOrganizations
     public function toBrandPermissions(Organization $organization): BrandPermissions
     {
         $role = $this->organizationRole($organization);
-        $keepsBrands = $organization->isDistributor();
 
+        /**
+         * Both sides of a trade name makers under it, so unlike the legal
+         * families this is not gated on the organization being a
+         * distributor. Which particular trades can take a new brand is a
+         * per-connection question the brands page answers row by row.
+         */
         return new BrandPermissions(
-            canCreateBrand: $keepsBrands && ($role?->hasPermission(OrganizationPermission::CreateBrand) ?? false),
-            canUpdateBrand: $keepsBrands && ($role?->hasPermission(OrganizationPermission::UpdateBrand) ?? false),
-            canDeleteBrand: $keepsBrands && ($role?->hasPermission(OrganizationPermission::DeleteBrand) ?? false),
+            canCreateBrand: $role?->hasPermission(OrganizationPermission::CreateBrand) ?? false,
+            canUpdateBrand: $role?->hasPermission(OrganizationPermission::UpdateBrand) ?? false,
+            canDeleteBrand: $role?->hasPermission(OrganizationPermission::DeleteBrand) ?? false,
         );
     }
 

@@ -16,6 +16,8 @@ function compliancePayload(SupplierConnection $connection, array $overrides = []
     return [
         'name' => 'Organic Oat Milk',
         'supplier_connection_id' => $connection->id,
+        'product_category_id' => legalFamily($connection->distributorOrganization)->id,
+        'product_template_id' => familyTemplate($connection->distributorOrganization)->id,
         'age_grading' => '3+',
         'safety_notice' => 'Keep the packaging until the product has been checked.',
         'warning_text' => 'Not suitable for children under 3 years. Small parts.',
@@ -76,6 +78,8 @@ test('a product can be created without any compliance details', function () {
         ->actingAs($user)
         ->post(route('products.store', ['current_organization' => $organization->slug]), [
             'name' => 'Organic Oat Milk',
+            'product_category_id' => legalFamily($organization)->id,
+            'product_template_id' => familyTemplate($organization)->id,
             'supplier_connection_id' => $connection->id,
         ])
         ->assertSessionHasNoErrors();
@@ -200,6 +204,8 @@ test('a supplier fills in the compliance details of a product assigned to them',
         ->actingAs($supplierUser)
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => $product->name,
+            'product_category_id' => $product->product_category_id,
+            'product_template_id' => $product->product_template_id,
             'warning_text' => 'Contains small parts.',
             'age_grading' => '6+',
         ])

@@ -2,12 +2,12 @@
 
 use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
-use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SupplierConnection;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -32,8 +32,9 @@ function productPayload(SupplierConnection $connection, array $overrides = []): 
 {
     return [
         'name' => 'Organic Oat Milk',
-        'brand_id' => carriedBrand($connection->distributorOrganization)->id,
+        'brand_id' => carriedBrand($connection)->id,
         'product_category_id' => legalFamily($connection->distributorOrganization)->id,
+        'product_template_id' => familyTemplate($connection->distributorOrganization)->id,
         'ean' => '4006381333931',
         'internal_article_number' => 'ART-10294',
         'supplier_article_number' => 'MT-BLUE-32',
@@ -43,30 +44,6 @@ function productPayload(SupplierConnection $connection, array $overrides = []): 
         'supplier_connection_id' => $connection->id,
         ...$overrides,
     ];
-}
-
-/**
- * Get one of the legal families an organization is created with.
- *
- * The list is per organization, so the lookup has to be too: every
- * distributor on the platform has a row called "Toy" and they are not
- * interchangeable.
- */
-function legalFamily(Organization $organization, string $name = 'Toy'): ProductCategory
-{
-    return $organization->productCategories()->where('name', $name)->sole();
-}
-
-/**
- * Get a brand on the organization's list, adding it the first time it is
- * asked for.
- *
- * Unlike the legal families an organization starts with none, so a test that
- * wants to put a brand on a product has to put it on the list first.
- */
-function carriedBrand(Organization $organization, string $name = 'Alpro'): Brand
-{
-    return $organization->brands()->firstOrCreate(['name' => $name]);
 }
 
 test('the products index page lists the products of the current organization', function () {
@@ -99,8 +76,9 @@ test('products can be created', function () {
     $this->assertDatabaseHas('products', [
         'organization_id' => $organization->id,
         'name' => 'Organic Oat Milk',
-        'brand_id' => carriedBrand($connection->distributorOrganization)->id,
+        'brand_id' => carriedBrand($connection)->id,
         'product_category_id' => legalFamily($connection->distributorOrganization)->id,
+        'product_template_id' => familyTemplate($connection->distributorOrganization)->id,
         'ean' => '4006381333931',
         'internal_article_number' => 'ART-10294',
         'supplier_article_number' => 'MT-BLUE-32',
@@ -117,7 +95,6 @@ test('products can be created without any of the optional identification details
         ->actingAs($user)
         ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
             'brand_id' => null,
-            'product_category_id' => null,
             'internal_article_number' => null,
             'supplier_article_number' => null,
             'order_number' => null,
@@ -128,7 +105,6 @@ test('products can be created without any of the optional identification details
     $this->assertDatabaseHas('products', [
         'name' => 'Organic Oat Milk',
         'brand_id' => null,
-        'product_category_id' => null,
         'internal_article_number' => null,
         'supplier_article_number' => null,
         'order_number' => null,
@@ -151,7 +127,6 @@ test('an identification field can be cleared by submitting an empty value', func
     expect($product->fresh()->{$field})->toBeNull();
 })->with([
     'brand_id',
-    'product_category_id',
     'internal_article_number',
     'supplier_article_number',
     'order_number',
@@ -195,19 +170,38 @@ test('a product cannot carry another organization brand', function () {
     $this
         ->actingAs($user)
         ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
-            'brand_id' => carriedBrand($otherDistributor, 'tigerbox')->id,
+            'brand_id' => carriedBrand(newSupplierConnection($otherDistributor), 'tigerbox')->id,
         ]))
         ->assertSessionHasErrors('brand_id');
 
     $this->assertDatabaseCount('products', 0);
 });
 
-test('the brands offered on the product pages are the owning distributor list', function () {
+test('a product cannot carry a brand named under one of the distributor other suppliers', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+
+    /**
+     * A maker belongs to a trade, so a brand this distributor holds is
+     * still the wrong brand if it is not the one supplying this product.
+     */
+    $anotherSupplier = newSupplierConnection($organization);
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
+            'brand_id' => carriedBrand($anotherSupplier, 'tigerbox')->id,
+        ]))
+        ->assertSessionHasErrors('brand_id');
+
+    $this->assertDatabaseCount('products', 0);
+});
+
+test('the brands offered on the product pages are the ones named under the trade', function () {
     [$supplierUser, $supplier] = newSupplierMember();
     [, $distributor] = newOrganizationMember();
 
     $connection = newSupplierConnection($distributor, $supplier);
-    $brand = carriedBrand($distributor, 'Magna-Tiles');
+    $brand = carriedBrand($connection, 'Magna-Tiles');
 
     $product = Product::factory()->for($distributor)->create([
         'supplier_connection_id' => $connection->id,
@@ -226,6 +220,8 @@ test('the brands offered on the product pages are the owning distributor list', 
         ->actingAs($supplierUser)
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => $product->name,
+            'product_category_id' => $product->product_category_id,
+            'product_template_id' => $product->product_template_id,
             'brand_id' => $brand->id,
         ])
         ->assertSessionHasNoErrors();
@@ -253,6 +249,7 @@ test('a supplier files a product under one of the owning distributor families', 
 
     $connection = newSupplierConnection($distributor, $supplier);
     $family = legalFamily($distributor, 'Magnetic toy');
+    $familyTemplate = familyTemplate($distributor, 'Magnetic toy');
 
     $product = Product::factory()->for($distributor)->create([
         'supplier_connection_id' => $connection->id,
@@ -277,6 +274,7 @@ test('a supplier files a product under one of the owning distributor families', 
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => $product->name,
             'product_category_id' => $family->id,
+            'product_template_id' => $familyTemplate->id,
         ])
         ->assertSessionHasNoErrors();
 
@@ -296,7 +294,18 @@ test('the legal families are shared with the product pages', function () {
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('products.0.category_label', 'Magnetic toy')
+            ->where('products.0.category_label', 'Magnetic toy'),
+        );
+
+    /**
+     * The list itself offers no families to choose from -- it files
+     * nothing. They are shared with the two pages that do.
+     */
+    $this
+        ->actingAs($user)
+        ->get(route('products.create', ['current_organization' => $organization->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
             ->where('availableCategories', [
                 ['id' => legalFamily($organization, 'Filter')->id, 'label' => 'Filter'],
                 ['id' => legalFamily($organization, 'Magnetic toy')->id, 'label' => 'Magnetic toy'],
@@ -315,21 +324,20 @@ test('the legal families are shared with the product pages', function () {
         );
 });
 
-test('a product survives the deletion of its category', function () {
-    [$user, $organization] = distributorWithSupplier();
+test('a category still on a product cannot be deleted out from under it', function () {
+    [, $organization] = distributorWithSupplier();
 
     $category = ProductCategory::factory()->for($organization)->create(['name' => 'Retired family']);
-    $product = Product::factory()->for($organization)->inCategory($category)->create();
+    Product::factory()->for($organization)->inCategory($category)->create();
 
-    $category->delete();
-
-    expect($product->fresh())->product_category_id->toBeNull();
-
-    $this
-        ->actingAs($user)
-        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('product.category_label', null));
+    /**
+     * The category screen refuses this with a sentence long before it gets
+     * here. The constraint is the backstop for every other way a row could
+     * be reached -- a console command, a future admin screen -- because a
+     * product with no legal family is a product nobody can say which rules
+     * it answers to.
+     */
+    expect(fn () => $category->delete())->toThrow(QueryException::class);
 });
 
 test('products can be created without a barcode', function () {
@@ -498,7 +506,14 @@ test('the available countries of origin are shared with the product pages', func
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('products.0.country_of_origin', 'CH')
-            ->where('products.0.country_of_origin_label', 'Switzerland')
+            ->where('products.0.country_of_origin_label', 'Switzerland'),
+        );
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.create', ['current_organization' => $organization->slug]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
             ->where('availableCountries', [
                 ['value' => 'DE', 'label' => 'Germany'],
                 ['value' => 'CH', 'label' => 'Switzerland'],
@@ -526,7 +541,7 @@ test('products can be updated', function () {
 
     expect($product->fresh())
         ->name->toBe('Organic Oat Milk')
-        ->brand_id->toBe(carriedBrand($organization)->id)
+        ->brand_id->toBe(carriedBrand($connection)->id)
         ->product_category_id->toBe(legalFamily($organization)->id)
         ->ean->toBe('4006381333931')
         ->internal_article_number->toBe('ART-10294')

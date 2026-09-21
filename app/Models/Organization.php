@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Collection<int, Product> $products
  * @property-read Collection<int, ProductCategory> $productCategories
  * @property-read Collection<int, Brand> $brands
+ * @property-read Collection<int, Brand> $suppliedBrands
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, SupplierConnection> $supplierConnections
  * @property-read Collection<int, SupplierConnection> $distributorConnections
@@ -162,16 +163,65 @@ class Organization extends Model
     }
 
     /**
-     * Get the organization's own list of brands.
+     * Get every homework sheet the organization keeps, across all of its
+     * legal families.
      *
-     * There is no starting list to match the legal families: a family comes
-     * from regulation, while the makers an organization carries are its own.
+     * A template belongs to a category rather than to an organization, so
+     * reaching them all means going through the categories. The product
+     * form wants the whole set in one go: it narrows the list to the chosen
+     * family on the client rather than asking the server again.
      *
-     * @return HasMany<Brand, $this>
+     * @return HasManyThrough<ProductTemplate, ProductCategory, $this>
      */
-    public function brands(): HasMany
+    public function productTemplates(): HasManyThrough
     {
-        return $this->hasMany(Brand::class);
+        return $this->hasManyThrough(ProductTemplate::class, ProductCategory::class);
+    }
+
+    /**
+     * Get the makers reachable from this organization as a distributor.
+     *
+     * A brand is named under one supplier connection, so a distributor's
+     * list is everything named under the trades it holds -- including a
+     * connection it has revoked, whose products stay in the catalog and
+     * have to keep reading as something.
+     *
+     * There is no starting list to match the legal families: a family
+     * comes from regulation, while the makers behind a trade are its own.
+     *
+     * @return HasManyThrough<Brand, SupplierConnection, $this>
+     */
+    public function brands(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Brand::class,
+            SupplierConnection::class,
+            'distributor_organization_id',
+            'supplier_connection_id',
+            'id',
+            'id',
+        );
+    }
+
+    /**
+     * Get the makers this organization names as a supplier.
+     *
+     * Narrowed to live connections the way suppliedProducts is: a supplier
+     * whose connection has been revoked has lost the products, and has no
+     * business editing the brands filed against them either.
+     *
+     * @return HasManyThrough<Brand, SupplierConnection, $this>
+     */
+    public function suppliedBrands(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Brand::class,
+            SupplierConnection::class,
+            'supplier_organization_id',
+            'supplier_connection_id',
+            'id',
+            'id',
+        )->where('supplier_connections.status', SupplierConnectionStatus::Active->value);
     }
 
     /**
@@ -249,11 +299,12 @@ class Organization extends Model
     /**
      * Get the relationship used to resolve scoped child route bindings.
      *
-     * Products reach a supplier organization through its active supplier
-     * connections instead of through ownership, so the two sides of the
-     * platform resolve "/{current_organization}/products/{product}" through
-     * different relationships. A miss still raises a model-not-found, so an
-     * organization asking for a product it cannot see gets a 404.
+     * Products and brands reach a supplier organization through its active
+     * supplier connections instead of through ownership, so the two sides
+     * of the platform resolve "/{current_organization}/products/{product}"
+     * through different relationships. A miss still raises a
+     * model-not-found, so an organization asking for a row it cannot see
+     * gets a 404.
      *
      * @param  string  $childType
      */
@@ -261,6 +312,10 @@ class Organization extends Model
     {
         if ($childType === 'product' && $this->isSupplier()) {
             return 'suppliedProducts';
+        }
+
+        if ($childType === 'brand' && $this->isSupplier()) {
+            return 'suppliedBrands';
         }
 
         return parent::childRouteBindingRelationshipName($childType);

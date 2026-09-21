@@ -64,14 +64,19 @@ export function AppSidebar() {
                 icon: Tags,
                 testId: 'nav-categories',
             });
-
-            mainNavItems.push({
-                title: 'Brands',
-                href: brandsIndex(currentOrganization.slug),
-                icon: Copyright,
-                testId: 'nav-brands',
-            });
         }
+
+        /**
+         * Both sides reach the brands: a maker is named under a trade, and
+         * it is the supplier's to name even though it lands in the
+         * distributor's catalog.
+         */
+        mainNavItems.push({
+            title: 'Brands',
+            href: brandsIndex(currentOrganization.slug),
+            icon: Copyright,
+            testId: 'nav-brands',
+        });
 
         mainNavItems.push(
             isSupplier

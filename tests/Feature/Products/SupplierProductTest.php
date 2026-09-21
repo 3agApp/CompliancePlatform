@@ -125,6 +125,8 @@ test('a supplier can update an assigned product', function () {
         ->actingAs($supplierUser)
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => 'Organic Oat Milk',
+            'product_category_id' => $product->product_category_id,
+            'product_template_id' => $product->product_template_id,
             'ean' => '4006381333931',
             'country_of_origin' => 'DE',
         ])
@@ -176,6 +178,8 @@ test('a supplier cannot reassign a product to another connection', function () {
         ->actingAs($supplierUser)
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
             'name' => 'Oat Milk',
+            'product_category_id' => $product->product_category_id,
+            'product_template_id' => $product->product_template_id,
             'supplier_connection_id' => $otherConnection->id,
         ])
         ->assertSessionHasNoErrors();
@@ -215,6 +219,8 @@ test('a distributor cannot assign a product to another distributor connection', 
         ->actingAs($user)
         ->post(route('products.store', ['current_organization' => $distributor->slug]), [
             'name' => 'Oat Milk',
+            'product_category_id' => legalFamily($distributor)->id,
+            'product_template_id' => familyTemplate($distributor)->id,
             'supplier_connection_id' => $connection->id,
         ])
         ->assertSessionHasNoErrors();

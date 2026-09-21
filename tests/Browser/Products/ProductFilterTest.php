@@ -84,8 +84,8 @@ test('a distributor narrows the product list with the brand filter', function ()
 
     $connection = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
 
-    $magnaTiles = $distributor->brands()->create(['name' => 'Magna-Tiles']);
-    $tigerbox = $distributor->brands()->create(['name' => 'tigerbox']);
+    $magnaTiles = carriedBrand($connection, 'Magna-Tiles');
+    $tigerbox = carriedBrand($connection, 'tigerbox');
 
     Product::factory()->for($distributor)->ofBrand($magnaTiles)->create([
         'name' => 'Clear Colors 32',
