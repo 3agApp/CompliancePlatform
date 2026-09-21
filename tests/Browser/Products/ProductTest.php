@@ -123,12 +123,10 @@ test('the identification details of a product are edited on its own page', funct
      */
     $page->click('@product-brand')
         ->click('[role="option"]:has-text("Magna-Tiles")')
-        ->click('@edit-product-tab-classification')
         ->click('@product-category')
         ->click('[role="option"]:has-text("Magnetic toy")')
         ->click('@product-template')
         ->click('[role="option"]:has-text("EU magnetic toy")')
-        ->click('@edit-product-tab-identification')
         ->fill('@product-internal-article-number', 'ART-10294')
         ->fill('@product-supplier-article-number', 'MT-BLUE-32')
         ->fill('@product-order-number', 'PO-2026-0148')
@@ -145,6 +143,50 @@ test('the identification details of a product are edited on its own page', funct
         ->supplier_article_number->toBe('MT-BLUE-32')
         ->order_number->toBe('PO-2026-0148')
         ->customs_tariff_number->toBe('95030075');
+});
+
+/**
+ * Every group of questions sits on the page at once rather than behind a
+ * tab, so one save carries the lot however far down the page the person is
+ * working. The links beside them only move the view.
+ */
+test('the edit page stacks every group of fields, with links that jump to them', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Organic Oat Milk',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->assertSee('Classification')
+        ->assertSee('Product details')
+        ->assertSee('Compliance details')
+        ->assertSee('Documents')
+        /**
+         * A field from each group, without a thing having been opened
+         * first: the classification, the details and the compliance
+         * answers are all on the page together.
+         */
+        ->assertVisible('@product-supplier')
+        ->assertVisible('@product-name')
+        ->assertVisible('@product-warning-text')
+        /** The first section is the one marked until the page is scrolled. */
+        ->assertAriaAttribute('@edit-product-jump-product-classification', 'current', 'true')
+        /**
+         * The jump moves the view and puts the section under the cursor,
+         * and leaves everything else exactly where it was.
+         */
+        ->click('@edit-product-jump-product-documents')
+        ->assertScript('document.activeElement.id', 'product-documents')
+        ->assertVisible('@product-name')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the create page keeps what was typed and shows the validation message for an invalid barcode', function () {

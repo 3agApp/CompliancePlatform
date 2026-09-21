@@ -20,7 +20,6 @@ test('the compliance details of a product are filled in on its own page', functi
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
-        ->click('@edit-product-tab-compliance')
         ->assertSee('Compliance details')
         ->fill('@product-age-grading', '3+')
         ->fill('@product-safety-notice', 'Keep the packaging until the product has been checked.')
@@ -73,7 +72,6 @@ test('a document is taken off a product through the confirmation dialog', functi
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
-        ->click('@edit-product-tab-documents')
         ->assertSee('Test report')
         ->assertSee('en71-part-1.pdf')
         ->click('@product-document-delete-button')
@@ -119,7 +117,6 @@ test('documents of the same kind are listed together under their heading', funct
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
-        ->click('@edit-product-tab-documents')
         ->assertSee('magnets.pdf')
         ->assertSee('paint.pdf')
         ->assertSee('ce-marking.pdf')
@@ -147,7 +144,6 @@ test('a member sees the documents without the upload and delete controls', funct
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
-        ->click('@edit-product-tab-documents')
         ->assertSee('ce-marking.pdf')
         ->assertMissing('@document-file')
         ->assertMissing('@product-document-delete-button')

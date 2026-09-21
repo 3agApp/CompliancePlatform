@@ -159,7 +159,6 @@ test('the product page keeps score of what its template still asks for', functio
         ->assertSee('Still needed')
         ->assertSee('Test report')
         ->assertSee('does not affect the score')
-        ->click('@edit-product-tab-compliance')
         ->fill('@product-warning-text', 'Not suitable for children under 3 years.')
         ->click('@update-product-submit')
         ->assertSee('Product updated.')

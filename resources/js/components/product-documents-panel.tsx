@@ -88,7 +88,7 @@ export default function ProductDocumentsPanel({
 
     return (
         <>
-            <div className="workspace-panel max-w-2xl space-y-6 p-6">
+            <div className="workspace-panel space-y-6 p-6">
                 <Heading
                     variant="small"
                     title="Documents"
@@ -104,7 +104,7 @@ export default function ProductDocumentsPanel({
                             setType(undefined);
                             setUploadCount((count) => count + 1);
                         }}
-                        className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
+                        className="grid max-w-2xl gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
                     >
                         {({ errors, processing }) => (
                             <>

@@ -9,7 +9,7 @@ import ProductDocumentsPanel from '@/components/product-documents-panel';
 import ProductFormFields from '@/components/product-form-fields';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
 import { Button } from '@/components/ui/button';
-import { TabBadge, TabPanel, TabStrip } from '@/components/ui/tabs';
+import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { index, update } from '@/routes/products';
 import type {
@@ -99,22 +99,6 @@ export default function ProductEdit({
      */
     const savedTemplateLabel = product.template_label;
 
-    /**
-     * Four sets of questions that are rarely answered in the same sitting
-     * -- who supplies it, what it is, what it claims, and the papers
-     * behind it -- so they are tabs rather than four panels stacked into a
-     * page nobody reads to the bottom of. The three form tabs stay mounted
-     * while hidden, so a change made on one is saved along with the rest.
-     *
-     * Opening on the details rather than on the classification: the
-     * supplier, family and template are settled when the product is
-     * created and rarely touched again, while the details are what anybody
-     * opening a product came to read.
-     */
-    const [tab, setTab] = useState<
-        'classification' | 'identification' | 'compliance' | 'documents'
-    >('identification');
-
     const supplierLabel =
         availableConnections.find(
             (connection) => connection.id === connectionId,
@@ -125,6 +109,31 @@ export default function ProductEdit({
     const outstandingDocuments = completeness.items.filter(
         (item) => item.group === 'document' && !item.satisfied,
     ).length;
+
+    /**
+     * Four sets of questions -- who supplies it, what it is, what it
+     * claims, and the papers behind it -- stacked down one page in the
+     * order a product is usually filled in. The links beside them move the
+     * viewport; nothing is hidden, so everything typed anywhere on the
+     * page is submitted together and find-in-page still finds it all.
+     */
+    const sections = [
+        { id: 'product-classification', label: 'Classification' },
+        { id: 'product-identification', label: 'Identification' },
+        { id: 'product-compliance', label: 'Compliance' },
+        {
+            id: 'product-documents',
+            label: 'Documents',
+            badge:
+                outstandingDocuments > 0 ? (
+                    <SectionBadge tone="attention">
+                        {outstandingDocuments}
+                    </SectionBadge>
+                ) : product.documents.length > 0 ? (
+                    <SectionBadge>{product.documents.length}</SectionBadge>
+                ) : undefined,
+        },
+    ];
 
     return (
         <>
@@ -170,46 +179,15 @@ export default function ProductEdit({
                 </div>
 
                 <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                    <div className="grid min-w-0 gap-4">
-                        <TabStrip
-                            idPrefix="edit-product"
-                            tabs={[
-                                {
-                                    value: 'classification',
-                                    label: 'Classification',
-                                },
-                                {
-                                    value: 'identification',
-                                    label: 'Identification',
-                                },
-                                { value: 'compliance', label: 'Compliance' },
-                                {
-                                    value: 'documents',
-                                    label: 'Documents',
-                                    badge:
-                                        outstandingDocuments > 0 ? (
-                                            <TabBadge tone="attention">
-                                                {outstandingDocuments}
-                                            </TabBadge>
-                                        ) : product.documents.length > 0 ? (
-                                            <TabBadge>
-                                                {product.documents.length}
-                                            </TabBadge>
-                                        ) : undefined,
-                                },
-                            ]}
-                            value={tab}
-                            onValueChange={setTab}
-                        />
-
+                    <div className="grid min-w-0 gap-6">
                         <Form
                             {...update.form([organizationSlug, product.id])}
                             /**
                              * The component is kept across the save, so the
-                             * tab the person was working on is still the one
-                             * showing afterwards. Props are replaced either
-                             * way, so the checklist and the score still come
-                             * back fresh.
+                             * place the person had scrolled to is still the
+                             * place showing afterwards. Props are replaced
+                             * either way, so the checklist and the score
+                             * still come back fresh.
                              */
                             options={{
                                 preserveScroll: true,
@@ -231,11 +209,11 @@ export default function ProductEdit({
                                     <UnsavedChangesGuard
                                         dirty={dirty && !processing}
                                     />
-                                    <TabPanel
-                                        value="classification"
-                                        active={tab}
-                                        idPrefix="edit-product"
-                                        className="workspace-panel space-y-6 p-6"
+
+                                    <section
+                                        id="product-classification"
+                                        tabIndex={-1}
+                                        className="workspace-panel scroll-mt-6 space-y-6 p-6 outline-none"
                                     >
                                         <Heading
                                             variant="small"
@@ -266,13 +244,12 @@ export default function ProductEdit({
                                             }
                                             idPrefix="edit-product"
                                         />
-                                    </TabPanel>
+                                    </section>
 
-                                    <TabPanel
-                                        value="identification"
-                                        active={tab}
-                                        idPrefix="edit-product"
-                                        className="workspace-panel space-y-6 p-6"
+                                    <section
+                                        id="product-identification"
+                                        tabIndex={-1}
+                                        className="workspace-panel scroll-mt-6 space-y-6 p-6 outline-none"
                                     >
                                         <Heading
                                             variant="small"
@@ -299,13 +276,12 @@ export default function ProductEdit({
                                             }
                                             idPrefix="edit-product"
                                         />
-                                    </TabPanel>
+                                    </section>
 
-                                    <TabPanel
-                                        value="compliance"
-                                        active={tab}
-                                        idPrefix="edit-product"
-                                        className="workspace-panel space-y-6 p-6"
+                                    <section
+                                        id="product-compliance"
+                                        tabIndex={-1}
+                                        className="workspace-panel scroll-mt-6 space-y-6 p-6 outline-none"
                                     >
                                         <Heading
                                             variant="small"
@@ -324,15 +300,14 @@ export default function ProductEdit({
                                             }
                                             idPrefix="edit-product"
                                         />
-                                    </TabPanel>
+                                    </section>
 
                                     {/*
-                                     * Outside every panel, because the three
-                                     * form tabs are saved together: whichever
-                                     * one is open, the button saves the lot.
+                                     * One button for the three sections
+                                     * above, which are one form however far
+                                     * down the page the person happens to be.
                                      */}
-                                    {tab ===
-                                    'documents' ? null : permissions.canUpdateProduct ? (
+                                    {permissions.canUpdateProduct ? (
                                         <div className="flex items-center gap-3">
                                             <Button
                                                 type="submit"
@@ -354,13 +329,13 @@ export default function ProductEdit({
 
                         {/*
                          * The documents panel posts its own multipart form,
-                         * so it sits outside the one above rather than in a
-                         * panel of it -- the tab strip drives both.
+                         * so it sits below the one above rather than inside
+                         * it -- uploading a file never touches the fields.
                          */}
-                        <TabPanel
-                            value="documents"
-                            active={tab}
-                            idPrefix="edit-product"
+                        <section
+                            id="product-documents"
+                            tabIndex={-1}
+                            className="scroll-mt-6 outline-none"
                         >
                             <ProductDocumentsPanel
                                 organizationSlug={organizationSlug}
@@ -369,10 +344,21 @@ export default function ProductEdit({
                                 availableDocumentTypes={availableDocumentTypes}
                                 canUpload={permissions.canUpdateProduct}
                             />
-                        </TabPanel>
+                        </section>
                     </div>
 
-                    <div className="lg:sticky lg:top-6">
+                    <div className="grid gap-4 lg:sticky lg:top-6">
+                        {/*
+                         * Hidden on small screens, where the rail sits below
+                         * the form: a link that scrolls backwards past
+                         * everything it names is worse than a plain scroll.
+                         */}
+                        <SectionNav
+                            sections={sections}
+                            idPrefix="edit-product"
+                            className="hidden lg:block"
+                        />
+
                         <ProductRequirementsPanel
                             completeness={completeness}
                             templateLabel={savedTemplateLabel}

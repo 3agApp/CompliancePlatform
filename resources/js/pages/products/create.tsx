@@ -7,7 +7,6 @@ import ProductFormFields from '@/components/product-form-fields';
 import TemplateRequirementSummary from '@/components/template-requirement-summary';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { TabPanel, TabStrip } from '@/components/ui/tabs';
 import { index as categoriesIndex } from '@/routes/categories';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { index as productsIndex, store } from '@/routes/products';
@@ -54,16 +53,6 @@ export default function ProductsCreate({
      */
     const [dirty, setDirty] = useState(false);
     const [step, setStep] = useState<1 | 2>(1);
-
-    /**
-     * The details step is two groups of very different questions -- what
-     * the product is, and what it claims about its own safety -- so they
-     * are tabs rather than one long scroll. Both panels stay mounted, so
-     * whatever is typed on either is submitted together.
-     */
-    const [detailsTab, setDetailsTab] = useState<
-        'identification' | 'compliance'
-    >('identification');
 
     const template =
         availableTemplates.find((option) => option.id === templateId) ?? null;
@@ -229,6 +218,13 @@ export default function ProductsCreate({
                             hidden={step !== 2}
                             data-test="product-create-step-details"
                         >
+                            {/*
+                             * Two groups of very different questions -- what
+                             * the product is, and what it claims about its
+                             * own safety -- one under the other rather than
+                             * behind each other, so nothing is filled in
+                             * without the person having seen it.
+                             */}
                             <div className="grid gap-1">
                                 <h2 className="text-base font-semibold">
                                     Product details
@@ -240,51 +236,34 @@ export default function ProductsCreate({
                                 </p>
                             </div>
 
-                            <TabStrip
+                            <ProductFormFields
+                                errors={errors}
+                                availableCountries={availableCountries}
+                                availableBrands={availableBrands}
+                                supplierConnectionId={connectionId}
+                                supplierLabel={supplierLabel}
+                                organizationSlug={organizationSlug}
+                                canCreateBrand={canCreateBrand}
+                                requirements={template?.requirements ?? []}
                                 idPrefix="create-product"
-                                tabs={[
-                                    {
-                                        value: 'identification',
-                                        label: 'Identification',
-                                    },
-                                    {
-                                        value: 'compliance',
-                                        label: 'Compliance',
-                                    },
-                                ]}
-                                value={detailsTab}
-                                onValueChange={setDetailsTab}
                             />
 
-                            <TabPanel
-                                value="identification"
-                                active={detailsTab}
-                                idPrefix="create-product"
-                            >
-                                <ProductFormFields
-                                    errors={errors}
-                                    availableCountries={availableCountries}
-                                    availableBrands={availableBrands}
-                                    supplierConnectionId={connectionId}
-                                    supplierLabel={supplierLabel}
-                                    organizationSlug={organizationSlug}
-                                    canCreateBrand={canCreateBrand}
-                                    requirements={template?.requirements ?? []}
-                                    idPrefix="create-product"
-                                />
-                            </TabPanel>
+                            <div className="grid gap-1 border-t pt-6">
+                                <h2 className="text-base font-semibold">
+                                    Compliance details
+                                </h2>
+                                <p className="text-muted-foreground text-sm">
+                                    What the product claims about its own
+                                    safety: the warnings it carries, who it is
+                                    for, and how it may be used.
+                                </p>
+                            </div>
 
-                            <TabPanel
-                                value="compliance"
-                                active={detailsTab}
+                            <ProductComplianceFields
+                                errors={errors}
+                                requirements={template?.requirements ?? []}
                                 idPrefix="create-product"
-                            >
-                                <ProductComplianceFields
-                                    errors={errors}
-                                    requirements={template?.requirements ?? []}
-                                    idPrefix="create-product"
-                                />
-                            </TabPanel>
+                            />
 
                             <div className="flex justify-between gap-2">
                                 <Button
