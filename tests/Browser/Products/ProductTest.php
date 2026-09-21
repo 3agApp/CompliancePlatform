@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductRequirement;
 use App\Models\Brand;
@@ -9,10 +8,13 @@ use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use Illuminate\Support\Facades\Notification;
 
-test('a product is created by classifying it and then filling in the details', function () {
+/**
+ * Creating a product asks for what it cannot exist without and nothing
+ * else, then opens the product so the rest can be filled in.
+ */
+test('a product is created from its classification and its name alone', function () {
     [$user, $organization] = newOrganizationMember();
-    $connection = newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
-    carriedBrand($connection, 'Magna-Tiles');
+    newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
 
     $template = ProductTemplate::factory()
         ->requiring(ProductRequirement::TestReport, ProductRequirement::Ean)
@@ -28,6 +30,13 @@ test('a product is created by classifying it and then filling in the details', f
     $page->assertSee('No products yet')
         ->click('@products-new-product-button')
         ->assertSee('Classify the product')
+        /**
+         * None of the details belong on this page any more: they are asked
+         * for on the product itself.
+         */
+        ->assertMissing('@product-ean')
+        ->assertMissing('@product-brand')
+        ->assertMissing('@product-warning-text')
         ->click('@product-supplier')
         ->click('[role="option"]:has-text("Acme Supplies")')
         ->click('@product-category')
@@ -40,40 +49,28 @@ test('a product is created by classifying it and then filling in the details', f
          */
         ->assertSee('EU toy safety asks for')
         ->assertSee('Test report')
-        ->click('@create-product-continue')
-        ->assertSee('Product details')
         ->fill('@product-name', 'Organic Oat Milk')
-        ->click('@product-brand')
-        ->click('[role="option"]:has-text("Magna-Tiles")')
-        ->fill('@product-internal-article-number', 'ART-10294')
-        ->fill('@product-supplier-article-number', 'MT-BLUE-32')
-        ->fill('@product-ean', '4006381333931')
-        ->fill('@product-order-number', 'PO-2026-0148')
-        ->fill('@product-customs-tariff-number', '9503.00.75')
-        ->click('@product-country-of-origin')
-        ->click('[role="option"]:has-text("Germany")')
         ->click('@create-product-submit')
         ->assertSee('Product created.')
+        /**
+         * And the product itself is what comes back, with the checklist of
+         * everything its template is still waiting for.
+         */
         ->assertSee('Organic Oat Milk')
-        ->assertSee('Magna-Tiles')
-        ->assertSee('Magnetic toy')
-        ->assertSee('ART-10294')
-        ->assertSee('4006381333931')
+        ->assertSee('Requirements')
+        ->assertSee('Still needed')
+        ->assertVisible('@product-ean')
         ->assertNoJavaScriptErrors();
 
     expect(Product::sole())
         ->name->toBe('Organic Oat Milk')
-        ->brand_id->toBe(Brand::query()->where('name', 'Magna-Tiles')->value('id'))
         ->product_category_id->toBe($template->product_category_id)
         ->product_template_id->toBe($template->id)
-        ->ean->toBe('4006381333931')
-        ->internal_article_number->toBe('ART-10294')
-        ->supplier_article_number->toBe('MT-BLUE-32')
-        ->order_number->toBe('PO-2026-0148')
-        ->customs_tariff_number->toBe('95030075')
-        ->country_of_origin->toBe(CountryOfOrigin::Germany)
         ->organization_id->toBe($organization->id)
-        ->supplier_connection_id->toBe(SupplierConnection::sole()->id);
+        ->supplier_connection_id->toBe(SupplierConnection::sole()->id)
+        ->brand_id->toBeNull()
+        ->ean->toBeNull()
+        ->country_of_origin->toBeNull();
 });
 
 test('a category with no templates says so rather than letting the form be submitted', function () {
@@ -189,33 +186,31 @@ test('the edit page stacks every group of fields, with links that jump to them',
         ->assertNoJavaScriptErrors();
 });
 
-test('the create page keeps what was typed and shows the validation message for an invalid barcode', function () {
+test('the edit page keeps what was typed and shows the validation message for an invalid barcode', function () {
     [$user, $organization] = newOrganizationMember();
-    newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
+    $connection = newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);
 
-    ProductTemplate::factory()->create([
-        'product_category_id' => $organization->productCategories()->where('name', 'Filter')->value('id'),
-        'name' => 'Cabin filter',
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'name' => 'Oat Milk',
+        'supplier_connection_id' => $connection->id,
     ]);
 
     $this->actingAs($user);
 
-    visit(route('products.create', ['current_organization' => $organization->slug]))
-        ->click('@product-supplier')
-        ->click('[role="option"]:has-text("Acme Supplies")')
-        ->click('@product-category')
-        ->click('[role="option"]:has-text("Filter")')
-        ->click('@product-template')
-        ->click('[role="option"]:has-text("Cabin filter")')
-        ->click('@create-product-continue')
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
         ->fill('@product-name', 'Organic Oat Milk')
         ->fill('@product-ean', '123')
-        ->click('@create-product-submit')
+        ->click('@update-product-submit')
         ->assertSee('The EAN/barcode must be 8, 12, 13, or 14 digits.')
         ->assertValue('@product-name', 'Organic Oat Milk')
         ->assertNoJavaScriptErrors();
 
-    $this->assertDatabaseCount('products', 0);
+    expect($product->fresh())
+        ->name->toBe('Oat Milk')
+        ->ean->toBeNull();
 });
 
 test('a product is deleted through the confirmation dialog', function () {

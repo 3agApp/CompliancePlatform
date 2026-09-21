@@ -1,18 +1,17 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, ArrowRight, Tags } from 'lucide-react';
+import { ArrowLeft, Tags } from 'lucide-react';
 import { useState } from 'react';
+import InputError from '@/components/input-error';
 import ProductClassificationFields from '@/components/product-classification-fields';
-import ProductComplianceFields from '@/components/product-compliance-fields';
-import ProductFormFields from '@/components/product-form-fields';
 import TemplateRequirementSummary from '@/components/template-requirement-summary';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { index as categoriesIndex } from '@/routes/categories';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { index as categoriesIndex } from '@/routes/categories';
 import { index as productsIndex, store } from '@/routes/products';
 import type {
-    BrandOption,
-    CountryOption,
     ProductCategoryOption,
     ProductRequirementOption,
     ProductTemplateOption,
@@ -20,39 +19,36 @@ import type {
 } from '@/types';
 
 type Props = {
-    availableCountries: CountryOption[];
     availableCategories: ProductCategoryOption[];
     availableTemplates: ProductTemplateOption[];
-    availableBrands: BrandOption[];
     availableConnections: SupplierConnectionOption[];
     availableRequirements: ProductRequirementOption[];
-    canCreateBrand: boolean;
 };
 
+/**
+ * Everything a product cannot exist without, and nothing else.
+ *
+ * Who supplies it, which legal family it falls under, which of that
+ * family's templates it is held to, and what it is called. The numbers on
+ * the box, what it claims about its own safety and the papers behind it
+ * are filled in on the product itself, usually later and often by the
+ * other side of the trade -- asking for them here only stands between a
+ * person and the record they came to open.
+ */
 export default function ProductsCreate({
-    availableCountries,
     availableCategories,
     availableTemplates,
-    availableBrands,
     availableConnections,
     availableRequirements,
-    canCreateBrand,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
 
+    const [dirty, setDirty] = useState(false);
+
     const [connectionId, setConnectionId] = useState<number | null>(null);
     const [categoryId, setCategoryId] = useState<number | null>(null);
     const [templateId, setTemplateId] = useState<number | null>(null);
-
-    /**
-     * Both panels stay mounted and the step only decides which is shown. A
-     * field the person filled in on the other one therefore survives the
-     * move, and a validation error on any of them still reaches the server
-     * on submit -- it can be sent from whichever step they happen to be on.
-     */
-    const [dirty, setDirty] = useState(false);
-    const [step, setStep] = useState<1 | 2>(1);
 
     const template =
         availableTemplates.find((option) => option.id === templateId) ?? null;
@@ -60,11 +56,6 @@ export default function ProductsCreate({
     const templatesInCategory = availableTemplates.filter(
         (option) => option.product_category_id === categoryId,
     );
-
-    const supplierLabel =
-        availableConnections.find(
-            (connection) => connection.id === connectionId,
-        )?.label ?? null;
 
     const categoryLabel =
         availableCategories.find((category) => category.id === categoryId)
@@ -76,9 +67,6 @@ export default function ProductsCreate({
      * out, beats a form that rejects itself on submit.
      */
     const isDeadEnd = categoryId !== null && templatesInCategory.length === 0;
-
-    const isClassified =
-        connectionId !== null && categoryId !== null && templateId !== null;
 
     const chooseCategory = (nextCategoryId: number) => {
         setCategoryId(nextCategoryId);
@@ -100,8 +88,8 @@ export default function ProductsCreate({
                 </Link>
                 <h1 className="page-title">Add a product</h1>
                 <p className="text-muted-foreground text-sm">
-                    First say what kind of product it is, then fill in what its
-                    template asks for.
+                    Say what kind of product it is and what it is called. The
+                    rest is filled in on the product itself.
                 </p>
             </div>
 
@@ -120,12 +108,10 @@ export default function ProductsCreate({
                 {({ errors, processing }) => (
                     <>
                         <UnsavedChangesGuard dirty={dirty && !processing} />
-                        <Steps step={step} />
 
                         <section
                             className="workspace-panel grid gap-6 p-6"
-                            hidden={step !== 1}
-                            data-test="product-create-step-classify"
+                            data-test="product-create-panel"
                         >
                             <div className="grid gap-1">
                                 <h2 className="text-base font-semibold">
@@ -152,6 +138,20 @@ export default function ProductsCreate({
                                 onConnectionChange={setConnectionId}
                                 idPrefix="create-product"
                             />
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-product-name">
+                                    Product name
+                                </Label>
+                                <Input
+                                    id="create-product-name"
+                                    name="name"
+                                    data-test="product-name"
+                                    placeholder="Organic oat milk 1L"
+                                    required
+                                />
+                                <InputError message={errors.name} />
+                            </div>
 
                             {isDeadEnd ? (
                                 <Alert data-test="product-template-dead-end">
@@ -193,89 +193,14 @@ export default function ProductsCreate({
                                         detailed
                                     />
                                     <p className="text-muted-foreground text-xs">
-                                        None of it is required to save. The
-                                        product keeps score of what is still
-                                        outstanding.
+                                        None of it is required to save. You fill
+                                        it in on the product, which keeps score
+                                        of what is still outstanding.
                                     </p>
                                 </div>
                             ) : null}
 
                             <div className="flex justify-end">
-                                <Button
-                                    type="button"
-                                    data-test="create-product-continue"
-                                    disabled={!isClassified}
-                                    onClick={() => setStep(2)}
-                                >
-                                    Continue
-                                    <ArrowRight className="size-4" />
-                                </Button>
-                            </div>
-                        </section>
-
-                        <section
-                            className="workspace-panel grid gap-6 p-6"
-                            hidden={step !== 2}
-                            data-test="product-create-step-details"
-                        >
-                            {/*
-                             * Two groups of very different questions -- what
-                             * the product is, and what it claims about its
-                             * own safety -- one under the other rather than
-                             * behind each other, so nothing is filled in
-                             * without the person having seen it.
-                             */}
-                            <div className="grid gap-1">
-                                <h2 className="text-base font-semibold">
-                                    Product details
-                                </h2>
-                                <p className="text-muted-foreground text-sm">
-                                    What {template?.label ?? 'the template'}{' '}
-                                    asks for is marked. You can save without it
-                                    and fill the rest in later.
-                                </p>
-                            </div>
-
-                            <ProductFormFields
-                                errors={errors}
-                                availableCountries={availableCountries}
-                                availableBrands={availableBrands}
-                                supplierConnectionId={connectionId}
-                                supplierLabel={supplierLabel}
-                                organizationSlug={organizationSlug}
-                                canCreateBrand={canCreateBrand}
-                                requirements={template?.requirements ?? []}
-                                idPrefix="create-product"
-                            />
-
-                            <div className="grid gap-1 border-t pt-6">
-                                <h2 className="text-base font-semibold">
-                                    Compliance details
-                                </h2>
-                                <p className="text-muted-foreground text-sm">
-                                    What the product claims about its own
-                                    safety: the warnings it carries, who it is
-                                    for, and how it may be used.
-                                </p>
-                            </div>
-
-                            <ProductComplianceFields
-                                errors={errors}
-                                requirements={template?.requirements ?? []}
-                                idPrefix="create-product"
-                            />
-
-                            <div className="flex justify-between gap-2">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    data-test="create-product-back"
-                                    onClick={() => setStep(1)}
-                                >
-                                    <ArrowLeft className="size-4" />
-                                    Back
-                                </Button>
-
                                 <Button
                                     type="submit"
                                     data-test="create-product-submit"
@@ -289,39 +214,6 @@ export default function ProductsCreate({
                 )}
             </Form>
         </div>
-    );
-}
-
-function Steps({ step }: { step: 1 | 2 }) {
-    const steps = ['Classify', 'Details'];
-
-    return (
-        <ol className="text-muted-foreground flex items-center gap-3 text-sm">
-            {steps.map((label, index) => {
-                const number = index + 1;
-                const isCurrent = number === step;
-
-                return (
-                    <li key={label} className="flex items-center gap-3">
-                        <span
-                            className={
-                                isCurrent
-                                    ? 'text-foreground font-medium'
-                                    : undefined
-                            }
-                        >
-                            <span className="bg-muted mr-2 inline-flex size-5 items-center justify-center rounded-full text-xs tabular-nums">
-                                {number}
-                            </span>
-                            {label}
-                        </span>
-                        {number < steps.length ? (
-                            <span className="bg-border h-px w-8" />
-                        ) : null}
-                    </li>
-                );
-            })}
-        </ol>
     );
 }
 

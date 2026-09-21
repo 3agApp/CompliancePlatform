@@ -70,9 +70,12 @@ test('products can be created', function () {
 
     $this
         ->actingAs($user)
-        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection))
-        ->assertRedirect(route('products.index', ['current_organization' => $organization->slug]));
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection));
 
+    /**
+     * Straight to the product that was just created, which is where the
+     * rest of it is filled in.
+     */
     $this->assertDatabaseHas('products', [
         'organization_id' => $organization->id,
         'name' => 'Organic Oat Milk',
@@ -86,6 +89,16 @@ test('products can be created', function () {
         'customs_tariff_number' => '95030075',
         'country_of_origin' => 'DE',
     ]);
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, [
+            'name' => 'Oat Milk Barista',
+        ]))
+        ->assertRedirect(route('products.edit', [
+            'current_organization' => $organization->slug,
+            'product' => Product::query()->where('name', 'Oat Milk Barista')->sole()->id,
+        ]));
 });
 
 test('products can be created without any of the optional identification details', function () {
@@ -509,23 +522,19 @@ test('the available countries of origin are shared with the product pages', func
             ->where('products.data.0.country_of_origin_label', 'Switzerland'),
         );
 
-    $this
-        ->actingAs($user)
-        ->get(route('products.create', ['current_organization' => $organization->slug]))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('availableCountries', [
-                ['value' => 'DE', 'label' => 'Germany'],
-                ['value' => 'CH', 'label' => 'Switzerland'],
-            ]),
-        );
-
+    /**
+     * The country is asked for on the product itself, not when it is
+     * created, so the list goes down with the page that offers it.
+     */
     $this
         ->actingAs($user)
         ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('product.country_of_origin', 'CH')
-            ->has('availableCountries', 2),
+            ->where('availableCountries', [
+                ['value' => 'DE', 'label' => 'Germany'],
+                ['value' => 'CH', 'label' => 'Switzerland'],
+            ]),
         );
 });
 

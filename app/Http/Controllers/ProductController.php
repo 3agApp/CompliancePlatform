@@ -81,39 +81,45 @@ class ProductController extends Controller
     /**
      * Show the page a product is created from.
      *
-     * A page rather than a dialog, because creating a product now begins
-     * with classifying it -- supplier, legal family, template -- and only
-     * then asks for the details, which the template has a say in. Every
-     * template the organization keeps goes down with it, so choosing a
-     * family narrows the sheets without another trip to the server.
+     * The page asks for what a product cannot exist without -- supplier,
+     * legal family, template, name -- so it is given only what those four
+     * questions need. Every template the organization keeps goes down with
+     * it, so choosing a family narrows the sheets without another trip to
+     * the server, and the chosen one can say what it will ask for before a
+     * single detail has been typed.
      */
-    public function create(Request $request, Organization $currentOrganization): Response
+    public function create(Organization $currentOrganization): Response
     {
         Gate::authorize('create', [Product::class, $currentOrganization]);
 
         return Inertia::render('products/create', [
-            'availableCountries' => CountryOfOrigin::options(),
             'availableCategories' => $this->availableCategories($currentOrganization),
             'availableTemplates' => $this->availableTemplates($currentOrganization),
-            'availableBrands' => $this->availableBrands($currentOrganization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
             'availableRequirements' => ProductRequirement::options(),
-            'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
         ]);
     }
 
     /**
      * Store a newly created product.
+     *
+     * Straight to the product rather than back to the list: it was created
+     * with the least the schema will accept, so the next thing anybody
+     * wants is the page that holds the rest of it, with the template's
+     * checklist beside it.
      */
     public function store(SaveProductRequest $request, Organization $currentOrganization): RedirectResponse
     {
         Gate::authorize('create', [Product::class, $currentOrganization]);
 
-        $currentOrganization->products()->create($request->validated());
+        $product = $currentOrganization->products()->create($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product created.')]);
 
-        return to_route('products.index', ['current_organization' => $currentOrganization->slug]);
+        return to_route('products.edit', [
+            'current_organization' => $currentOrganization->slug,
+            'product' => $product->id,
+        ]);
     }
 
     /**
