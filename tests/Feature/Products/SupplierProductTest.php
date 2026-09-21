@@ -27,12 +27,12 @@ test('two distributors sharing one supplier never see each other products', func
         ->get(route('products.index', ['current_organization' => $supplier->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 2)
+            ->has('products.data', 2)
             ->where('viewerType', 'supplier')
-            ->where('products.0.name', 'Oat Milk')
-            ->where('products.0.counterparty', $distributorA->name)
-            ->where('products.1.name', 'Rice Milk')
-            ->where('products.1.counterparty', $distributorB->name),
+            ->where('products.data.0.name', 'Oat Milk')
+            ->where('products.data.0.counterparty', $distributorA->name)
+            ->where('products.data.1.name', 'Rice Milk')
+            ->where('products.data.1.counterparty', $distributorB->name),
         );
 
     $this
@@ -40,8 +40,8 @@ test('two distributors sharing one supplier never see each other products', func
         ->get(route('products.index', ['current_organization' => $distributorA->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.id', $productA->id),
+            ->has('products.data', 1)
+            ->where('products.data.0.id', $productA->id),
         );
 
     $this
@@ -64,7 +64,7 @@ test('a product assigned to an unclaimed connection becomes visible once the con
         ->actingAs($supplierUser)
         ->get(route('products.index', ['current_organization' => $supplier->slug]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 
     $this
         ->actingAs($supplierUser)
@@ -79,8 +79,8 @@ test('a product assigned to an unclaimed connection becomes visible once the con
         ->get(route('products.index', ['current_organization' => $supplier->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.id', $product->id),
+            ->has('products.data', 1)
+            ->where('products.data.0.id', $product->id),
         );
 
     expect($product->fresh())
@@ -103,7 +103,7 @@ test('a pending connection does not expose products to the supplier organization
         ->actingAs($supplierUser)
         ->get(route('products.index', ['current_organization' => $supplier->slug]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 
     $this
         ->actingAs($supplierUser)
@@ -271,7 +271,7 @@ test('a product of a revoked connection returns 404 for the supplier', function 
     $this
         ->actingAs($supplierUser)
         ->get(route('products.index', ['current_organization' => $supplier->slug]))
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 
     expect($product->fresh()->supplier_connection_id)->toBe($connection->id);
 });

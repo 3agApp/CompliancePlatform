@@ -184,9 +184,9 @@ test('the compliance details are left off the product list', function () {
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->missing('products.0.safety_notice')
-            ->missing('products.0.warning_text'),
+            ->has('products.data', 1)
+            ->missing('products.data.0.safety_notice')
+            ->missing('products.data.0.warning_text'),
         );
 });
 

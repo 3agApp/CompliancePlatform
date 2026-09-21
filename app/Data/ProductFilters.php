@@ -19,11 +19,22 @@ readonly class ProductFilters
      */
     protected const int MAX_SEARCH_LENGTH = 100;
 
+    /**
+     * The page sizes the list offers, the first of which is the default.
+     *
+     * Anything else in the query string is not a size the list can render,
+     * so it falls back rather than being honoured.
+     *
+     * @var list<int>
+     */
+    public const array PAGE_SIZES = [25, 50, 100];
+
     public function __construct(
         public ?int $connection = null,
         public ?int $category = null,
         public ?int $brand = null,
         public ?string $search = null,
+        public int $perPage = self::PAGE_SIZES[0],
     ) {
         //
     }
@@ -38,7 +49,20 @@ readonly class ProductFilters
             category: self::id($request, 'category'),
             brand: self::id($request, 'brand'),
             search: self::value($request, 'search', self::MAX_SEARCH_LENGTH),
+            perPage: self::perPage($request),
         );
+    }
+
+    /**
+     * Read the page size, which is a choice from a fixed list rather than a
+     * filter: an unrecognised one leaves the list rendering its default
+     * instead of an arbitrary number of rows.
+     */
+    protected static function perPage(Request $request): int
+    {
+        $value = $request->integer('per_page');
+
+        return in_array($value, self::PAGE_SIZES, true) ? $value : self::PAGE_SIZES[0];
     }
 
     /**

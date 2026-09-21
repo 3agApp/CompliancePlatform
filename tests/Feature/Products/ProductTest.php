@@ -58,9 +58,9 @@ test('the products index page lists the products of the current organization', f
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('products/index')
-            ->has('products', 1)
-            ->where('products.0.id', $product->id)
-            ->where('products.0.name', 'Organic Oat Milk')
+            ->has('products.data', 1)
+            ->where('products.data.0.id', $product->id)
+            ->where('products.data.0.name', 'Organic Oat Milk')
             ->where('permissions.canCreateProduct', true),
         );
 });
@@ -294,7 +294,7 @@ test('the legal families are shared with the product pages', function () {
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('products.0.category_label', 'Magnetic toy'),
+            ->where('products.data.0.category_label', 'Magnetic toy'),
         );
 
     /**
@@ -505,8 +505,8 @@ test('the available countries of origin are shared with the product pages', func
         ->actingAs($user)
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('products.0.country_of_origin', 'CH')
-            ->where('products.0.country_of_origin_label', 'Switzerland'),
+            ->where('products.data.0.country_of_origin', 'CH')
+            ->where('products.data.0.country_of_origin_label', 'Switzerland'),
         );
 
     $this
