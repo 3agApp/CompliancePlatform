@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Data\ProductCompleteness;
 use App\Enums\CountryOfOrigin;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
@@ -19,7 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $supplier_connection_id
  * @property string $name
  * @property int|null $brand_id
- * @property int|null $product_category_id
+ * @property int $product_category_id
+ * @property int $product_template_id
  * @property string|null $ean
  * @property string|null $internal_article_number
  * @property string|null $supplier_article_number
@@ -37,7 +39,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
  * @property-read Brand|null $brand
- * @property-read ProductCategory|null $category
+ * @property-read ProductCategory $category
+ * @property-read ProductTemplate $template
  * @property-read SupplierConnection|null $supplierConnection
  * @property-read Collection<int, ProductDocument> $documents
  */
@@ -45,6 +48,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'name',
     'brand_id',
     'product_category_id',
+    'product_template_id',
     'ean',
     'internal_article_number',
     'supplier_article_number',
@@ -105,6 +109,31 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'product_category_id');
+    }
+
+    /**
+     * Get the homework sheet the product is held to.
+     *
+     * Always one of the templates under the product's own category: the
+     * pair is checked together when the product is saved, because no
+     * foreign key can say that the two point at the same family.
+     *
+     * @return BelongsTo<ProductTemplate, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(ProductTemplate::class, 'product_template_id');
+    }
+
+    /**
+     * Read the product against its template.
+     *
+     * Expects the template and the documents to be loaded; every caller
+     * reads a list of products and would otherwise pay two queries a row.
+     */
+    public function completeness(): ProductCompleteness
+    {
+        return ProductCompleteness::for($this);
     }
 
     /**

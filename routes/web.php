@@ -9,6 +9,7 @@ use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
+use App\Http\Controllers\ProductTemplateController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
 use App\Http\Controllers\Suppliers\SupplierConnectionController;
@@ -39,6 +40,8 @@ Route::prefix('{current_organization}')
 
         Route::scopeBindings()->group(function () {
             Route::get('products', [ProductController::class, 'index'])->name('products.index');
+            // Declared before products/{product} so "create" is a page, not a product key.
+            Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
             Route::post('products', [ProductController::class, 'store'])->name('products.store');
             Route::get('products/{product}', [ProductController::class, 'edit'])->name('products.edit');
             Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
@@ -48,16 +51,26 @@ Route::prefix('{current_organization}')
             Route::get('products/{product}/documents/{document}', [ProductDocumentController::class, 'show'])->name('products.documents.show');
             Route::delete('products/{product}/documents/{document}', [ProductDocumentController::class, 'destroy'])->name('products.documents.destroy');
 
-            Route::middleware(EnsureOrganizationType::class.':distributor')->group(function () {
-                Route::get('brands', [BrandController::class, 'index'])->name('brands.index');
-                Route::post('brands', [BrandController::class, 'store'])->name('brands.store');
-                Route::patch('brands/{brand}', [BrandController::class, 'update'])->name('brands.update');
-                Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
+            /**
+             * Brands are named under a supplier connection, so both sides
+             * of a trade reach them: the supplier because the maker is
+             * theirs to name, the distributor because it is their catalog.
+             * They sit outside the distributor-only group for that reason.
+             */
+            Route::get('brands', [BrandController::class, 'index'])->name('brands.index');
+            Route::post('brands', [BrandController::class, 'store'])->name('brands.store');
+            Route::patch('brands/{brand}', [BrandController::class, 'update'])->name('brands.update');
+            Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
 
+            Route::middleware(EnsureOrganizationType::class.':distributor')->group(function () {
                 Route::get('categories', [ProductCategoryController::class, 'index'])->name('categories.index');
                 Route::post('categories', [ProductCategoryController::class, 'store'])->name('categories.store');
                 Route::patch('categories/{product_category}', [ProductCategoryController::class, 'update'])->name('categories.update');
                 Route::delete('categories/{product_category}', [ProductCategoryController::class, 'destroy'])->name('categories.destroy');
+
+                Route::post('categories/{product_category}/templates', [ProductTemplateController::class, 'store'])->name('categories.templates.store');
+                Route::patch('categories/{product_category}/templates/{template}', [ProductTemplateController::class, 'update'])->name('categories.templates.update');
+                Route::delete('categories/{product_category}/templates/{template}', [ProductTemplateController::class, 'destroy'])->name('categories.templates.destroy');
 
                 Route::get('suppliers', [SupplierConnectionController::class, 'index'])->name('suppliers.index');
                 Route::post('suppliers', [SupplierConnectionController::class, 'store'])->name('suppliers.store');

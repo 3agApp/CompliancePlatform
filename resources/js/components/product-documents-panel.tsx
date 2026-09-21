@@ -99,7 +99,7 @@ export default function ProductDocumentsPanel({
                     <Form
                         key={uploadCount}
                         {...store.form([organizationSlug, productId])}
-                        options={{ preserveScroll: true }}
+                        options={{ preserveScroll: true, preserveState: true }}
                         onSuccess={() => {
                             setType(undefined);
                             setUploadCount((count) => count + 1);

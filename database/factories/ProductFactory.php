@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTemplate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,9 +18,25 @@ class ProductFactory extends Factory
     /**
      * Define the model's default state.
      *
-     * The brand and the category are left unset so a test that asserts on
-     * the lists offered by the product pages sees only the rows it set up
-     * itself, rather than ones invented for a product it happened to create.
+     * The brand is left unset so a test that asserts on the lists offered
+     * by the product pages sees only the rows it set up itself, rather than
+     * ones invented for a product it happened to create.
+     *
+     * The category and the template cannot be: a product must have both.
+     * Whatever the organization already keeps is reused before anything is
+     * invented, so a test asserting on the families or the sheets a page
+     * offers still sees only the rows it set up itself -- a distributor
+     * already starts with three families, and a product made in passing
+     * should not quietly add a fourth.
+     *
+     * They resolve in order, so the template always lands under the
+     * product's own category: the pairing every product is required to
+     * hold to. A caller that means to say which sheet to use passes
+     * usingTemplate() and neither is looked up.
+     *
+     * A template invented here asks for nothing, so a product from here
+     * scores a hundred and the score stays out of the way of tests about
+     * other things.
      *
      * @return array<string, mixed>
      */
@@ -28,7 +45,20 @@ class ProductFactory extends Factory
         return [
             'organization_id' => Organization::factory(),
             'supplier_connection_id' => null,
-            'product_category_id' => null,
+            'product_category_id' => fn (array $attributes) => ProductCategory::query()
+                ->where('organization_id', $attributes['organization_id'])
+                ->orderBy('id')
+                ->value('id')
+                ?? ProductCategory::factory()
+                    ->create(['organization_id' => $attributes['organization_id']])
+                    ->id,
+            'product_template_id' => fn (array $attributes) => ProductTemplate::query()
+                ->where('product_category_id', $attributes['product_category_id'])
+                ->orderBy('id')
+                ->value('id')
+                ?? ProductTemplate::factory()
+                    ->create(['product_category_id' => $attributes['product_category_id']])
+                    ->id,
             'brand_id' => null,
             'name' => fake()->unique()->words(3, true),
             'ean' => (string) fake()->unique()->numerify('#############'),
@@ -52,11 +82,35 @@ class ProductFactory extends Factory
 
     /**
      * Indicate that the product is filed under the given legal family.
+     *
+     * The template follows the category, because the two are only ever
+     * valid together. A caller that cares which sheet it is held to says so
+     * with usingTemplate() instead.
      */
     public function inCategory(ProductCategory $category): static
     {
         return $this->state(fn (array $attributes) => [
             'product_category_id' => $category->id,
+            'product_template_id' => ProductTemplate::query()
+                ->where('product_category_id', $category->id)
+                ->orderBy('id')
+                ->value('id')
+                ?? ProductTemplate::factory()
+                    ->create(['product_category_id' => $category->id])
+                    ->id,
+        ]);
+    }
+
+    /**
+     * Indicate that the product is held to the given template.
+     *
+     * Sets the category with it, so the pair can never come apart.
+     */
+    public function usingTemplate(ProductTemplate $template): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'product_category_id' => $template->product_category_id,
+            'product_template_id' => $template->id,
         ]);
     }
 
@@ -82,11 +136,13 @@ class ProductFactory extends Factory
 
     /**
      * Indicate that the product carries nothing but its name.
+     *
+     * Its category and template stay: they are not optional, and a product
+     * without them cannot exist to be asserted on.
      */
     public function withoutOptionalDetails(): static
     {
         return $this->state(fn (array $attributes) => [
-            'product_category_id' => null,
             'brand_id' => null,
             'ean' => null,
             'internal_article_number' => null,

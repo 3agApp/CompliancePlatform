@@ -19,11 +19,17 @@ return new class extends Migration
     {
         Schema::table('products', function (Blueprint $table) {
             $table->string('brand')->nullable()->after('name');
+            /**
+             * Required: a product nobody has filed under a legal family is
+             * a product nobody can say which rules it answers to.
+             * Restricted on delete, so a family still in use cannot be
+             * pulled out from under its products -- the category screen
+             * refuses that long before the database has to.
+             */
             $table->foreignId('product_category_id')
-                ->nullable()
                 ->after('brand')
                 ->constrained()
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->string('internal_article_number')->nullable()->after('ean');
             $table->string('supplier_article_number')->nullable()->after('internal_article_number');
             $table->string('order_number')->nullable()->after('supplier_article_number');

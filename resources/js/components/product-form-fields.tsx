@@ -1,5 +1,8 @@
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import CreateBrandModal from '@/components/create-brand-modal';
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -13,31 +16,35 @@ import type {
     BrandOption,
     CountryOfOrigin,
     CountryOption,
-    OrganizationType,
     Product,
-    ProductCategoryOption,
-    SupplierConnectionOption,
+    ProductRequirementKey,
 } from '@/types';
 
 type FieldName =
     | 'name'
     | 'brand_id'
-    | 'product_category_id'
     | 'ean'
     | 'internal_article_number'
     | 'supplier_article_number'
     | 'order_number'
     | 'customs_tariff_number'
-    | 'country_of_origin'
-    | 'supplier_connection_id';
+    | 'country_of_origin';
 
 type Props = {
     errors: Partial<Record<FieldName, string>>;
     availableCountries: CountryOption[];
-    availableCategories: ProductCategoryOption[];
     availableBrands: BrandOption[];
-    availableConnections: SupplierConnectionOption[];
-    viewerType: OrganizationType;
+    /**
+     * The trade the product sits on. A maker is named under one supplier,
+     * so this is what narrows the brands on offer -- and what a new one
+     * would be filed under.
+     */
+    supplierConnectionId: number | null;
+    supplierLabel: string | null;
+    organizationSlug: string;
+    canCreateBrand?: boolean;
+    /** What the product's template asks for, which is what marks the labels. */
+    requirements?: ProductRequirementKey[];
     product?: Product;
     disabled?: boolean;
     idPrefix?: string;
@@ -54,13 +61,36 @@ export function Optional() {
     );
 }
 
+/**
+ * A field the product's template asks for.
+ *
+ * Deliberately not a `required` attribute, and deliberately not a warning
+ * colour. A template is homework, not a gate: the product saves with the
+ * field empty, and the marker says the template asks for it whether or not
+ * it has been answered yet. Amber here would read as a fault on a field
+ * that is already filled in. Which ones are still outstanding is the
+ * checklist's job, not the label's.
+ */
+export function RequiredByTemplate() {
+    return <span className="text-foreground font-normal">(required)</span>;
+}
+
+/**
+ * The marker on one label, given what the template asks for.
+ */
+export function FieldMarker({ required }: { required: boolean }) {
+    return required ? <RequiredByTemplate /> : <Optional />;
+}
+
 export default function ProductFormFields({
     errors,
     availableCountries,
-    availableCategories,
     availableBrands,
-    availableConnections,
-    viewerType,
+    supplierConnectionId,
+    supplierLabel,
+    organizationSlug,
+    canCreateBrand = false,
+    requirements = [],
     product,
     disabled = false,
     idPrefix = 'product',
@@ -73,24 +103,26 @@ export default function ProductFormFields({
         product?.brand_id ? String(product.brand_id) : undefined,
     );
 
-    const [categoryId, setCategoryId] = useState<string | undefined>(
-        product?.product_category_id
-            ? String(product.product_category_id)
-            : undefined,
+    const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+
+    const needs = (requirement: ProductRequirementKey) =>
+        requirements.includes(requirement);
+
+    const brands = availableBrands.filter(
+        (brand) => brand.supplier_connection_id === supplierConnectionId,
     );
 
     /**
-     * Only the distributor that owns a product chooses its supplier. The field
-     * is not rendered for a supplier, and the server does not accept it from
-     * them either.
+     * Derived rather than cleared on a change of supplier: a brand that is
+     * not one of this supplier's is simply not a selection, and switching
+     * back brings it into view again without anything having been thrown
+     * away in between.
      */
-    const canAssignSupplier = viewerType === 'distributor';
+    const selectedBrandId = brands.some((brand) => String(brand.id) === brandId)
+        ? brandId
+        : undefined;
 
-    const [connectionId, setConnectionId] = useState<string | undefined>(
-        product?.supplier_connection_id
-            ? String(product.supplier_connection_id)
-            : undefined,
-    );
+    const hasSupplier = supplierConnectionId !== null;
 
     return (
         <div className="grid gap-4">
@@ -111,89 +143,104 @@ export default function ProductFormFields({
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-brand`}>
-                        Brand <Optional />
+                        Brand <FieldMarker required={needs('requires_brand')} />
                     </Label>
-                    <Select
-                        value={brandId}
-                        onValueChange={setBrandId}
-                        disabled={disabled || availableBrands.length === 0}
-                    >
-                        <SelectTrigger
-                            id={`${idPrefix}-brand`}
-                            data-test="product-brand"
-                            className="w-full"
+                    <div className="flex gap-2">
+                        <Select
+                            value={selectedBrandId}
+                            onValueChange={setBrandId}
+                            disabled={disabled || brands.length === 0}
                         >
-                            <SelectValue placeholder="Select a brand" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableBrands.map((brand) => (
-                                <SelectItem
-                                    key={brand.id}
-                                    value={String(brand.id)}
-                                >
-                                    {brand.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                            <SelectTrigger
+                                id={`${idPrefix}-brand`}
+                                data-test="product-brand"
+                                className="w-full"
+                            >
+                                <SelectValue
+                                    placeholder={
+                                        hasSupplier
+                                            ? 'Select a brand'
+                                            : 'Pick a supplier first'
+                                    }
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {brands.map((brand) => (
+                                    <SelectItem
+                                        key={brand.id}
+                                        value={String(brand.id)}
+                                    >
+                                        {brand.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {canCreateBrand && hasSupplier && !disabled ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                data-test="product-add-brand"
+                                aria-label="Add a brand"
+                                onClick={() => setBrandDialogOpen(true)}
+                            >
+                                <Plus className="size-4" />
+                            </Button>
+                        ) : null}
+                    </div>
                     <input
                         type="hidden"
                         name="brand_id"
-                        value={brandId ?? ''}
+                        value={selectedBrandId ?? ''}
                     />
                     <p className="text-muted-foreground text-xs">
-                        {availableBrands.length === 0
-                            ? 'No brands yet — add them under Brands.'
-                            : 'The maker of the product.'}
+                        {!hasSupplier
+                            ? 'A brand belongs to a supplier.'
+                            : brands.length === 0
+                              ? `${supplierLabel ?? 'This supplier'} has no brands yet.`
+                              : 'The maker of the product.'}
                     </p>
                     <InputError message={errors.brand_id} />
+
+                    {hasSupplier ? (
+                        <CreateBrandModal
+                            organizationSlug={organizationSlug}
+                            supplierConnectionId={supplierConnectionId}
+                            supplierLabel={supplierLabel ?? 'This supplier'}
+                            open={brandDialogOpen}
+                            onOpenChange={setBrandDialogOpen}
+                            onCreated={(brand) => setBrandId(String(brand.id))}
+                        />
+                    ) : null}
                 </div>
 
                 <div className="grid content-start gap-2">
-                    <Label htmlFor={`${idPrefix}-category`}>
-                        Category <Optional />
+                    <Label htmlFor={`${idPrefix}-ean`}>
+                        EAN / barcode{' '}
+                        <FieldMarker required={needs('requires_ean')} />
                     </Label>
-                    <Select
-                        value={categoryId}
-                        onValueChange={setCategoryId}
-                        disabled={disabled || availableCategories.length === 0}
-                    >
-                        <SelectTrigger
-                            id={`${idPrefix}-category`}
-                            data-test="product-category"
-                            className="w-full"
-                        >
-                            <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableCategories.map((category) => (
-                                <SelectItem
-                                    key={category.id}
-                                    value={String(category.id)}
-                                >
-                                    {category.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <input
-                        type="hidden"
-                        name="product_category_id"
-                        value={categoryId ?? ''}
+                    <Input
+                        id={`${idPrefix}-ean`}
+                        name="ean"
+                        data-test="product-ean"
+                        defaultValue={product?.ean ?? ''}
+                        placeholder="4006381333931"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        disabled={disabled}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {availableCategories.length === 0
-                            ? 'No categories yet — add them under Categories.'
-                            : 'Its legal family.'}
-                    </p>
-                    <InputError message={errors.product_category_id} />
+                    <InputError message={errors.ean} />
                 </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-internal-article-number`}>
-                        Internal article number <Optional />
+                        Internal article number{' '}
+                        <FieldMarker
+                            required={needs('requires_internal_article_number')}
+                        />
                     </Label>
                     <Input
                         id={`${idPrefix}-internal-article-number`}
@@ -212,7 +259,10 @@ export default function ProductFormFields({
 
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-supplier-article-number`}>
-                        Supplier article number <Optional />
+                        Supplier article number{' '}
+                        <FieldMarker
+                            required={needs('requires_supplier_article_number')}
+                        />
                     </Label>
                     <Input
                         id={`${idPrefix}-supplier-article-number`}
@@ -232,25 +282,11 @@ export default function ProductFormFields({
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
-                    <Label htmlFor={`${idPrefix}-ean`}>
-                        EAN / barcode <Optional />
-                    </Label>
-                    <Input
-                        id={`${idPrefix}-ean`}
-                        name="ean"
-                        data-test="product-ean"
-                        defaultValue={product?.ean ?? ''}
-                        placeholder="4006381333931"
-                        inputMode="numeric"
-                        autoComplete="off"
-                        disabled={disabled}
-                    />
-                    <InputError message={errors.ean} />
-                </div>
-
-                <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-order-number`}>
-                        Order number <Optional />
+                        Order number{' '}
+                        <FieldMarker
+                            required={needs('requires_order_number')}
+                        />
                     </Label>
                     <Input
                         id={`${idPrefix}-order-number`}
@@ -263,12 +299,13 @@ export default function ProductFormFields({
                     />
                     <InputError message={errors.order_number} />
                 </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-customs-tariff-number`}>
-                        Customs tariff number <Optional />
+                        Customs tariff number{' '}
+                        <FieldMarker
+                            required={needs('requires_customs_tariff_number')}
+                        />
                     </Label>
                     <Input
                         id={`${idPrefix}-customs-tariff-number`}
@@ -285,87 +322,47 @@ export default function ProductFormFields({
                     </p>
                     <InputError message={errors.customs_tariff_number} />
                 </div>
-
-                <div className="grid content-start gap-2">
-                    <Label htmlFor={`${idPrefix}-country-of-origin`}>
-                        Country of origin <Optional />
-                    </Label>
-                    <Select
-                        value={country}
-                        onValueChange={(value) =>
-                            setCountry(value as CountryOfOrigin)
-                        }
-                        disabled={disabled}
-                    >
-                        <SelectTrigger
-                            id={`${idPrefix}-country-of-origin`}
-                            data-test="product-country-of-origin"
-                            className="w-full"
-                        >
-                            <SelectValue placeholder="Select a country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableCountries.map((availableCountry) => (
-                                <SelectItem
-                                    key={availableCountry.value}
-                                    value={availableCountry.value}
-                                >
-                                    {availableCountry.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <input
-                        type="hidden"
-                        name="country_of_origin"
-                        value={country ?? ''}
-                    />
-                    <InputError message={errors.country_of_origin} />
-                </div>
             </div>
 
-            {canAssignSupplier ? (
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-supplier`}>Supplier</Label>
-                    <Select
-                        value={connectionId}
-                        onValueChange={setConnectionId}
-                        disabled={disabled || availableConnections.length === 0}
-                    >
-                        <SelectTrigger
-                            id={`${idPrefix}-supplier`}
-                            data-test="product-supplier"
-                            className="w-full"
-                        >
-                            <SelectValue placeholder="Select a supplier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableConnections.map((connection) => (
-                                <SelectItem
-                                    key={connection.id}
-                                    value={String(connection.id)}
-                                >
-                                    {connection.label}
-                                    {connection.isPending
-                                        ? ' (invitation pending)'
-                                        : ''}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <input
-                        type="hidden"
-                        name="supplier_connection_id"
-                        value={connectionId ?? ''}
+            <div className="grid gap-2 sm:max-w-[calc(50%-0.5rem)]">
+                <Label htmlFor={`${idPrefix}-country-of-origin`}>
+                    Country of origin{' '}
+                    <FieldMarker
+                        required={needs('requires_country_of_origin')}
                     />
-                    {availableConnections.length === 0 ? (
-                        <p className="text-muted-foreground text-xs">
-                            Invite a supplier first — every product needs one.
-                        </p>
-                    ) : null}
-                    <InputError message={errors.supplier_connection_id} />
-                </div>
-            ) : null}
+                </Label>
+                <Select
+                    value={country}
+                    onValueChange={(value) =>
+                        setCountry(value as CountryOfOrigin)
+                    }
+                    disabled={disabled}
+                >
+                    <SelectTrigger
+                        id={`${idPrefix}-country-of-origin`}
+                        data-test="product-country-of-origin"
+                        className="w-full"
+                    >
+                        <SelectValue placeholder="Select a country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableCountries.map((availableCountry) => (
+                            <SelectItem
+                                key={availableCountry.value}
+                                value={availableCountry.value}
+                            >
+                                {availableCountry.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <input
+                    type="hidden"
+                    name="country_of_origin"
+                    value={country ?? ''}
+                />
+                <InputError message={errors.country_of_origin} />
+            </div>
         </div>
     );
 }

@@ -5,13 +5,18 @@ namespace App\Policies;
 use App\Enums\OrganizationPermission;
 use App\Models\Brand;
 use App\Models\Organization;
+use App\Models\SupplierConnection;
 use App\Models\User;
 
 /**
- * A brand list belongs to the distributor that keeps it. A supplier picks
- * from the owning distributor's list when filling in a product assigned to
- * them, but holds none of its own, so every check here starts from the
- * organization that owns the row.
+ * A brand is named under one supplier connection, so both sides of that
+ * trade reach it: the supplier because the maker is theirs to name, and the
+ * distributor because it is their catalog the answer lands in.
+ *
+ * Every check therefore starts from the connection rather than from a
+ * single owning organization. A supplier reaches one only while the
+ * connection is live -- a revoked supplier has already lost the products
+ * these brands sit on.
  */
 class BrandPolicy
 {
@@ -20,17 +25,15 @@ class BrandPolicy
      */
     public function viewAny(User $user, Organization $organization): bool
     {
-        return $organization->isDistributor()
-            && $user->hasOrganizationPermission($organization, OrganizationPermission::ViewBrand);
+        return $user->hasOrganizationPermission($organization, OrganizationPermission::ViewBrand);
     }
 
     /**
-     * Determine whether the user can create brands for the organization.
+     * Determine whether the user can name a maker under the connection.
      */
-    public function create(User $user, Organization $organization): bool
+    public function create(User $user, SupplierConnection $connection): bool
     {
-        return $organization->isDistributor()
-            && $user->hasOrganizationPermission($organization, OrganizationPermission::CreateBrand);
+        return $this->reaches($user, $connection, OrganizationPermission::CreateBrand);
     }
 
     /**
@@ -38,7 +41,7 @@ class BrandPolicy
      */
     public function update(User $user, Brand $brand): bool
     {
-        return $user->hasOrganizationPermission($brand->organization, OrganizationPermission::UpdateBrand);
+        return $this->reaches($user, $brand->supplierConnection, OrganizationPermission::UpdateBrand);
     }
 
     /**
@@ -46,6 +49,28 @@ class BrandPolicy
      */
     public function delete(User $user, Brand $brand): bool
     {
-        return $user->hasOrganizationPermission($brand->organization, OrganizationPermission::DeleteBrand);
+        return $this->reaches($user, $brand->supplierConnection, OrganizationPermission::DeleteBrand);
+    }
+
+    /**
+     * Determine whether the user holds the permission on either side of the
+     * trade the brand is named under.
+     *
+     * The distributor reaches every connection they hold, revoked ones
+     * included: the products are still in their catalog and still carry
+     * these brands. The supplier reaches only a live one, which is the same
+     * line their products are drawn on.
+     */
+    protected function reaches(User $user, SupplierConnection $connection, OrganizationPermission $permission): bool
+    {
+        if ($user->hasOrganizationPermission($connection->distributorOrganization, $permission)) {
+            return true;
+        }
+
+        $supplier = $connection->supplierOrganization;
+
+        return $connection->isActive()
+            && $supplier instanceof Organization
+            && $user->hasOrganizationPermission($supplier, $permission);
     }
 }

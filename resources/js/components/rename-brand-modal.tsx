@@ -14,32 +14,36 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { store, update } from '@/routes/brands';
+import { update } from '@/routes/brands';
 import type { Brand } from '@/types';
 
 type Props = PropsWithChildren<{
     organizationSlug: string;
-    brand?: Brand;
+    brand: Brand | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }>;
 
 /**
- * One dialog for adding and for renaming. A brand is a name and nothing
- * else, so the two forms would otherwise be the same markup twice.
+ * Rename a maker.
+ *
+ * Renaming only: a brand is named under one trade and never moves to
+ * another, because the products already carrying it belong to that
+ * supplier and moving the row would quietly move them too. Adding one is
+ * CreateBrandModal, which asks which trade it goes under.
  */
-export default function SaveBrandModal({
+export default function RenameBrandModal({
     organizationSlug,
     brand,
     open,
     onOpenChange,
     children,
 }: Props) {
-    const isEditing = brand !== undefined;
+    if (brand === null) {
+        return null;
+    }
 
-    const form = isEditing
-        ? update.form([organizationSlug, brand.id])
-        : store.form(organizationSlug);
+    const form = update.form([organizationSlug, brand.id]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,7 +53,7 @@ export default function SaveBrandModal({
 
             <DialogContent>
                 <Form
-                    key={`${brand?.id ?? 'new'}-${String(open)}`}
+                    key={`${brand.id}-${String(open)}`}
                     {...form}
                     className="space-y-6"
                     onSuccess={() => onOpenChange(false)}
@@ -57,13 +61,11 @@ export default function SaveBrandModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>
-                                    {isEditing ? 'Rename brand' : 'Add a brand'}
-                                </DialogTitle>
+                                <DialogTitle>Rename brand</DialogTitle>
                                 <DialogDescription>
-                                    A brand is the legal family a product is
-                                    regulated under, such as a toy or a magnetic
-                                    toy.
+                                    The maker behind a product, such as
+                                    Magna-Tiles or tigerbox. It stays with the
+                                    supplier it is filed under.
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -73,7 +75,7 @@ export default function SaveBrandModal({
                                     id="brand-name"
                                     name="name"
                                     data-test="brand-name"
-                                    defaultValue={brand?.name ?? ''}
+                                    defaultValue={brand.name}
                                     placeholder="Magna-Tiles"
                                     autoComplete="off"
                                     required
@@ -91,7 +93,7 @@ export default function SaveBrandModal({
                                     data-test="save-brand-submit"
                                     disabled={processing}
                                 >
-                                    {isEditing ? 'Save changes' : 'Add brand'}
+                                    Save changes
                                 </Button>
                             </DialogFooter>
                         </>

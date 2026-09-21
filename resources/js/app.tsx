@@ -3,6 +3,7 @@ import ErrorBoundary from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+import { installPrefetchInvalidation } from '@/lib/prefetch';
 import { installUrlDefaults } from '@/lib/url-defaults';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
@@ -12,6 +13,9 @@ const appName = import.meta.env.VITE_APP_NAME || 'CompliancePlatform';
 
 // Before the app renders: the first page already needs them.
 installUrlDefaults();
+
+// Before the app renders: a write on the first page already has to flush.
+installPrefetchInvalidation();
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

@@ -43,6 +43,7 @@ export function AppSidebar() {
             title: 'Dashboard',
             href: dashboardUrl,
             icon: LayoutGrid,
+            testId: 'nav-dashboard',
         },
     ];
 
@@ -53,6 +54,7 @@ export function AppSidebar() {
             title: isSupplier ? 'Assigned products' : 'Products',
             href: productsIndex(currentOrganization.slug),
             icon: Package,
+            testId: 'nav-products',
         });
 
         if (!isSupplier) {
@@ -60,14 +62,21 @@ export function AppSidebar() {
                 title: 'Categories',
                 href: categoriesIndex(currentOrganization.slug),
                 icon: Tags,
-            });
-
-            mainNavItems.push({
-                title: 'Brands',
-                href: brandsIndex(currentOrganization.slug),
-                icon: Copyright,
+                testId: 'nav-categories',
             });
         }
+
+        /**
+         * Both sides reach the brands: a maker is named under a trade, and
+         * it is the supplier's to name even though it lands in the
+         * distributor's catalog.
+         */
+        mainNavItems.push({
+            title: 'Brands',
+            href: brandsIndex(currentOrganization.slug),
+            icon: Copyright,
+            testId: 'nav-brands',
+        });
 
         mainNavItems.push(
             isSupplier
@@ -75,11 +84,13 @@ export function AppSidebar() {
                       title: 'Distributors',
                       href: distributorsIndex(currentOrganization.slug),
                       icon: Truck,
+                      testId: 'nav-distributors',
                   }
                 : {
                       title: 'Suppliers',
                       href: suppliersIndex(currentOrganization.slug),
                       icon: Factory,
+                      testId: 'nav-suppliers',
                   },
         );
 
@@ -87,6 +98,7 @@ export function AppSidebar() {
             title: 'Organization settings',
             href: editOrganization(currentOrganization.slug),
             icon: Settings2,
+            testId: 'nav-organization-settings',
         });
     }
 
@@ -95,6 +107,7 @@ export function AppSidebar() {
             title: 'Invitations',
             href: invitationsIndex(),
             icon: Mail,
+            testId: 'nav-invitations',
             badge: pendingInvitationsCount,
         });
     }

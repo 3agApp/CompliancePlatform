@@ -12,26 +12,37 @@ return new class extends Migration
      *
      * The brand was free text on the product, so the same maker was spelled
      * three ways across a catalog and nothing could be counted by it. It
-     * becomes a row the organization keeps, the way its legal families
-     * already are.
+     * becomes a row, the way the legal families already are.
+     *
+     * It hangs off the supplier connection rather than off an organization,
+     * because a brand is the maker as known through one trading
+     * relationship: it is the supplier's to name, and the distributor sees
+     * it on the products that supplier is responsible for. Two suppliers
+     * both carrying the same maker are two rows, which is right -- each
+     * side answers for its own.
+     *
+     * The connection rather than the supplier organization, for the same
+     * reason a product is assigned to one: a supplier who has not claimed
+     * their invitation yet has no organization, and their products have to
+     * be able to name a brand all the same.
      *
      * Unlike the legal families there is no starting list: a family comes
-     * from regulation and repeats across the platform, while the brands an
-     * organization carries are its own and nobody can guess them.
+     * from regulation and repeats across the platform, while the makers
+     * behind a trade are its own and nobody can guess them.
      */
     public function up(): void
     {
         Schema::create('brands', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('supplier_connection_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->timestamps();
 
             /**
-             * Also the index the organization's own list is read by, so no
-             * separate index on organization_id is needed.
+             * Also the index one connection's own list is read by, so no
+             * separate index on supplier_connection_id is needed.
              */
-            $table->unique(['organization_id', 'name']);
+            $table->unique(['supplier_connection_id', 'name']);
         });
 
         Schema::table('products', function (Blueprint $table) {
@@ -58,13 +69,18 @@ return new class extends Migration
      * seen wins: the application compares names case insensitively, so
      * keeping "Alpro" and "alpro" apart here would produce a pair no one
      * could rename afterwards.
+     *
+     * A product with no supplier yet has nothing to hang its brand off, so
+     * the name is left on it rather than promoted. Nothing is lost that was
+     * not already free text.
      */
     protected function promoteTheBrandsAlreadyTyped(): void
     {
         $typed = DB::table('products')
             ->whereNotNull('brand')
             ->where('brand', '!=', '')
-            ->select('organization_id', 'brand')
+            ->whereNotNull('supplier_connection_id')
+            ->select('supplier_connection_id', 'brand')
             ->distinct()
             ->get();
 
@@ -72,17 +88,17 @@ return new class extends Migration
         $created = [];
 
         foreach ($typed as $row) {
-            $key = $row->organization_id.'|'.mb_strtolower($row->brand);
+            $key = $row->supplier_connection_id.'|'.mb_strtolower($row->brand);
 
             $created[$key] ??= DB::table('brands')->insertGetId([
-                'organization_id' => $row->organization_id,
+                'supplier_connection_id' => $row->supplier_connection_id,
                 'name' => $row->brand,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
 
             DB::table('products')
-                ->where('organization_id', $row->organization_id)
+                ->where('supplier_connection_id', $row->supplier_connection_id)
                 ->where('brand', $row->brand)
                 ->update(['brand_id' => $created[$key]]);
         }

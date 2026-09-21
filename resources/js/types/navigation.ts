@@ -12,4 +12,10 @@ export type NavItem = {
     icon?: LucideIcon | null;
     isActive?: boolean;
     badge?: number;
+    /**
+     * A stable handle for tests. The title is not one: it changes with the
+     * viewer's organization type, and it collides with the page heading it
+     * navigates to.
+     */
+    testId?: string;
 };

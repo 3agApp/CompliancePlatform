@@ -1,7 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Package, Pencil, Plus, SearchX, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import CreateProductModal from '@/components/create-product-modal';
+import CompletenessMeter from '@/components/completeness-meter';
 import DeleteProductModal from '@/components/delete-product-modal';
 import ProductFilterBar from '@/components/product-filter-bar';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +11,11 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { edit } from '@/routes/products';
+import { index as categoriesIndex } from '@/routes/categories';
+import { create, edit } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
     BrandOption,
-    CountryOption,
     OrganizationType,
     Product,
     ProductCategoryOption,
@@ -28,10 +28,8 @@ import type {
 type Props = {
     products: Product[];
     permissions: ProductPermissions;
-    availableCountries: CountryOption[];
-    availableCategories: ProductCategoryOption[];
-    availableBrands: BrandOption[];
     availableConnections: SupplierConnectionOption[];
+    hasTemplates: boolean;
     counterparties: ProductCounterparty[];
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
@@ -43,10 +41,8 @@ type Props = {
 export default function ProductsIndex({
     products,
     permissions,
-    availableCountries,
-    availableCategories,
-    availableBrands,
     availableConnections,
+    hasTemplates,
     counterparties,
     filterableCategories,
     filterableBrands,
@@ -73,12 +69,19 @@ export default function ProductsIndex({
     const showFilters = hasProducts || isFiltered;
 
     /**
-     * Every product needs a supplier, so a distributor with no suppliers yet
-     * is pointed at the suppliers page rather than at a form they cannot
-     * submit.
+     * Every product needs a supplier and a template, so a distributor
+     * missing either is pointed at the page that fixes it rather than at a
+     * form they cannot submit. Suppliers come first: without one there is
+     * nothing to file a product against at all.
      */
+    const needsSupplier =
+        permissions.canCreateProduct && availableConnections.length === 0;
+
+    const needsTemplate =
+        permissions.canCreateProduct && !needsSupplier && !hasTemplates;
+
     const canAddProducts =
-        permissions.canCreateProduct && availableConnections.length > 0;
+        permissions.canCreateProduct && !needsSupplier && !needsTemplate;
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(
@@ -106,24 +109,30 @@ export default function ProductsIndex({
                     </div>
 
                     {canAddProducts ? (
-                        <CreateProductModal
-                            organizationSlug={organizationSlug}
-                            availableCountries={availableCountries}
-                            availableCategories={availableCategories}
-                            availableBrands={availableBrands}
-                            availableConnections={availableConnections}
-                        >
-                            <Button data-test="products-new-product-button">
+                        <Button asChild>
+                            <Link
+                                href={create(organizationSlug)}
+                                data-test="products-new-product-button"
+                            >
                                 <Plus /> New product
-                            </Button>
-                        </CreateProductModal>
-                    ) : permissions.canCreateProduct ? (
+                            </Link>
+                        </Button>
+                    ) : needsSupplier ? (
                         <Button variant="outline" asChild>
                             <Link
                                 href={suppliersIndex(organizationSlug)}
                                 data-test="products-invite-supplier-button"
                             >
                                 <Plus /> Invite a supplier
+                            </Link>
+                        </Button>
+                    ) : needsTemplate ? (
+                        <Button variant="outline" asChild>
+                            <Link
+                                href={categoriesIndex(organizationSlug)}
+                                data-test="products-add-template-button"
+                            >
+                                <Plus /> Add a template
                             </Link>
                         </Button>
                     ) : null}
@@ -165,6 +174,9 @@ export default function ProductsIndex({
                                             Country of origin
                                         </th>
                                         <th className="px-6 font-medium">
+                                            Complete
+                                        </th>
+                                        <th className="px-6 font-medium">
                                             <span className="sr-only">
                                                 Actions
                                             </span>
@@ -198,7 +210,7 @@ export default function ProductsIndex({
                                                 className="text-muted-foreground px-6"
                                                 data-test="product-list-category"
                                             >
-                                                {product.category_label ?? '—'}
+                                                {product.category_label}
                                             </td>
                                             <td
                                                 className="px-6"
@@ -229,6 +241,13 @@ export default function ProductsIndex({
                                             <td className="text-muted-foreground px-6">
                                                 {product.country_of_origin_label ??
                                                     '—'}
+                                            </td>
+                                            <td className="px-6">
+                                                <CompletenessMeter
+                                                    score={
+                                                        product.completeness_score
+                                                    }
+                                                />
                                             </td>
                                             <td className="px-6">
                                                 <div className="flex items-center justify-end gap-2">
@@ -333,9 +352,11 @@ export default function ProductsIndex({
                                     ? 'Products a distributor assigns to you will show up here.'
                                     : canAddProducts
                                       ? 'Add your first product to start tracking it.'
-                                      : permissions.canCreateProduct
+                                      : needsSupplier
                                         ? 'Invite a supplier first — every product is assigned to one.'
-                                        : 'Products added to this organization will show up here.'}
+                                        : needsTemplate
+                                          ? 'Add a template to one of your categories first — every product is held to one.'
+                                          : 'Products added to this organization will show up here.'}
                             </p>
                         </div>
                     </div>

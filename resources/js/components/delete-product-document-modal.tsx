@@ -37,6 +37,7 @@ export default function DeleteProductDocumentModal({
 
         router.visit(destroy([organizationSlug, productId, document.id]), {
             preserveScroll: true,
+            preserveState: true,
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => onOpenChange(false),

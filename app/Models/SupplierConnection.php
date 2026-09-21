@@ -107,6 +107,20 @@ class SupplierConnection extends Model
     }
 
     /**
+     * Get the makers named under this trade.
+     *
+     * Ordered by name, because the list is only ever read as one: a
+     * connection holds a handful of these and they are chosen from a
+     * select on the product form.
+     *
+     * @return HasMany<Brand, $this>
+     */
+    public function brands(): HasMany
+    {
+        return $this->hasMany(Brand::class)->orderBy('name');
+    }
+
+    /**
      * Get the products assigned to this connection.
      *
      * @return HasMany<Product, $this>
