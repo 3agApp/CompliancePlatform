@@ -148,7 +148,7 @@ export type Product = {
     customs_tariff_number: string | null;
     country_of_origin: CountryOfOrigin | null;
     country_of_origin_label: string | null;
-    supplier_connection_id: number | null;
+    supplier_connection_id: number;
     counterparty: string | null;
     connection_status: string | null;
     created_at: string | null;

@@ -149,12 +149,15 @@ export function SectionNav({ sections, idPrefix, className }: Props) {
 export function SectionBadge({
     children,
     tone = 'muted',
+    testId,
 }: {
     children: React.ReactNode;
     tone?: 'muted' | 'attention';
+    testId?: string;
 }) {
     return (
         <span
+            data-test={testId}
             className={cn(
                 'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums',
                 tone === 'attention'

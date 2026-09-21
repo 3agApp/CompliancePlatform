@@ -488,6 +488,14 @@ class DemoSeeder extends Seeder
             ))
             ->values();
 
+        /**
+         * Every product answers to a supplier, so a distributor with none
+         * to assign to has no catalog to fill.
+         */
+        if ($assignable->isEmpty()) {
+            return;
+        }
+
         $uploaders = [$staff['compliance']->id, $staff['buyer']->id, $staff['owner']->id];
         $documents = [];
 
@@ -496,13 +504,9 @@ class DemoSeeder extends Seeder
                 $template = $templates[$index % $templates->count()];
                 $category = $template->category;
 
-                $connection = $assignable->isEmpty() || $index % 11 === 0
-                    ? null
-                    : $assignable[$index % $assignable->count()];
+                $connection = $assignable[$index % $assignable->count()];
 
-                $carried = $connection === null
-                    ? new Collection
-                    : $brands->where('supplier_connection_id', $connection->id)->values();
+                $carried = $brands->where('supplier_connection_id', $connection->id)->values();
 
                 $share = $this->completenessShare($index);
                 $required = $template->requirements()->shuffle();
@@ -519,7 +523,7 @@ class DemoSeeder extends Seeder
 
                 $product = $organization->products()->create([
                     'name' => $this->productName($category->name, $index),
-                    'supplier_connection_id' => $connection?->id,
+                    'supplier_connection_id' => $connection->id,
                     'product_category_id' => $category->id,
                     'product_template_id' => $template->id,
                     'brand_id' => $wantsBrand && $carried->isNotEmpty()

@@ -186,6 +186,88 @@ test('the edit page stacks every group of fields, with links that jump to them',
         ->assertNoJavaScriptErrors();
 });
 
+/**
+ * The links double as a map of the work: what the template is still
+ * waiting for, counted where it is answered.
+ */
+test('the section links carry what each section still owes its template', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $template = ProductTemplate::factory()
+        ->requiring(
+            ProductRequirement::TestReport,
+            ProductRequirement::Ean,
+            ProductRequirement::WarningText,
+            ProductRequirement::AgeGrading,
+        )
+        ->create([
+            'product_category_id' => legalFamily($organization)->id,
+            'name' => 'EU toy safety',
+        ]);
+
+    $product = Product::factory()
+        ->for($organization)
+        ->usingTemplate($template)
+        ->withoutOptionalDetails()
+        ->create([
+            'name' => 'Organic Oat Milk',
+            'supplier_connection_id' => $connection->id,
+        ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        /** One number field, two safety answers, one paper. */
+        ->assertSeeIn('@product-identification-outstanding', '1')
+        ->assertSeeIn('@product-compliance-outstanding', '2')
+        ->assertSeeIn('@product-documents-outstanding', '1')
+        /** Nothing is asked of the classification, so it carries no mark. */
+        ->assertMissing('@product-classification-outstanding')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * The form runs the height of four panels, so the way to save it follows
+ * the person down the page instead of waiting at the foot of it.
+ */
+test('a change raises a save bar that saves the whole form', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Oat Milk',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        /** Nothing has changed yet, so there is nothing to say. */
+        ->assertMissing('@product-unsaved-bar')
+        ->fill('@product-warning-text', 'Not suitable for children under 3 years.')
+        /**
+         * Back at the top of the page, where the form's own save button is
+         * far below: this is where the bar earns its place.
+         */
+        ->click('@edit-product-jump-product-classification')
+        ->assertSee('Unsaved changes')
+        ->click('@product-unsaved-bar-submit')
+        ->assertSee('Product updated.')
+        /** And it stands down once the edit is safe. */
+        ->assertMissing('@product-unsaved-bar')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->warning_text)
+        ->toBe('Not suitable for children under 3 years.');
+});
+
 test('the edit page keeps what was typed and shows the validation message for an invalid barcode', function () {
     [$user, $organization] = newOrganizationMember();
     $connection = newSupplierConnection($organization, attributes: ['company_name' => 'Acme Supplies']);

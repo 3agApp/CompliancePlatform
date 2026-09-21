@@ -1,6 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
 import Heading from '@/components/heading';
 import ProductClassificationFields from '@/components/product-classification-fields';
@@ -11,6 +11,7 @@ import ProductRequirementsPanel from '@/components/product-requirements-panel';
 import { Button } from '@/components/ui/button';
 import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { cn } from '@/lib/utils';
 import { index, update } from '@/routes/products';
 import type {
     BrandOption,
@@ -21,10 +22,27 @@ import type {
     ProductDetail,
     ProductDocumentTypeOption,
     ProductPermissions,
+    ProductRequirementKey,
     ProductRequirementOption,
     ProductTemplateOption,
     SupplierConnectionOption,
 } from '@/types';
+
+/**
+ * The requirements answered in the compliance section. Everything else a
+ * template can ask a person to type sits in the identification section,
+ * and everything it asks them to upload is a document -- so this one list
+ * is enough to sort the checklist into the page.
+ */
+const COMPLIANCE_REQUIREMENTS: ProductRequirementKey[] = [
+    'requires_age_grading',
+    'requires_safety_notice',
+    'requires_warning_text',
+    'requires_material_information',
+    'requires_usage_restrictions',
+    'requires_safety_instructions',
+    'requires_additional_notes',
+];
 
 type Props = {
     product: ProductDetail;
@@ -60,7 +78,13 @@ export default function ProductEdit({
     const [dirty, setDirty] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    const [connectionId, setConnectionId] = useState<number | null>(
+    /**
+     * Whether the form's own save button is on screen. While it is, it is
+     * the only one the page needs.
+     */
+    const [saveRowOnScreen, setSaveRowOnScreen] = useState(true);
+
+    const [connectionId, setConnectionId] = useState<number>(
         product.supplier_connection_id,
     );
     const [categoryId, setCategoryId] = useState<number>(
@@ -106,9 +130,30 @@ export default function ProductEdit({
         product.counterparty ??
         null;
 
-    const outstandingDocuments = completeness.items.filter(
-        (item) => item.group === 'document' && !item.satisfied,
-    ).length;
+    /**
+     * How much of the template's homework is still owed, section by
+     * section, so the links say where the work is rather than only where
+     * the headings are. Counted from the saved product, like the checklist
+     * itself -- a field filled in but not yet saved still reads as
+     * outstanding, which is the truthful answer until it is submitted.
+     */
+    const outstanding = completeness.items.reduce<Record<string, number>>(
+        (counts, item) => {
+            if (item.satisfied) {
+                return counts;
+            }
+
+            const section =
+                item.group === 'document'
+                    ? 'product-documents'
+                    : COMPLIANCE_REQUIREMENTS.includes(item.requirement)
+                      ? 'product-compliance'
+                      : 'product-identification';
+
+            return { ...counts, [section]: (counts[section] ?? 0) + 1 };
+        },
+        {},
+    );
 
     /**
      * Four sets of questions -- who supplies it, what it is, what it
@@ -119,19 +164,37 @@ export default function ProductEdit({
      */
     const sections = [
         { id: 'product-classification', label: 'Classification' },
-        { id: 'product-identification', label: 'Identification' },
-        { id: 'product-compliance', label: 'Compliance' },
+        {
+            id: 'product-identification',
+            label: 'Identification',
+            badge: (
+                <OutstandingBadge
+                    section="product-identification"
+                    count={outstanding['product-identification']}
+                />
+            ),
+        },
+        {
+            id: 'product-compliance',
+            label: 'Compliance',
+            badge: (
+                <OutstandingBadge
+                    section="product-compliance"
+                    count={outstanding['product-compliance']}
+                />
+            ),
+        },
         {
             id: 'product-documents',
             label: 'Documents',
-            badge:
-                outstandingDocuments > 0 ? (
-                    <SectionBadge tone="attention">
-                        {outstandingDocuments}
-                    </SectionBadge>
-                ) : product.documents.length > 0 ? (
-                    <SectionBadge>{product.documents.length}</SectionBadge>
-                ) : undefined,
+            badge: outstanding['product-documents'] ? (
+                <OutstandingBadge
+                    section="product-documents"
+                    count={outstanding['product-documents']}
+                />
+            ) : product.documents.length > 0 ? (
+                <SectionBadge>{product.documents.length}</SectionBadge>
+            ) : undefined,
         },
     ];
 
@@ -139,7 +202,11 @@ export default function ProductEdit({
         <>
             <Head title={product.name} />
 
-            <div className="workspace-page">
+            {/*
+             * Room under the page for the save bar to float over while it
+             * is showing, so it never covers the last thing on it.
+             */}
+            <div className={cn('workspace-page', dirty && 'pb-24')}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
                         <Button
@@ -209,6 +276,13 @@ export default function ProductEdit({
                                     <UnsavedChangesGuard
                                         dirty={dirty && !processing}
                                     />
+
+                                    {permissions.canUpdateProduct ? (
+                                        <UnsavedChangesBar
+                                            dirty={dirty && !saveRowOnScreen}
+                                            processing={processing}
+                                        />
+                                    ) : null}
 
                                     <section
                                         id="product-classification"
@@ -308,15 +382,10 @@ export default function ProductEdit({
                                      * down the page the person happens to be.
                                      */}
                                     {permissions.canUpdateProduct ? (
-                                        <div className="flex items-center gap-3">
-                                            <Button
-                                                type="submit"
-                                                data-test="update-product-submit"
-                                                disabled={processing}
-                                            >
-                                                Save changes
-                                            </Button>
-                                        </div>
+                                        <SaveRow
+                                            processing={processing}
+                                            onScreenChange={setSaveRowOnScreen}
+                                        />
                                     ) : (
                                         <p className="text-muted-foreground text-sm">
                                             You do not have permission to edit
@@ -374,6 +443,120 @@ export default function ProductEdit({
                 onOpenChange={setDeleteDialogOpen}
             />
         </>
+    );
+}
+
+/**
+ * How many of a section's requirements are still outstanding.
+ *
+ * Nothing at all when the section is square with its template, rather
+ * than a zero: a row of zeroes reads as a scoreboard, and the point of
+ * the mark is to catch the eye only where there is something to do.
+ */
+function OutstandingBadge({
+    section,
+    count,
+}: {
+    section: string;
+    count?: number;
+}) {
+    if (!count) {
+        return null;
+    }
+
+    return (
+        <SectionBadge tone="attention" testId={`${section}-outstanding`}>
+            <span className="sr-only">still needed: </span>
+            {count}
+        </SectionBadge>
+    );
+}
+
+/**
+ * The form's own save button, which says whether it can be seen.
+ *
+ * The floating bar below is only worth showing when this one has scrolled
+ * away: two save buttons on screen at once is a page asking the same
+ * question twice.
+ */
+function SaveRow({
+    processing,
+    onScreenChange,
+}: {
+    processing: boolean;
+    onScreenChange: (onScreen: boolean) => void;
+}) {
+    const row = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const element = row.current;
+
+        if (element === null) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(([entry]) =>
+            onScreenChange(entry.isIntersecting),
+        );
+
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [onScreenChange]);
+
+    return (
+        <div ref={row} className="flex items-center gap-3">
+            <Button
+                type="submit"
+                data-test="update-product-submit"
+                disabled={processing}
+            >
+                Save changes
+            </Button>
+        </div>
+    );
+}
+
+/**
+ * The save button, brought to wherever the person is on the page.
+ *
+ * The form runs the height of four panels, so the button at its foot can
+ * be a long way from the field just edited -- and an edit nobody can see
+ * a way to save is an edit that gets lost on the way out. It appears only
+ * once something has actually changed, which also makes it the page's
+ * answer to "is any of this unsaved?".
+ */
+function UnsavedChangesBar({
+    dirty,
+    processing,
+}: {
+    dirty: boolean;
+    processing: boolean;
+}) {
+    if (!dirty) {
+        return null;
+    }
+
+    return (
+        <div
+            data-test="product-unsaved-bar"
+            className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4"
+        >
+            <div className="bg-card pointer-events-auto flex items-center gap-3 rounded-full border py-2 pr-2 pl-5 shadow-lg">
+                <span className="text-muted-foreground text-sm whitespace-nowrap">
+                    Unsaved changes
+                </span>
+                <Button
+                    type="submit"
+                    size="sm"
+                    className="rounded-full"
+                    data-test="product-unsaved-bar-submit"
+                    disabled={processing}
+                >
+                    {processing ? 'Saving…' : 'Save changes'}
+                </Button>
+            </div>
+        </div>
     );
 }
 

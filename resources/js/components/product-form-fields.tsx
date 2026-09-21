@@ -37,9 +37,10 @@ type Props = {
     /**
      * The trade the product sits on. A maker is named under one supplier,
      * so this is what narrows the brands on offer -- and what a new one
-     * would be filed under.
+     * would be filed under. Every product answers to a supplier, so there
+     * is always one.
      */
-    supplierConnectionId: number | null;
+    supplierConnectionId: number;
     supplierLabel: string | null;
     organizationSlug: string;
     canCreateBrand?: boolean;
@@ -122,8 +123,6 @@ export default function ProductFormFields({
         ? brandId
         : undefined;
 
-    const hasSupplier = supplierConnectionId !== null;
-
     return (
         <div className="grid gap-4">
             <div className="grid gap-2">
@@ -156,13 +155,7 @@ export default function ProductFormFields({
                                 data-test="product-brand"
                                 className="w-full"
                             >
-                                <SelectValue
-                                    placeholder={
-                                        hasSupplier
-                                            ? 'Select a brand'
-                                            : 'Pick a supplier first'
-                                    }
-                                />
+                                <SelectValue placeholder="Select a brand" />
                             </SelectTrigger>
                             <SelectContent>
                                 {brands.map((brand) => (
@@ -176,7 +169,7 @@ export default function ProductFormFields({
                             </SelectContent>
                         </Select>
 
-                        {canCreateBrand && hasSupplier && !disabled ? (
+                        {canCreateBrand && !disabled ? (
                             <Button
                                 type="button"
                                 variant="outline"
@@ -195,24 +188,20 @@ export default function ProductFormFields({
                         value={selectedBrandId ?? ''}
                     />
                     <p className="text-muted-foreground text-xs">
-                        {!hasSupplier
-                            ? 'A brand belongs to a supplier.'
-                            : brands.length === 0
-                              ? `${supplierLabel ?? 'This supplier'} has no brands yet.`
-                              : 'The maker of the product.'}
+                        {brands.length === 0
+                            ? `${supplierLabel ?? 'This supplier'} has no brands yet.`
+                            : 'The maker of the product.'}
                     </p>
                     <InputError message={errors.brand_id} />
 
-                    {hasSupplier ? (
-                        <CreateBrandModal
-                            organizationSlug={organizationSlug}
-                            supplierConnectionId={supplierConnectionId}
-                            supplierLabel={supplierLabel ?? 'This supplier'}
-                            open={brandDialogOpen}
-                            onOpenChange={setBrandDialogOpen}
-                            onCreated={(brand) => setBrandId(String(brand.id))}
-                        />
-                    ) : null}
+                    <CreateBrandModal
+                        organizationSlug={organizationSlug}
+                        supplierConnectionId={supplierConnectionId}
+                        supplierLabel={supplierLabel ?? 'This supplier'}
+                        open={brandDialogOpen}
+                        onOpenChange={setBrandDialogOpen}
+                        onCreated={(brand) => setBrandId(String(brand.id))}
+                    />
                 </div>
 
                 <div className="grid content-start gap-2">

@@ -27,24 +27,18 @@ return new class extends Migration
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
 
             /**
-             * Nullable because a product can outlive the trade it came in
-             * on, and cleared rather than cascaded for the same reason: the
-             * distributor answers for the product either way. A supplier is
-             * required when a distributor saves one, which is enforced in
-             * the form request.
-             */
-            $table->foreignId('supplier_connection_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-
-            /**
-             * The family and the sheet are both required: a product nobody
-             * has classified is a product nobody can say which rules it
-             * answers to. Restricted on delete, so neither can be pulled out
-             * from under the products still held to it -- the category and
+             * The trade, the family and the sheet are all three required: a
+             * product nobody has classified is a product nobody can say
+             * which rules it answers to, or who answers for it. Restricted
+             * on delete, so none of them can be pulled out from under the
+             * products still held to it -- the supplier, category and
              * template screens refuse that long before the database has to.
+             *
+             * A connection is ended by its status rather than by deleting
+             * the row, so a revoked supplier keeps answering for what it
+             * already supplied.
              */
+            $table->foreignId('supplier_connection_id')->constrained()->restrictOnDelete();
             $table->foreignId('product_category_id')->constrained()->restrictOnDelete();
             $table->foreignId('product_template_id')->constrained()->restrictOnDelete();
 

@@ -517,7 +517,7 @@ class ProductController extends Controller
      * it is read from do not: the prose is scored here and left here, so a
      * catalog listing names still carries nothing but the number.
      *
-     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int|null, counterparty: string|null, connection_status: string|null, created_at: string|null}
+     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int, counterparty: string|null, connection_status: string|null, created_at: string|null}
      */
     protected function toProductArray(Product $product, bool $asSupplier = false): array
     {
@@ -540,7 +540,7 @@ class ProductController extends Controller
             'customs_tariff_number' => $product->customs_tariff_number,
             'country_of_origin' => $product->country_of_origin?->value,
             'country_of_origin_label' => $product->country_of_origin?->label(),
-            'supplier_connection_id' => $connection?->id,
+            'supplier_connection_id' => $product->supplier_connection_id,
             'counterparty' => $connection === null
                 ? null
                 : ($asSupplier ? $connection->distributorOrganization->name : $this->connectionLabel($connection)),

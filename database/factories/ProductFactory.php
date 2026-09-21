@@ -3,11 +3,13 @@
 namespace Database\Factories;
 
 use App\Enums\CountryOfOrigin;
+use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTemplate;
+use App\Models\SupplierConnection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,12 +24,14 @@ class ProductFactory extends Factory
      * by the product pages sees only the rows it set up itself, rather than
      * ones invented for a product it happened to create.
      *
-     * The category and the template cannot be: a product must have both.
+     * The trade, the category and the template cannot be: a product must
+     * have all three.
      * Whatever the organization already keeps is reused before anything is
-     * invented, so a test asserting on the families or the sheets a page
-     * offers still sees only the rows it set up itself -- a distributor
-     * already starts with three families, and a product made in passing
-     * should not quietly add a fourth.
+     * invented, so a test asserting on the suppliers, families or sheets a
+     * page offers still sees only the rows it set up itself -- a
+     * distributor already starts with three families, and a product made in
+     * passing should not quietly add a fourth, or a supplier nobody
+     * invited.
      *
      * They resolve in order, so the template always lands under the
      * product's own category: the pairing every product is required to
@@ -44,7 +48,14 @@ class ProductFactory extends Factory
     {
         return [
             'organization_id' => Organization::factory(),
-            'supplier_connection_id' => null,
+            'supplier_connection_id' => fn (array $attributes) => SupplierConnection::query()
+                ->where('distributor_organization_id', $attributes['organization_id'])
+                ->whereIn('status', SupplierConnectionStatus::assignableValues())
+                ->orderBy('id')
+                ->value('id')
+                ?? SupplierConnection::factory()
+                    ->create(['distributor_organization_id' => $attributes['organization_id']])
+                    ->id,
             'product_category_id' => fn (array $attributes) => ProductCategory::query()
                 ->where('organization_id', $attributes['organization_id'])
                 ->orderBy('id')
