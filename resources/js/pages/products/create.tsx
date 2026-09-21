@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { TabPanel, TabStrip } from '@/components/ui/tabs';
 import { index as categoriesIndex } from '@/routes/categories';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { index as productsIndex, store } from '@/routes/products';
 import type {
     BrandOption,
@@ -51,6 +52,7 @@ export default function ProductsCreate({
      * move, and a validation error on any of them still reaches the server
      * on submit -- it can be sent from whichever step they happen to be on.
      */
+    const [dirty, setDirty] = useState(false);
     const [step, setStep] = useState<1 | 2>(1);
 
     /**
@@ -117,9 +119,18 @@ export default function ProductsCreate({
             <Form
                 {...store.form(organizationSlug)}
                 className="grid max-w-3xl gap-6"
+                /**
+                 * Typing raises input; the selects raise only change. Both
+                 * are needed, or classifying a product and walking away
+                 * would lose the edit without the guard ever asking.
+                 */
+                onInput={() => setDirty(true)}
+                onChange={() => setDirty(true)}
+                onSuccess={() => setDirty(false)}
             >
                 {({ errors, processing }) => (
                     <>
+                        <UnsavedChangesGuard dirty={dirty && !processing} />
                         <Steps step={step} />
 
                         <section
@@ -333,4 +344,19 @@ function Steps({ step }: { step: 1 | 2 }) {
             })}
         </ol>
     );
+}
+
+/**
+ * Warn before leaving the form with edits that have not been saved.
+ *
+ * A component rather than a call in the page, because the dirty flag it
+ * watches is only known inside the form's render prop.
+ */
+function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
+    useUnsavedChanges(
+        dirty,
+        'This product has changes that have not been saved. Leave anyway?',
+    );
+
+    return null;
 }

@@ -217,9 +217,9 @@ test('the product list carries a score per row without carrying the prose it is 
         ->get(route('products.index', ['current_organization' => $distributor->slug]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('products.0.completeness_score', 50)
-            ->missing('products.0.warning_text')
-            ->missing('products.0.safety_notice'),
+            ->where('products.data.0.completeness_score', 50)
+            ->missing('products.data.0.warning_text')
+            ->missing('products.data.0.safety_notice'),
         );
 });
 

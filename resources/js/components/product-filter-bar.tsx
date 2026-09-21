@@ -37,6 +37,7 @@ type Query = {
     category?: string;
     brand?: string;
     search?: string;
+    per_page?: string;
 };
 
 type Props = {
@@ -63,10 +64,16 @@ export default function ProductFilterBar({
      * The URL is the filter state, so every change is a visit rather than
      * local state. mergeQuery keeps the two controls independent: changing
      * one leaves whatever the other put in the query string alone.
+     *
+     * The page is the exception: narrowing the list while deep in it would
+     * otherwise land on a page the shorter list no longer has, so every
+     * change starts again from the first one.
      */
     const visit = (query: Query) => {
         router.get(
-            productsIndex(organizationSlug, { mergeQuery: query }),
+            productsIndex(organizationSlug, {
+                mergeQuery: { ...query, page: undefined },
+            }),
             {},
             {
                 only: ONLY,

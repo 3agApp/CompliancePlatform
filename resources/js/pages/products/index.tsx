@@ -1,22 +1,47 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Package, Pencil, Plus, SearchX, Trash2 } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Package,
+    Pencil,
+    Plus,
+    SearchX,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import CompletenessMeter from '@/components/completeness-meter';
 import DeleteProductModal from '@/components/delete-product-modal';
 import ProductFilterBar from '@/components/product-filter-bar';
 import { Badge } from '@/components/ui/badge';
+import PaginationArrow from '@/components/pagination-arrow';
 import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { index as categoriesIndex } from '@/routes/categories';
-import { create, edit } from '@/routes/products';
+import { create, edit, index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
     BrandOption,
     OrganizationType,
+    Paginated,
     Product,
     ProductCategoryOption,
     ProductCounterparty,
@@ -26,7 +51,8 @@ import type {
 } from '@/types';
 
 type Props = {
-    products: Product[];
+    products: Paginated<Product>;
+    pageSizes: number[];
     permissions: ProductPermissions;
     availableConnections: SupplierConnectionOption[];
     hasTemplates: boolean;
@@ -40,6 +66,7 @@ type Props = {
 
 export default function ProductsIndex({
     products,
+    pageSizes,
     permissions,
     availableConnections,
     hasTemplates,
@@ -82,6 +109,27 @@ export default function ProductsIndex({
 
     const canAddProducts =
         permissions.canCreateProduct && !needsSupplier && !needsTemplate;
+
+    /**
+     * The page size lives in the URL beside the filters, so changing it is a
+     * visit like any other -- and one that starts again from the first page,
+     * since the row the reader was looking at sits elsewhere once the page
+     * size changes.
+     */
+    const changePerPage = (size: number) => {
+        router.get(
+            productsIndex(organizationSlug, {
+                mergeQuery: { per_page: String(size), page: undefined },
+            }),
+            {},
+            {
+                only: ['products', 'filters', 'hasProducts'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(
@@ -149,176 +197,264 @@ export default function ProductsIndex({
                     />
                 ) : null}
 
-                {products.length > 0 ? (
+                {products.data.length > 0 ? (
                     <div className="workspace-table">
-                        <div className="min-w-0 overflow-x-auto">
-                            <table className="w-full min-w-3xl text-left text-sm">
-                                <thead>
-                                    <tr className="text-muted-foreground">
-                                        <th className="px-6 font-medium">
-                                            Name
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            Brand
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            Category
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            {counterpartyLabel}
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            EAN / barcode
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            Country of origin
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            Complete
-                                        </th>
-                                        <th className="px-6 font-medium">
-                                            <span className="sr-only">
-                                                Actions
-                                            </span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {products.map((product) => (
-                                        <tr
-                                            key={product.id}
-                                            data-test="product-row"
-                                            className="border-t"
-                                        >
-                                            <td className="px-6 font-medium break-words">
-                                                {product.name}
-                                                {product.internal_article_number ? (
-                                                    <span
-                                                        className="text-muted-foreground block font-mono text-xs font-normal"
-                                                        data-test="product-list-article-number"
-                                                    >
-                                                        {
-                                                            product.internal_article_number
-                                                        }
-                                                    </span>
-                                                ) : null}
-                                            </td>
-                                            <td className="text-muted-foreground px-6 break-words">
-                                                {product.brand_label ?? '—'}
-                                            </td>
-                                            <td
-                                                className="text-muted-foreground px-6"
-                                                data-test="product-list-category"
-                                            >
-                                                {product.category_label}
-                                            </td>
-                                            <td
-                                                className="px-6"
-                                                data-test="product-counterparty"
-                                            >
-                                                <span className="text-muted-foreground">
-                                                    {product.counterparty ??
-                                                        '—'}
-                                                </span>
-                                                {!isSupplier &&
-                                                product.connection_status &&
-                                                product.connection_status !==
-                                                    'active' ? (
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className="ml-2"
-                                                    >
-                                                        {product.connection_status ===
-                                                        'pending'
-                                                            ? 'Pending'
-                                                            : 'Revoked'}
-                                                    </Badge>
-                                                ) : null}
-                                            </td>
-                                            <td className="text-muted-foreground px-6 font-mono text-xs">
-                                                {product.ean ?? '—'}
-                                            </td>
-                                            <td className="text-muted-foreground px-6">
-                                                {product.country_of_origin_label ??
-                                                    '—'}
-                                            </td>
-                                            <td className="px-6">
-                                                <CompletenessMeter
-                                                    score={
-                                                        product.completeness_score
+                        <Table className="min-w-3xl">
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="px-6">Name</TableHead>
+                                    <TableHead className="px-6">
+                                        Brand
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        Category
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        {counterpartyLabel}
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        EAN / barcode
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        Country of origin
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        Complete
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        <span className="sr-only">Actions</span>
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {products.data.map((product) => (
+                                    <TableRow
+                                        key={product.id}
+                                        data-test="product-row"
+                                    >
+                                        <TableCell className="px-6 font-medium break-words">
+                                            {product.name}
+                                            {product.internal_article_number ? (
+                                                <span
+                                                    className="text-muted-foreground block font-mono text-xs font-normal"
+                                                    data-test="product-list-article-number"
+                                                >
+                                                    {
+                                                        product.internal_article_number
                                                     }
-                                                />
-                                            </td>
-                                            <td className="px-6">
-                                                <div className="flex items-center justify-end gap-2">
+                                                </span>
+                                            ) : null}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground px-6 break-words">
+                                            {product.brand_label ?? '—'}
+                                        </TableCell>
+                                        <TableCell
+                                            className="text-muted-foreground px-6"
+                                            data-test="product-list-category"
+                                        >
+                                            {product.category_label}
+                                        </TableCell>
+                                        <TableCell
+                                            className="px-6"
+                                            data-test="product-counterparty"
+                                        >
+                                            <span className="text-muted-foreground">
+                                                {product.counterparty ?? '—'}
+                                            </span>
+                                            {!isSupplier &&
+                                            product.connection_status &&
+                                            product.connection_status !==
+                                                'active' ? (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-2"
+                                                >
+                                                    {product.connection_status ===
+                                                    'pending'
+                                                        ? 'Pending'
+                                                        : 'Revoked'}
+                                                </Badge>
+                                            ) : null}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground px-6 font-mono text-xs">
+                                            {product.ean ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground px-6">
+                                            {product.country_of_origin_label ??
+                                                '—'}
+                                        </TableCell>
+                                        <TableCell className="px-6">
+                                            <CompletenessMeter
+                                                score={
+                                                    product.completeness_score
+                                                }
+                                            />
+                                        </TableCell>
+                                        <TableCell className="px-6">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            data-test="product-edit-button"
+                                                            asChild
+                                                        >
+                                                            <Link
+                                                                href={edit([
+                                                                    organizationSlug,
+                                                                    product.id,
+                                                                ])}
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                                <span className="sr-only">
+                                                                    {permissions.canUpdateProduct
+                                                                        ? 'Edit product'
+                                                                        : 'View product'}
+                                                                </span>
+                                                            </Link>
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>
+                                                            {permissions.canUpdateProduct
+                                                                ? 'Edit product'
+                                                                : 'View product'}
+                                                        </p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+
+                                                {permissions.canDeleteProduct ? (
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                data-test="product-edit-button"
-                                                                asChild
+                                                                data-test="product-delete-button"
+                                                                onClick={() =>
+                                                                    confirmDelete(
+                                                                        product,
+                                                                    )
+                                                                }
                                                             >
-                                                                <Link
-                                                                    href={edit([
-                                                                        organizationSlug,
-                                                                        product.id,
-                                                                    ])}
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                    <span className="sr-only">
-                                                                        {permissions.canUpdateProduct
-                                                                            ? 'Edit product'
-                                                                            : 'View product'}
-                                                                    </span>
-                                                                </Link>
+                                                                <Trash2 className="h-4 w-4" />
+                                                                <span className="sr-only">
+                                                                    Delete
+                                                                    product
+                                                                </span>
                                                             </Button>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
                                                             <p>
-                                                                {permissions.canUpdateProduct
-                                                                    ? 'Edit product'
-                                                                    : 'View product'}
+                                                                Delete product
                                                             </p>
                                                         </TooltipContent>
                                                     </Tooltip>
+                                                ) : null}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
 
-                                                    {permissions.canDeleteProduct ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger
-                                                                asChild
-                                                            >
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    data-test="product-delete-button"
-                                                                    onClick={() =>
-                                                                        confirmDelete(
-                                                                            product,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                    <span className="sr-only">
-                                                                        Delete
-                                                                        product
-                                                                    </span>
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>
-                                                                    Delete
-                                                                    product
-                                                                </p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    ) : null}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
+                            <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3">
+                                <p data-test="product-count">
+                                    Showing{' '}
+                                    <span className="text-foreground font-medium">
+                                        {products.from}–{products.to}
+                                    </span>{' '}
+                                    of{' '}
+                                    <span className="text-foreground font-medium">
+                                        {products.total}
+                                    </span>{' '}
+                                    products
+                                </p>
+
+                                <Select
+                                    value={String(filters.perPage)}
+                                    onValueChange={(value) =>
+                                        changePerPage(Number(value))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        size="sm"
+                                        className="w-28"
+                                        aria-label="Products per page"
+                                        data-test="per-page"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {pageSizes.map((size) => (
+                                            <SelectItem
+                                                key={size}
+                                                value={String(size)}
+                                            >
+                                                {size} / page
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {products.last_page > 1 ? (
+                                <nav
+                                    className="flex flex-wrap items-center justify-center gap-1"
+                                    aria-label="Pagination"
+                                >
+                                    <PaginationArrow
+                                        href={products.prev_page_url}
+                                        label="Previous page"
+                                        icon={ChevronLeft}
+                                        test="pagination-previous"
+                                    />
+                                    {products.links
+                                        .slice(1, -1)
+                                        .map((link, index) =>
+                                            link.url ? (
+                                                <Button
+                                                    key={`${link.label}-${index}`}
+                                                    variant={
+                                                        link.active
+                                                            ? 'outline'
+                                                            : 'ghost'
+                                                    }
+                                                    size="sm"
+                                                    className="min-w-8 px-2 tabular-nums"
+                                                    asChild
+                                                >
+                                                    <Link
+                                                        href={link.url}
+                                                        preserveScroll
+                                                        preserveState
+                                                        aria-current={
+                                                            link.active
+                                                                ? 'page'
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        {link.label}
+                                                    </Link>
+                                                </Button>
+                                            ) : (
+                                                <span
+                                                    key={`${link.label}-${index}`}
+                                                    className="text-muted-foreground px-2"
+                                                >
+                                                    {link.label}
+                                                </span>
+                                            ),
+                                        )}
+                                    <PaginationArrow
+                                        href={products.next_page_url}
+                                        label="Next page"
+                                        icon={ChevronRight}
+                                        test="pagination-next"
+                                    />
+                                </nav>
+                            ) : null}
                         </div>
                     </div>
                 ) : isFiltered ? (

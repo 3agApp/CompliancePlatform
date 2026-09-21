@@ -32,9 +32,9 @@ test('a distributor filters the product list by one of its suppliers', function 
     filteredProducts($user, $distributor, ['connection' => $acme->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 2)
-            ->where('products.0.name', 'Oat Milk')
-            ->where('products.1.name', 'Rice Milk')
+            ->has('products.data', 2)
+            ->where('products.data.0.name', 'Oat Milk')
+            ->where('products.data.1.name', 'Rice Milk')
             ->where('filters.connection', $acme->id),
         );
 });
@@ -53,9 +53,9 @@ test('a supplier filters the product list by one of its distributors', function 
     filteredProducts($supplierUser, $supplier, ['connection' => $connectionA->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Oat Milk')
-            ->where('products.0.counterparty', $distributorA->name),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Oat Milk')
+            ->where('products.data.0.counterparty', $distributorA->name),
         );
 });
 
@@ -82,8 +82,8 @@ test('a distributor filters the product list by one of its categories', function
     filteredProducts($user, $distributor, ['category' => (string) $magnetic->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Magna-Tiles 32')
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Magna-Tiles 32')
             ->where('filters.category', $magnetic->id),
         );
 });
@@ -123,8 +123,8 @@ test('the category filter composes with the supplier filter', function () {
     ])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Magna-Tiles 32'),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Magna-Tiles 32'),
         );
 });
 
@@ -164,8 +164,8 @@ test('a supplier filters by a category of one of its distributors', function () 
     filteredProducts($supplierUser, $supplier, ['category' => (string) $magneticA->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Magna-Tiles 32'),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Magna-Tiles 32'),
         );
 });
 
@@ -184,7 +184,7 @@ test('filtering by another organization category shows no products', function ()
 
     filteredProducts($user, $distributor, ['category' => (string) $foreign->id])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('a category filter that names no row is treated as no filter', function (string $category) {
@@ -198,7 +198,7 @@ test('a category filter that names no row is treated as no filter', function (st
     filteredProducts($user, $distributor, ['category' => $category])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 2)
+            ->has('products.data', 2)
             ->where('filters.category', null),
         );
 })->with([
@@ -231,9 +231,9 @@ test('a distributor filters the product list by one of its brands', function () 
     filteredProducts($user, $distributor, ['brand' => (string) $magnaTiles->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Clear Colors 32')
-            ->where('products.0.brand_label', 'Magna-Tiles')
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Clear Colors 32')
+            ->where('products.data.0.brand_label', 'Magna-Tiles')
             ->where('filters.brand', $magnaTiles->id),
         );
 });
@@ -277,8 +277,8 @@ test('the brand filter composes with the category filter', function () {
     ])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Clear Colors 32'),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Clear Colors 32'),
         );
 });
 
@@ -314,8 +314,8 @@ test('a supplier is offered the brands on the products assigned to it, named wit
     filteredProducts($supplierUser, $supplier, ['brand' => (string) $brandA->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Clear Colors 32'),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Clear Colors 32'),
         );
 });
 
@@ -334,7 +334,7 @@ test('filtering by another organization brand shows no products', function () {
 
     filteredProducts($user, $distributor, ['brand' => (string) $foreign->id])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('the product search matches a product name', function () {
@@ -347,8 +347,8 @@ test('the product search matches a product name', function () {
     filteredProducts($user, $distributor, ['search' => 'Oat'])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Organic Oat Milk')
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Organic Oat Milk')
             ->where('filters.search', 'Oat'),
         );
 });
@@ -371,8 +371,8 @@ test('the product search matches a barcode', function () {
     filteredProducts($user, $distributor, ['search' => '400638'])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Organic Oat Milk'),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Organic Oat Milk'),
         );
 });
 
@@ -397,8 +397,8 @@ test('the product search matches an article number from either side', function (
     filteredProducts($user, $distributor, ['search' => $term])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.name', 'Organic Oat Milk'),
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Organic Oat Milk'),
         );
 })->with([
     'internal article number' => ['internal_article_number', 'ART-10294'],
@@ -425,7 +425,7 @@ test('the product search by article number never reaches another organization pr
 
     filteredProducts($user, $distributor, ['search' => 'ART-10294'])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('the product search ignores case', function () {
@@ -436,7 +436,7 @@ test('the product search ignores case', function () {
 
     filteredProducts($user, $distributor, ['search' => 'oat'])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 1));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 1));
 });
 
 test('the product search never reaches another organization products', function () {
@@ -460,15 +460,15 @@ test('the product search never reaches another organization products', function 
     filteredProducts($user, $distributor, ['search' => 'Oat'])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
-            ->where('products.0.id', $own->id),
+            ->has('products.data', 1)
+            ->where('products.data.0.id', $own->id),
         );
 
     // Only the other distributor's barcode matches. An ungrouped OR in the
     // search scope escapes the organization clause and leaks it.
     filteredProducts($user, $distributor, ['search' => '400638'])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('the product search never reaches another supplier products', function () {
@@ -492,7 +492,7 @@ test('the product search never reaches another supplier products', function () {
 
     filteredProducts($supplierUser, $supplier, ['search' => '400638'])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('a distributor filtering by another distributor connection sees no products', function () {
@@ -507,7 +507,7 @@ test('a distributor filtering by another distributor connection sees no products
 
     filteredProducts($user, $distributor, ['connection' => $foreignConnection->id])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('a supplier filtering by a connection it does not hold sees no products', function () {
@@ -524,7 +524,7 @@ test('a supplier filtering by a connection it does not hold sees no products', f
 
     filteredProducts($supplierUser, $supplier, ['connection' => $foreignConnection->id])
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->has('products', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('products.data', 0));
 });
 
 test('a blank search is treated as no filter', function () {
@@ -536,7 +536,7 @@ test('a blank search is treated as no filter', function () {
     filteredProducts($user, $distributor, ['search' => '   '])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 2)
+            ->has('products.data', 2)
             ->where('filters.search', null),
         );
 });
@@ -552,7 +552,7 @@ test('the product list reports whether the organization has any products at all'
 
     filteredProducts($user, $distributor, ['search' => 'nothing matches this'])
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 0)
+            ->has('products.data', 0)
             ->where('hasProducts', true),
         );
 });
@@ -569,7 +569,7 @@ test('a distributor can filter by a revoked connection that still holds products
     filteredProducts($user, $distributor, ['connection' => $connection->id])
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->has('products', 1)
+            ->has('products.data', 1)
             ->has('counterparties', 1)
             ->where('counterparties.0.id', $connection->id),
         );

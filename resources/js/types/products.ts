@@ -165,6 +165,7 @@ export type ProductFilters = {
     category: number | null;
     brand: number | null;
     search: string | null;
+    perPage: number;
 };
 
 export type ProductCounterparty = {

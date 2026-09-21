@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -36,7 +36,7 @@ class ProductController extends Controller
     /**
      * Display a listing of the organization's products.
      */
-    public function index(Request $request, Organization $currentOrganization): Response
+    public function index(Request $request, Organization $currentOrganization): Response|RedirectResponse
     {
         Gate::authorize('viewAny', [Product::class, $currentOrganization]);
 
@@ -45,8 +45,19 @@ class ProductController extends Controller
 
         $products = $this->products($currentOrganization, $isSupplier, $filters);
 
+        /**
+         * A page past the end is reachable by narrowing a filter from a deep
+         * page, or by a stale bookmark. Sending the last page back beats
+         * rendering an empty table that offers no way out but the browser's
+         * back button.
+         */
+        if ($products->isEmpty() && $products->currentPage() > 1) {
+            return redirect($products->url($products->lastPage()));
+        }
+
         return Inertia::render('products/index', [
-            'products' => $products->map(fn (Product $product) => $this->toProductArray($product, $isSupplier)),
+            'products' => $products->through(fn (Product $product) => $this->toProductArray($product, $isSupplier)),
+            'pageSizes' => ProductFilters::PAGE_SIZES,
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
             /**
@@ -61,7 +72,7 @@ class ProductController extends Controller
             'filterableCategories' => $this->filterableCategories($currentOrganization, $isSupplier),
             'filterableBrands' => $this->filterableBrands($currentOrganization, $isSupplier),
             'filters' => $filters,
-            'hasProducts' => $products->isNotEmpty()
+            'hasProducts' => $products->total() > 0
                 || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
             'viewerType' => $currentOrganization->type->value,
         ]);
@@ -207,9 +218,9 @@ class ProductController extends Controller
      * Columns are qualified because the supplier side joins products and
      * supplier_connections, which share id and both timestamps.
      *
-     * @return Collection<int, Product>
+     * @return LengthAwarePaginator<int, Product>
      */
-    protected function products(Organization $organization, bool $asSupplier, ProductFilters $filters): Collection
+    protected function products(Organization $organization, bool $asSupplier, ProductFilters $filters): LengthAwarePaginator
     {
         return $this->visibleProducts($organization, $asSupplier)
             ->when($filters->connection, fn ($query, int $connectionId) => $query->assignedTo($connectionId))
@@ -217,7 +228,8 @@ class ProductController extends Controller
             ->when($filters->brand, fn ($query, int $brandId) => $query->ofBrand($brandId))
             ->when($filters->search, fn ($query, string $term) => $query->matching($term))
             ->orderBy('products.name')
-            ->get();
+            ->paginate($filters->perPage)
+            ->withQueryString();
     }
 
     /**

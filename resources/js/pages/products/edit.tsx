@@ -10,6 +10,7 @@ import ProductFormFields from '@/components/product-form-fields';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
 import { Button } from '@/components/ui/button';
 import { TabBadge, TabPanel, TabStrip } from '@/components/ui/tabs';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { index, update } from '@/routes/products';
 import type {
     BrandOption,
@@ -56,6 +57,7 @@ export default function ProductEdit({
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
 
+    const [dirty, setDirty] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const [connectionId, setConnectionId] = useState<number | null>(
@@ -214,9 +216,21 @@ export default function ProductEdit({
                                 preserveState: true,
                             }}
                             className="space-y-6"
+                            /**
+                             * Typing raises input; the selects raise only
+                             * change. Both are needed, or picking a supplier
+                             * or a country and walking away would lose the
+                             * edit without the guard ever asking.
+                             */
+                            onInput={() => setDirty(true)}
+                            onChange={() => setDirty(true)}
+                            onSuccess={() => setDirty(false)}
                         >
                             {({ errors, processing }) => (
                                 <>
+                                    <UnsavedChangesGuard
+                                        dirty={dirty && !processing}
+                                    />
                                     <TabPanel
                                         value="classification"
                                         active={tab}
@@ -375,4 +389,19 @@ export default function ProductEdit({
             />
         </>
     );
+}
+
+/**
+ * Warn before leaving the form with edits that have not been saved.
+ *
+ * A component rather than a call in the page, because the dirty flag it
+ * watches is only known inside the form's render prop.
+ */
+function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
+    useUnsavedChanges(
+        dirty,
+        'This product has changes that have not been saved. Leave anyway?',
+    );
+
+    return null;
 }
