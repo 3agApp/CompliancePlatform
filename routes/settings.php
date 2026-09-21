@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Organizations\OrganizationAiSettingController;
 use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\Organizations\OrganizationMemberController;
@@ -38,6 +39,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('settings/organizations/{organization}', [OrganizationController::class, 'destroy'])->name('organizations.destroy');
         Route::post('settings/organizations/{organization}/switch', [OrganizationController::class, 'switch'])->name('organizations.switch');
         Route::delete('settings/organizations/{organization}/leave', [OrganizationController::class, 'leave'])->name('organizations.leave');
+
+        Route::patch('settings/organizations/{organization}/ai-provider', [OrganizationAiSettingController::class, 'update'])->name('organizations.ai-provider.update');
+        Route::delete('settings/organizations/{organization}/ai-provider', [OrganizationAiSettingController::class, 'destroy'])->name('organizations.ai-provider.destroy');
 
         Route::patch('settings/organizations/{organization}/members/{user}', [OrganizationMemberController::class, 'update'])->name('organizations.members.update');
         Route::delete('settings/organizations/{organization}/members/{user}', [OrganizationMemberController::class, 'destroy'])->name('organizations.members.destroy');

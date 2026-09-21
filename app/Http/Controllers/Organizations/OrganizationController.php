@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Organizations;
 
 use App\Actions\Organizations\CreateOrganization;
 use App\Actions\Organizations\DeleteOrganization;
+use App\Enums\AiProvider;
+use App\Enums\OrganizationPermission;
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use App\Http\Requests\Organizations\SaveOrganizationRequest;
 use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,7 +92,55 @@ class OrganizationController extends Controller
                 ]),
             'permissions' => $user->toOrganizationPermissions($organization),
             'availableRoles' => OrganizationRole::assignable(),
+            'aiProvider' => $this->toAiProviderArray($user, $organization),
+            'availableAiProviders' => AiProvider::options(),
         ]);
+    }
+
+    /**
+     * Describe the connected AI provider for the page.
+     *
+     * The key is not in here, and never will be. All the page is given is
+     * which provider and model are set and the last four characters of the
+     * key, which is enough to tell one key from another and nothing more.
+     *
+     * Null for anyone who may not manage the provider, so a member is not
+     * told what the organization is spending on either.
+     *
+     * @return array{provider: string, provider_label: string, model: string, model_label: string, key_hint: string, updated_at: string|null}|null
+     */
+    private function toAiProviderArray(User $user, Organization $organization): ?array
+    {
+        if (! $user->hasOrganizationPermission($organization, OrganizationPermission::ManageAiProvider)) {
+            return null;
+        }
+
+        $setting = $organization->aiSetting;
+
+        if ($setting === null) {
+            return null;
+        }
+
+        /**
+         * A key that no longer decrypts -- APP_KEY was rotated without the
+         * stored values being re-encrypted -- reads as no provider at all.
+         * There is nothing useful to show and nothing useful to prompt with,
+         * and saving a new key puts it right.
+         */
+        try {
+            $hint = $setting->keyHint();
+        } catch (DecryptException) {
+            return null;
+        }
+
+        return [
+            'provider' => $setting->provider->value,
+            'provider_label' => $setting->provider->label(),
+            'model' => $setting->model,
+            'model_label' => $setting->provider->modelLabel($setting->model),
+            'key_hint' => $hint,
+            'updated_at' => $setting->updated_at?->toISOString(),
+        ];
     }
 
     /**

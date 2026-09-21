@@ -143,6 +143,20 @@ class Organization extends Model
     }
 
     /**
+     * Get the AI provider this organization has connected.
+     *
+     * Absent for most organizations: the feature it powers degrades to
+     * filling the fields in by hand, so having no provider is an ordinary
+     * state rather than a broken one.
+     *
+     * @return HasOne<OrganizationAiSetting, $this>
+     */
+    public function aiSetting(): HasOne
+    {
+        return $this->hasOne(OrganizationAiSetting::class);
+    }
+
+    /**
      * Get all products for this organization.
      *
      * @return HasMany<Product, $this>

@@ -56,6 +56,7 @@ export type PendingInvitation = {
 export type OrganizationPermissions = {
     canUpdateOrganization: boolean;
     canDeleteOrganization: boolean;
+    canManageAiProvider: boolean;
     canAddMember: boolean;
     canUpdateMember: boolean;
     canRemoveMember: boolean;
@@ -66,4 +67,31 @@ export type OrganizationPermissions = {
 export type RoleOption = {
     value: OrganizationRole;
     label: string;
+};
+
+/**
+ * The AI provider an organization pays for itself.
+ *
+ * The key is not here and never will be: `key_hint` is its last four
+ * characters, which is enough to tell one key from another.
+ */
+export type AiProviderSetting = {
+    provider: string;
+    provider_label: string;
+    model: string;
+    model_label: string;
+    key_hint: string;
+    updated_at: string | null;
+};
+
+export type AiModelOption = {
+    value: string;
+    label: string;
+};
+
+export type AiProviderOption = {
+    value: string;
+    label: string;
+    models: AiModelOption[];
+    default_model: string;
 };
