@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\SupplierConnectionStatus;
 use App\Models\Product;
 
 test('a brand is named under a supplier from the brands page', function () {
@@ -137,5 +138,22 @@ test('a member sees the brand list without the create, rename and delete control
         ->assertMissing('@brand-add-button')
         ->assertMissing('@brand-edit-button')
         ->assertMissing('@brand-delete-button')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a trade that was turned down is labelled declined, not revoked', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    carriedBrand(newSupplierConnection($distributor, attributes: [
+        'company_name' => 'Atlas Novelty',
+        'status' => SupplierConnectionStatus::Declined,
+    ]), 'Atlas');
+
+    $this->actingAs($user);
+
+    visit(route('brands.index', ['current_organization' => $distributor->slug]))
+        ->assertSee('Atlas Novelty')
+        ->assertSee('Declined')
+        ->assertDontSee('Revoked')
         ->assertNoJavaScriptErrors();
 });

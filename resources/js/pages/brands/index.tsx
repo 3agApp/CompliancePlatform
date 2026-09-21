@@ -98,10 +98,7 @@ export default function BrandsIndex({
                                                     variant="secondary"
                                                     className="ml-2"
                                                 >
-                                                    {connection.status ===
-                                                    'pending'
-                                                        ? 'Pending'
-                                                        : 'Revoked'}
+                                                    {connection.statusLabel}
                                                 </Badge>
                                             ) : null}
                                         </h2>

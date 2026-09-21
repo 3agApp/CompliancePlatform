@@ -1,3 +1,5 @@
+import type { SupplierConnectionStatus } from './connections';
+
 export type CountryOfOrigin = 'DE' | 'CH';
 
 export type CountryOption = {
@@ -111,7 +113,8 @@ export type BrandOption = {
 export type BrandConnection = {
     id: number;
     label: string;
-    status: string;
+    status: SupplierConnectionStatus;
+    statusLabel: string;
     canAddBrand: boolean;
     brands: Brand[];
 };

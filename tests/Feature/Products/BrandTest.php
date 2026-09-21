@@ -62,6 +62,31 @@ test('the brands page groups the makers under the trade each is named in', funct
         );
 });
 
+test('the brands page names the state of a trade rather than guessing at it', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    carriedBrand(newSupplierConnection($distributor, attributes: [
+        'company_name' => 'Atlas Novelty',
+        'status' => SupplierConnectionStatus::Declined,
+    ]), 'Atlas');
+
+    carriedBrand(newSupplierConnection($distributor, attributes: [
+        'company_name' => 'Kyoto Precision',
+        'status' => SupplierConnectionStatus::Revoked,
+    ]), 'Kyosei');
+
+    brandsPage($user, $distributor)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.label', 'Atlas Novelty')
+            ->where('connections.0.status', 'declined')
+            ->where('connections.0.statusLabel', 'Declined')
+            ->where('connections.1.label', 'Kyoto Precision')
+            ->where('connections.1.status', 'revoked')
+            ->where('connections.1.statusLabel', 'Revoked'),
+        );
+});
+
 test('the brands page never shows the makers behind another organization trades', function () {
     [$user, $distributor] = newOrganizationMember();
     [, $otherDistributor] = newOrganizationMember();
