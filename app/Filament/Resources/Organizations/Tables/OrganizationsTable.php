@@ -7,7 +7,6 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
 class OrganizationsTable
@@ -38,23 +37,16 @@ class OrganizationsTable
                     ->label('Created')
                     ->dateTime()
                     ->sortable(),
-                TextColumn::make('deleted_at')
-                    ->label('Deleted')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('type')
                     ->options(collect(OrganizationType::cases())
                         ->mapWithKeys(fn (OrganizationType $type) => [$type->value => $type->label()])
                         ->all()),
-                TrashedFilter::make(),
             ])
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make()
-                    ->hidden(fn ($record): bool => $record->trashed()),
+                EditAction::make(),
             ]);
     }
 }

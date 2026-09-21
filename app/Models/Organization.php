@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $id
@@ -25,7 +24,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property OrganizationType $type
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property CarbonImmutable|null $deleted_at
  * @property-read Collection<int, OrganizationInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, Product> $products
@@ -41,7 +39,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
-    use GeneratesUniqueOrganizationSlugs, HasFactory, SoftDeletes;
+    use GeneratesUniqueOrganizationSlugs, HasFactory;
 
     /**
      * Bootstrap the model and its traits.

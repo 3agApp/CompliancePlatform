@@ -37,14 +37,4 @@ class OrganizationFactory extends Factory
             'type' => OrganizationType::Supplier,
         ]);
     }
-
-    /**
-     * Indicate that the organization has been deleted.
-     */
-    public function trashed(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'deleted_at' => now(),
-        ]);
-    }
 }
