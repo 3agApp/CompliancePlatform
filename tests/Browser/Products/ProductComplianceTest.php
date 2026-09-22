@@ -186,12 +186,18 @@ test('the documents panel offers the kinds the template is still waiting for', f
         ->assertPresent('@document-kind-certificate')
         /** And the warning text is typed into the form, not filed here. */
         ->assertMissing('@document-kind-warning_text')
+        /** Filing is a dialog now, so the page itself offers no drop zone. */
+        ->assertMissing('@upload-documents-modal')
+        /** A chip is a way into it. */
+        ->click('@document-kind-certificate')
+        ->assertPresent('@upload-documents-modal')
         ->assertSee('Drag files here')
         /** Nothing is chosen yet, so there is nothing to upload. */
         ->assertButtonDisabled('@upload-document-submit')
         ->assertMissing('@document-review-table')
-        /** And nothing for a chip to name, so it is not offering either. */
-        ->assertButtonDisabled('@document-kind-certificate')
+        /** And it closes again without filing anything. */
+        ->click('@upload-documents-cancel')
+        ->assertMissing('@upload-documents-modal')
         ->assertNoJavaScriptErrors();
 });
 
@@ -215,8 +221,8 @@ test('a member sees the documents without the upload and delete controls', funct
         'product' => $product->id,
     ]))
         ->assertSee('ce-marking.pdf')
+        ->assertMissing('@upload-documents-button')
         ->assertMissing('@document-file')
-        ->assertMissing('@document-review-table')
         ->assertMissing('@product-document-delete-button')
         ->assertNoJavaScriptErrors();
 });
@@ -254,11 +260,16 @@ test('the kind of a chosen file is proposed for the person to confirm', function
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
+        ->click('@upload-documents-button')
         ->assertButtonDisabled('@upload-document-submit')
         ->attach('@document-file', aPdfNamed('DoC-2026.pdf'))
         ->assertPresent('@document-review-table')
         ->assertSee('DoC-2026.pdf')
-        /** The kind came back filled in, and says so rather than pretending. */
+        /** Nothing is guessed until it is asked for. */
+        ->assertSeeIn('@pending-document-type-0', 'Select a kind')
+        ->assertButtonDisabled('@upload-document-submit')
+        ->click('@guess-document-kinds-button')
+        /** Now the kind is filled in, and says so rather than pretending. */
         ->assertSeeIn('@pending-document-type-0', 'Declaration of conformity')
         ->assertSeeIn('@pending-document-guessed-0', 'Proposed')
         /** With a kind on every row, the batch may go. */
@@ -294,15 +305,19 @@ test('a file the AI cannot place is left for the person to name', function () {
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
+        ->click('@upload-documents-button')
         ->attach('@document-file', aPdfNamed('scan_0012.pdf'))
         ->assertPresent('@document-review-table')
+        ->click('@guess-document-kinds-button')
         ->assertSeeIn('@pending-document-unsure-0', 'Not sure')
         /** No kind, so nothing may be filed yet. */
         ->assertButtonDisabled('@upload-document-submit')
         ->assertNoJavaScriptErrors();
 });
 
-test('an organization with no AI provider is told the kinds are its own to pick', function () {
+test('an organization with no AI provider is not offered the guess at all', function () {
+    DocumentKindAgent::fake()->preventStrayPrompts();
+
     [$user, $organization] = newOrganizationMember();
     $connection = newSupplierConnection($organization);
 
@@ -316,11 +331,18 @@ test('an organization with no AI provider is told the kinds are its own to pick'
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
+        ->click('@upload-documents-button')
         ->attach('@document-file', aPdfNamed('DoC-2026.pdf'))
         ->assertPresent('@document-review-table')
-        ->assertSeeIn('@document-upload-notice', 'an owner or admin can connect an AI provider')
-        /** The file is still there to be filed, by hand. */
+        /*
+         * A button whose only answer would be "no provider is configured"
+         * is not a button. Filing by hand is what it was before any of this
+         * existed, and still is.
+         */
+        ->assertMissing('@guess-document-kinds-button')
         ->assertSee('DoC-2026.pdf')
         ->assertButtonDisabled('@upload-document-submit')
         ->assertNoJavaScriptErrors();
+
+    DocumentKindAgent::assertNeverPrompted();
 });
