@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $id
@@ -25,7 +24,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property OrganizationType $type
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property CarbonImmutable|null $deleted_at
  * @property-read Collection<int, OrganizationInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, Product> $products
@@ -41,7 +39,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
-    use GeneratesUniqueOrganizationSlugs, HasFactory, SoftDeletes;
+    use GeneratesUniqueOrganizationSlugs, HasFactory;
 
     /**
      * Bootstrap the model and its traits.
@@ -140,6 +138,20 @@ class Organization extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(Membership::class);
+    }
+
+    /**
+     * Get the AI provider this organization has connected.
+     *
+     * Absent for most organizations: the feature it powers degrades to
+     * filling the fields in by hand, so having no provider is an ordinary
+     * state rather than a broken one.
+     *
+     * @return HasOne<OrganizationAiSetting, $this>
+     */
+    public function aiSetting(): HasOne
+    {
+        return $this->hasOne(OrganizationAiSetting::class);
     }
 
     /**

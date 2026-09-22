@@ -9,12 +9,16 @@ trait GeneratesUniqueOrganizationSlugs
 {
     /**
      * Generate a unique slug for the organization.
+     *
+     * A deleted organization is gone, so its slug is free again. The suffix
+     * still counts from the highest one in use rather than the count, so two
+     * companies called the same thing never collide while both exist.
      */
     protected static function generateUniqueOrganizationSlug(string $name, ?int $excludeId = null): string
     {
         $defaultSlug = Str::slug($name);
 
-        $query = static::withTrashed()
+        $query = static::query()
             ->where(function ($query) use ($defaultSlug) {
                 $query->where('slug', $defaultSlug)
                     ->orWhere('slug', 'like', $defaultSlug.'-%');

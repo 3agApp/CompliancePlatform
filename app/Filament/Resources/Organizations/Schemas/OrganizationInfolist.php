@@ -44,11 +44,6 @@ class OrganizationInfolist
                         TextEntry::make('created_at')
                             ->label('Created')
                             ->dateTime(),
-                        TextEntry::make('deleted_at')
-                            ->label('Deleted')
-                            ->dateTime()
-                            ->color('danger')
-                            ->visible(fn (Organization $record): bool => $record->trashed()),
                     ]),
             ]);
     }

@@ -139,8 +139,8 @@ describe('users', function () {
         $this->assertModelMissing($user);
         // The member is still working in it, so the organization stays and they take
         // it on. Removing one account should not take a catalogue with it.
-        $this->assertNotSoftDeleted($ownedOrganization);
-        $this->assertNotSoftDeleted($otherOrganization);
+        $this->assertModelExists($ownedOrganization);
+        $this->assertModelExists($otherOrganization);
 
         expect($ownedOrganization->fresh()->owner()?->id)->toBe($member->id)
             ->and($member->fresh()->current_organization_id)->toBe($ownedOrganization->id);
@@ -154,7 +154,7 @@ describe('users', function () {
             ->callAction(DeleteAction::class);
 
         $this->assertModelMissing($user);
-        $this->assertSoftDeleted($ownedOrganization);
+        $this->assertModelMissing($ownedOrganization);
     });
 
     test('the admin cannot delete or impersonate themselves', function () {
@@ -245,7 +245,7 @@ describe('organizations', function () {
             ->and($organization->type)->toBe($type);
     });
 
-    test('a organization can be deleted and restored with a new owner', function () {
+    test('a organization is deleted outright, and its members with it', function () {
         $owner = User::factory()->withoutOrganization()->create();
         $organization = Organization::factory()->create();
         $organization->members()->attach($owner, ['role' => OrganizationRole::Owner->value]);
@@ -254,18 +254,9 @@ describe('organizations', function () {
         Livewire::test(ViewOrganization::class, ['record' => $organization->getRouteKey()])
             ->callAction(DeleteAction::class);
 
-        $this->assertSoftDeleted($organization);
-        expect($organization->memberships()->count())->toBe(0)
-            ->and($owner->fresh()->current_organization_id)->toBeNull();
-
-        $newOwner = User::factory()->create();
-
-        Livewire::test(ViewOrganization::class, ['record' => $organization->getRouteKey()])
-            ->callAction('restore', data: ['owner_id' => $newOwner->id])
-            ->assertHasNoFormErrors();
-
-        $this->assertNotSoftDeleted($organization);
-        expect($newOwner->fresh()->ownsOrganization($organization))->toBeTrue();
+        $this->assertModelMissing($organization);
+        $this->assertDatabaseMissing('organization_members', ['organization_id' => $organization->id]);
+        expect($owner->fresh()->current_organization_id)->toBeNull();
     });
 
     test('members can be added, have their role changed and be removed', function () {

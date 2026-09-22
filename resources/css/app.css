@@ -174,4 +174,58 @@
     .workspace-table td {
         @apply py-4;
     }
+
+    /*
+     * Below md a row becomes a card.
+     *
+     * Done in CSS on the same markup rather than by rendering a table and a
+     * list side by side: one DOM means one copy of every row for a screen
+     * reader, one set of test hooks, and no chance of the two drifting.
+     *
+     * Each cell names itself from data-label, so a cell whose meaning came
+     * from a column heading still has one once the heading is gone. A cell
+     * with no label -- the row's title, its actions -- spans the card
+     * instead, which is why the rule is scoped to [data-label].
+     */
+    .workspace-table :is(table, thead, tbody, tr, th, td) {
+        @apply max-md:block;
+    }
+
+    .workspace-table thead {
+        @apply max-md:sr-only;
+    }
+
+    .workspace-table table {
+        @apply max-md:min-w-0;
+    }
+
+    .workspace-table tbody tr {
+        @apply max-md:space-y-1 max-md:px-4 max-md:py-4;
+    }
+
+    .workspace-table tbody td {
+        @apply max-md:px-0 max-md:py-1;
+    }
+
+    .workspace-table tbody td[data-label] {
+        @apply max-md:flex max-md:items-baseline max-md:justify-between max-md:gap-4;
+    }
+
+    /*
+     * The label is chrome, not data, so it does not inherit the cell's
+     * dressing -- a monospace barcode column would otherwise give its label
+     * a monospace label too.
+     */
+    .workspace-table tbody td[data-label]::before {
+        content: attr(data-label);
+        @apply text-muted-foreground font-sans text-xs font-normal tracking-normal normal-case max-md:block max-md:shrink-0 md:hidden;
+    }
+
+    /*
+     * An empty-state cell spans the table and should not be dressed as a row
+     * of one.
+     */
+    .workspace-table tbody td[colspan]:only-child {
+        @apply max-md:px-4 max-md:py-6;
+    }
 }

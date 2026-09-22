@@ -181,6 +181,7 @@ trait HasOrganizations
         return new OrganizationPermissions(
             canUpdateOrganization: $role?->hasPermission(OrganizationPermission::UpdateOrganization) ?? false,
             canDeleteOrganization: $role?->hasPermission(OrganizationPermission::DeleteOrganization) ?? false,
+            canManageAiProvider: $role?->hasPermission(OrganizationPermission::ManageAiProvider) ?? false,
             canAddMember: $role?->hasPermission(OrganizationPermission::AddMember) ?? false,
             canUpdateMember: $role?->hasPermission(OrganizationPermission::UpdateMember) ?? false,
             canRemoveMember: $role?->hasPermission(OrganizationPermission::RemoveMember) ?? false,

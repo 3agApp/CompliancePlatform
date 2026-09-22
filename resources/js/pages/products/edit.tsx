@@ -55,6 +55,7 @@ type Props = {
     availableConnections: SupplierConnectionOption[];
     availableRequirements: ProductRequirementOption[];
     canCreateBrand: boolean;
+    canGuessDocumentKinds: boolean;
     completeness: ProductCompleteness;
     viewerType: OrganizationType;
 };
@@ -69,6 +70,7 @@ export default function ProductEdit({
     availableBrands,
     availableConnections,
     canCreateBrand,
+    canGuessDocumentKinds,
     completeness,
     viewerType,
 }: Props) {
@@ -428,6 +430,7 @@ export default function ProductEdit({
                                 availableDocumentTypes={availableDocumentTypes}
                                 outstandingTypes={outstandingDocumentTypes}
                                 canUpload={permissions.canUpdateProduct}
+                                canGuessKinds={canGuessDocumentKinds}
                             />
                         </section>
                     </div>

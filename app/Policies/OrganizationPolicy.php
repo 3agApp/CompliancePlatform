@@ -41,6 +41,18 @@ class OrganizationPolicy
     }
 
     /**
+     * Determine whether the user can connect and change the AI provider.
+     *
+     * Separate from updating the organization because it is a different kind
+     * of thing to hand someone: a name is cosmetic, a billable API key is
+     * not.
+     */
+    public function manageAiProvider(User $user, Organization $organization): bool
+    {
+        return $user->hasOrganizationPermission($organization, OrganizationPermission::ManageAiProvider);
+    }
+
+    /**
      * Determine whether the user can leave the organization.
      */
     public function leave(User $user, Organization $organization): bool

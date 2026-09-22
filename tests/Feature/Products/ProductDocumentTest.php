@@ -35,10 +35,20 @@ function distributorWithFiledProduct(OrganizationRole $role = OrganizationRole::
  */
 function fileDocument(Organization $organization, Product $product, UploadedFile $file, string $type = 'test_report'): TestResponse
 {
+    return fileDocuments($organization, $product, [['type' => $type, 'file' => $file]]);
+}
+
+/**
+ * File a batch of documents against a product through the endpoint.
+ *
+ * @param  array<int, array<string, mixed>>  $documents
+ */
+function fileDocuments(Organization $organization, Product $product, array $documents): TestResponse
+{
     return test()->post(route('products.documents.store', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
-    ]), ['type' => $type, 'file' => $file]);
+    ]), ['documents' => $documents]);
 }
 
 test('a document is filed against a product', function () {
@@ -112,23 +122,35 @@ test('a document must be one of the known kinds', function () {
     $this
         ->actingAs($user)
         ->post(route('products.documents.store', ['current_organization' => $organization->slug, 'product' => $product->id]), [
-            'type' => 'invoice',
-            'file' => UploadedFile::fake()->create('invoice.pdf', 10, 'application/pdf'),
+            'documents' => [
+                ['type' => 'invoice', 'file' => UploadedFile::fake()->create('invoice.pdf', 10, 'application/pdf')],
+            ],
         ])
-        ->assertSessionHasErrors(['type' => 'Choose one of the available kinds of document.']);
+        ->assertSessionHasErrors(['documents.0.type' => 'Choose one of the available kinds of document for file 1.']);
 
     $this->assertDatabaseCount('product_documents', 0);
 });
 
-test('a kind and a file are both required', function () {
+test('a request with no files at all is refused', function () {
     [$user, $organization, $product] = distributorWithFiledProduct();
 
     $this
         ->actingAs($user)
         ->post(route('products.documents.store', ['current_organization' => $organization->slug, 'product' => $product->id]), [])
+        ->assertSessionHasErrors(['documents' => 'Choose at least one file to upload.']);
+
+    $this->assertDatabaseCount('product_documents', 0);
+});
+
+test('a kind and a file are both required of every row', function () {
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocuments($organization, $product, [[]])
         ->assertSessionHasErrors([
-            'type' => 'Choose what kind of document this is.',
-            'file' => 'Choose a file to upload.',
+            'documents.0.type' => 'Choose what kind of document file 1 is.',
+            'documents.0.file' => 'File 1 is missing.',
         ]);
 
     $this->assertDatabaseCount('product_documents', 0);
@@ -142,7 +164,7 @@ test('a file larger than ten megabytes is refused', function () {
     $this->actingAs($user);
 
     fileDocument($organization, $product, UploadedFile::fake()->create('report.pdf', 10241, 'application/pdf'))
-        ->assertSessionHasErrors(['file' => 'The file must be no larger than 10 MB.']);
+        ->assertSessionHasErrors(['documents.0.file' => 'File 1 must be no larger than 10 MB.']);
 
     $this->assertDatabaseCount('product_documents', 0);
 });
@@ -155,7 +177,7 @@ test('a file that is neither a document nor an image is refused', function () {
     $this->actingAs($user);
 
     fileDocument($organization, $product, UploadedFile::fake()->create('reports.zip', 10, 'application/zip'))
-        ->assertSessionHasErrors(['file' => 'Upload a PDF, an image, or a Word or Excel file.']);
+        ->assertSessionHasErrors(['documents.0.file' => 'File 1 must be a PDF, an image, or a Word or Excel file.']);
 
     $this->assertDatabaseCount('product_documents', 0);
 });
@@ -379,4 +401,76 @@ test('guests are redirected to the login page', function () {
             'document' => $document->id,
         ]))
         ->assertRedirect(route('login'));
+});
+
+test('several documents are filed in one go, each under its own kind', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocuments($organization, $product, [
+        ['type' => 'test_report', 'file' => UploadedFile::fake()->create('en71-part-1.pdf', 40, 'application/pdf')],
+        ['type' => 'declaration_of_conformity', 'file' => UploadedFile::fake()->create('doc-2026.pdf', 20, 'application/pdf')],
+        ['type' => 'product_image', 'file' => UploadedFile::fake()->image('packaging.jpg')],
+    ])->assertRedirect();
+
+    $this->assertDatabaseCount('product_documents', 3);
+
+    /*
+     * Compared by name rather than in order: the three rows are written in
+     * the same second, so the relation's oldest-first ordering has nothing
+     * to separate them by.
+     */
+    expect($product->documents()->pluck('type', 'name')->map->value->sortKeys()->all())->toBe([
+        'doc-2026.pdf' => 'declaration_of_conformity',
+        'en71-part-1.pdf' => 'test_report',
+        'packaging.jpg' => 'product_image',
+    ]);
+
+    $product->documents->each(
+        fn (ProductDocument $document) => Storage::disk(ProductDocument::DISK)->assertExists($document->path)
+    );
+});
+
+test('a refused file names the row it was in and takes the batch with it', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocuments($organization, $product, [
+        ['type' => 'test_report', 'file' => UploadedFile::fake()->create('en71-part-1.pdf', 40, 'application/pdf')],
+        ['type' => 'certificate', 'file' => UploadedFile::fake()->create('bundle.zip', 10, 'application/zip')],
+        ['type' => 'manual_or_instructions', 'file' => UploadedFile::fake()->create('manual.pdf', 30, 'application/pdf')],
+    ])->assertSessionHasErrors([
+        'documents.1.file' => 'File 2 must be a PDF, an image, or a Word or Excel file.',
+    ]);
+
+    /*
+     * Nothing at all, not the two good files either: a half-filed batch
+     * would leave a product reading as documented when it is not.
+     */
+    $this->assertDatabaseCount('product_documents', 0);
+    expect(Storage::disk(ProductDocument::DISK)->allFiles())->toBeEmpty();
+});
+
+test('more files than the batch allows are refused', function () {
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    $documents = collect(range(1, 21))
+        ->map(fn (int $number) => [
+            'type' => 'test_report',
+            'file' => UploadedFile::fake()->create("report-{$number}.pdf", 10, 'application/pdf'),
+        ])
+        ->all();
+
+    fileDocuments($organization, $product, $documents)
+        ->assertSessionHasErrors(['documents' => 'Upload no more than 20 files at a time.']);
+
+    $this->assertDatabaseCount('product_documents', 0);
 });

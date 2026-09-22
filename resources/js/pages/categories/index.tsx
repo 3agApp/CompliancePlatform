@@ -144,7 +144,7 @@ export default function CategoriesIndex({
                 {categories.length > 0 ? (
                     <div className="workspace-table">
                         <div className="min-w-0 overflow-x-auto">
-                            <table className="w-full min-w-md text-left text-sm">
+                            <table className="w-full text-left text-sm md:min-w-md">
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
@@ -207,6 +207,7 @@ export default function CategoriesIndex({
                                                     <td
                                                         className="text-muted-foreground px-6"
                                                         data-test="category-templates-count"
+                                                        data-label="Templates"
                                                     >
                                                         {category.templates
                                                             .length > 0
@@ -217,6 +218,7 @@ export default function CategoriesIndex({
                                                     <td
                                                         className="text-muted-foreground px-6"
                                                         data-test="category-products-count"
+                                                        data-label="Products"
                                                     >
                                                         {category.products_count >
                                                         0

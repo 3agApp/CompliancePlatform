@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Products\GuessDocumentKinds;
 use App\Http\Requests\Products\SaveProductDocumentRequest;
+use App\Http\Requests\Products\SuggestProductDocumentKindsRequest;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * The papers filed against a product: test reports, declarations of
@@ -24,33 +29,82 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ProductDocumentController extends Controller
 {
     /**
-     * File a document against the product.
+     * File documents against the product.
+     *
+     * A batch is all or nothing. Validation has already refused the whole
+     * request if any one file was wrong, so by here the only way to fail is
+     * the database -- and a half-written batch would leave a product looking
+     * documented when it is not.
      */
     public function store(SaveProductDocumentRequest $request, Organization $currentOrganization, Product $product): RedirectResponse
     {
         Gate::authorize('update', $product);
 
-        $file = $request->uploadedFile();
+        $rows = [];
 
-        /**
-         * store() names the file on disk itself. The name the uploader gave
-         * it is kept in a column and handed back on download, so a filename
-         * is something we show, never something that decides a path.
-         */
-        $path = $file->store(ProductDocument::directoryFor($product), ProductDocument::DISK);
+        try {
+            foreach ($request->documents() as $document) {
+                $file = $document['file'];
 
-        $product->documents()->create([
-            'type' => $request->validated('type'),
-            'name' => $file->getClientOriginalName(),
-            'path' => $path,
-            'mime_type' => $file->getClientMimeType(),
-            'size' => $file->getSize(),
-            'uploaded_by' => $request->user()->id,
+                /**
+                 * store() names the file on disk itself. The name the
+                 * uploader gave it is kept in a column and handed back on
+                 * download, so a filename is something we show, never
+                 * something that decides a path.
+                 */
+                $rows[] = [
+                    'type' => $document['type'],
+                    'name' => $file->getClientOriginalName(),
+                    'path' => $file->store(ProductDocument::directoryFor($product), ProductDocument::DISK),
+                    'mime_type' => $file->getClientMimeType(),
+                    'size' => $file->getSize(),
+                    'uploaded_by' => $request->user()->id,
+                ];
+            }
+
+            DB::transaction(fn () => $product->documents()->createMany($rows));
+        } catch (Throwable $exception) {
+            /**
+             * The bytes are written before the rows and cannot be rolled
+             * back with them, so they are taken back by hand. Without this a
+             * failed batch would leave files on the disk that nothing points
+             * at and nothing will ever clean up.
+             */
+            Storage::disk(ProductDocument::DISK)->delete(array_column($rows, 'path'));
+
+            throw $exception;
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => trans_choice('Document uploaded.|:count documents uploaded.', count($rows)),
         ]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Document uploaded.')]);
-
         return $this->backToProduct($currentOrganization, $product);
+    }
+
+    /**
+     * Guess what kind of paper each of a batch of files is.
+     *
+     * Answers with one guess per file, always, whatever happened. A provider
+     * that is not configured, refuses the key or never answers is reported
+     * in the body rather than in the status, because none of those is an
+     * error as far as this page is concerned: the kinds are still there to
+     * be picked by hand, which is how they were picked before any of this
+     * existed.
+     */
+    public function suggest(SuggestProductDocumentKindsRequest $request, Organization $currentOrganization, Product $product, GuessDocumentKinds $guessDocumentKinds): JsonResponse
+    {
+        Gate::authorize('update', $product);
+
+        /**
+         * The viewing organization's provider, not the product owner's: a
+         * supplier filing against a distributor's product spends its own
+         * credit, on its own key.
+         */
+        $guesses = $guessDocumentKinds->handle($currentOrganization, $request->candidates());
+
+        return response()->json($guesses->toArray());
     }
 
     /**

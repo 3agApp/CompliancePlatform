@@ -16,9 +16,11 @@ return new class extends Migration
      * app shows and what it lets through, so it is a column rather than
      * something inferred from what a company happens to own.
      *
-     * Organizations are soft deleted. A company's products, suppliers and
-     * invitations are evidence of trades that happened, and a slug that has
-     * been mailed out must not come back as somebody else's.
+     * Deleting an organization deletes it. The foreign keys below carry the
+     * memberships, invitations, suppliers and settings away with it, and
+     * App\Actions\Organizations\DeleteOrganization clears what the database
+     * cannot -- the products, which other tables hold back with restricts,
+     * and the document files, which no cascade can reach.
      */
     public function up(): void
     {
@@ -28,7 +30,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->string('type')->default(OrganizationType::Distributor->value);
             $table->timestamps();
-            $table->softDeletes();
         });
 
         Schema::create('organization_members', function (Blueprint $table) {

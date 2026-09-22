@@ -6,6 +6,7 @@ enum OrganizationPermission: string
 {
     case UpdateOrganization = 'organization:update';
     case DeleteOrganization = 'organization:delete';
+    case ManageAiProvider = 'organization:manage_ai_provider';
 
     case AddMember = 'member:add';
     case UpdateMember = 'member:update';

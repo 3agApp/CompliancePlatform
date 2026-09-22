@@ -29,7 +29,7 @@ export default function DistributorsIndex({ connections }: Props) {
                 {connections.length > 0 ? (
                     <div className="workspace-table">
                         <div className="min-w-0 overflow-x-auto">
-                            <table className="w-full min-w-xl text-left text-sm">
+                            <table className="w-full text-left text-sm md:min-w-xl">
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
@@ -64,7 +64,10 @@ export default function DistributorsIndex({ connections }: Props) {
                                                     {connection.distributorName}
                                                 </Link>
                                             </td>
-                                            <td className="text-muted-foreground px-6">
+                                            <td
+                                                className="text-muted-foreground px-6"
+                                                data-label="Products assigned to you"
+                                            >
                                                 {connection.productsCount}
                                             </td>
                                         </tr>

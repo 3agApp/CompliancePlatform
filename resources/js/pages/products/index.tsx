@@ -199,7 +199,7 @@ export default function ProductsIndex({
 
                 {products.data.length > 0 ? (
                     <div className="workspace-table">
-                        <Table className="min-w-3xl">
+                        <Table className="md:min-w-3xl">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead className="px-6">Name</TableHead>
@@ -245,18 +245,23 @@ export default function ProductsIndex({
                                                 </span>
                                             ) : null}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground px-6 break-words">
+                                        <TableCell
+                                            className="text-muted-foreground px-6 break-words"
+                                            data-label="Brand"
+                                        >
                                             {product.brand_label ?? '—'}
                                         </TableCell>
                                         <TableCell
                                             className="text-muted-foreground px-6"
                                             data-test="product-list-category"
+                                            data-label="Category"
                                         >
                                             {product.category_label}
                                         </TableCell>
                                         <TableCell
                                             className="px-6"
                                             data-test="product-counterparty"
+                                            data-label={counterpartyLabel}
                                         >
                                             <span className="text-muted-foreground">
                                                 {product.counterparty ?? '—'}
@@ -276,14 +281,23 @@ export default function ProductsIndex({
                                                 </Badge>
                                             ) : null}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground px-6 font-mono text-xs">
+                                        <TableCell
+                                            className="text-muted-foreground px-6 font-mono text-xs"
+                                            data-label="EAN / barcode"
+                                        >
                                             {product.ean ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground px-6">
+                                        <TableCell
+                                            className="text-muted-foreground px-6"
+                                            data-label="Country of origin"
+                                        >
                                             {product.country_of_origin_label ??
                                                 '—'}
                                         </TableCell>
-                                        <TableCell className="px-6">
+                                        <TableCell
+                                            className="px-6"
+                                            data-label="Complete"
+                                        >
                                             <CompletenessMeter
                                                 score={
                                                     product.completeness_score

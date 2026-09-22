@@ -63,7 +63,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                 {connections.length > 0 ? (
                     <div className="workspace-table">
                         <div className="min-w-0 overflow-x-auto">
-                            <table className="w-full min-w-xl text-left text-sm">
+                            <table className="w-full text-left text-sm md:min-w-xl">
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
@@ -109,10 +109,16 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                     {connection.companyName}
                                                 </Link>
                                             </td>
-                                            <td className="text-muted-foreground px-6 break-all">
+                                            <td
+                                                className="text-muted-foreground px-6 break-all"
+                                                data-label="Contact"
+                                            >
                                                 {connection.contactEmail}
                                             </td>
-                                            <td className="px-6">
+                                            <td
+                                                className="px-6"
+                                                data-label="Status"
+                                            >
                                                 <Badge
                                                     variant={
                                                         connection.status ===
@@ -124,7 +130,10 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                     {connection.statusLabel}
                                                 </Badge>
                                             </td>
-                                            <td className="text-muted-foreground px-6">
+                                            <td
+                                                className="text-muted-foreground px-6"
+                                                data-label="Products"
+                                            >
                                                 {connection.productsCount}
                                             </td>
                                             <td className="px-6">

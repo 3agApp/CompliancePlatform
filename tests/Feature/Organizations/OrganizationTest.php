@@ -2,7 +2,10 @@
 
 use App\Enums\OrganizationRole;
 use App\Models\Organization;
+use App\Models\Product;
+use App\Models\ProductDocument;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the organizations index page can be rendered', function () {
@@ -122,7 +125,7 @@ test('organizations can be deleted by owners', function () {
 
     $response->assertRedirect();
 
-    $this->assertSoftDeleted('organizations', [
+    $this->assertDatabaseMissing('organizations', [
         'id' => $organization->id,
     ]);
 });
@@ -143,7 +146,6 @@ test('organization deletion requires name confirmation', function () {
 
     $this->assertDatabaseHas('organizations', [
         'id' => $organization->id,
-        'deleted_at' => null,
     ]);
 });
 
@@ -169,7 +171,7 @@ test('deleting current organization switches to alphabetically first remaining o
 
     $response->assertRedirect();
 
-    $this->assertSoftDeleted('organizations', [
+    $this->assertDatabaseMissing('organizations', [
         'id' => $zuluOrganization->id,
     ]);
 
@@ -188,7 +190,7 @@ test('deleting the only organization clears the current organization and sends t
 
     $response->assertRedirect(route('onboarding'));
 
-    $this->assertSoftDeleted('organizations', [
+    $this->assertDatabaseMissing('organizations', [
         'id' => $organization->id,
     ]);
 
@@ -209,7 +211,7 @@ test('deleting non current organization leaves current organization unchanged', 
 
     $response->assertRedirect();
 
-    $this->assertSoftDeleted('organizations', [
+    $this->assertDatabaseMissing('organizations', [
         'id' => $organization->id,
     ]);
 
@@ -377,4 +379,52 @@ test('guests cannot access organizations', function () {
     $response = $this->get(route('organizations.index'));
 
     $response->assertRedirect(route('login'));
+});
+
+/*
+ * The delete the foreign keys cannot do on their own. Products hold a
+ * restrict on the connection, the category and the template they were filed
+ * under, and all three go with the organization -- so without the products
+ * being cleared first the database refuses the whole thing.
+ */
+test('deleting an organization takes its catalogue and the files filed against it', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $document = ProductDocument::factory()->for($product)->create();
+    Storage::disk(ProductDocument::DISK)->put($document->path, 'the evidence');
+
+    $this->actingAs($user)
+        ->delete(route('organizations.destroy', $organization), ['name' => $organization->name])
+        ->assertRedirect();
+
+    $this->assertModelMissing($organization);
+    $this->assertModelMissing($product);
+    $this->assertModelMissing($document);
+    $this->assertModelMissing($connection);
+
+    /** A cascade fires no model event, so the file is cleared by hand. */
+    Storage::disk(ProductDocument::DISK)->assertMissing($document->path);
+    expect(Storage::disk(ProductDocument::DISK)->allFiles())->toBeEmpty();
+});
+
+test('a slug is free again once the organization holding it is gone', function () {
+    $user = User::factory()->create();
+
+    $first = Organization::factory()->create(['name' => 'Acme', 'slug' => 'acme']);
+    $first->members()->attach($user, ['role' => OrganizationRole::Owner->value]);
+
+    $this->actingAs($user)
+        ->delete(route('organizations.destroy', $first), ['name' => $first->name]);
+
+    $this->actingAs($user)
+        ->post(route('organizations.store'), ['name' => 'Acme', 'type' => 'distributor']);
+
+    $this->assertDatabaseHas('organizations', ['name' => 'Acme', 'slug' => 'acme']);
 });

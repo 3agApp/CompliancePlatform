@@ -6,6 +6,7 @@ import DeleteOrganizationModal from '@/components/delete-organization-modal';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import InviteMemberModal from '@/components/invite-member-modal';
+import OrganizationAiProviderForm from '@/components/organization-ai-provider-form';
 import RemoveMemberModal from '@/components/remove-member-modal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,8 @@ import { useInitials } from '@/hooks/use-initials';
 import { edit, index, update } from '@/routes/organizations';
 import { update as updateMember } from '@/routes/organizations/members';
 import type {
+    AiProviderOption,
+    AiProviderSetting,
     RoleOption,
     Organization,
     OrganizationInvitation,
@@ -41,6 +44,8 @@ type Props = {
     invitations: OrganizationInvitation[];
     permissions: OrganizationPermissions;
     availableRoles: RoleOption[];
+    aiProvider: AiProviderSetting | null;
+    availableAiProviders: AiProviderOption[];
 };
 
 export default function OrganizationEdit({
@@ -49,6 +54,8 @@ export default function OrganizationEdit({
     invitations,
     permissions,
     availableRoles,
+    aiProvider,
+    availableAiProviders,
 }: Props) {
     const getInitials = useInitials();
 
@@ -145,6 +152,25 @@ export default function OrganizationEdit({
                         </>
                     )}
                 </div>
+
+                {permissions.canManageAiProvider ? (
+                    <div
+                        className="space-y-6 border-t pt-8 first:border-0 first:pt-0"
+                        data-test="ai-provider-section"
+                    >
+                        <Heading
+                            variant="small"
+                            title="AI provider"
+                            description="Connect a provider to have document kinds guessed for you when files are uploaded. Only file names, types and sizes are sent — never the contents of a document."
+                        />
+
+                        <OrganizationAiProviderForm
+                            organizationSlug={organization.slug}
+                            setting={aiProvider}
+                            availableProviders={availableAiProviders}
+                        />
+                    </div>
+                ) : null}
 
                 <div className="space-y-6 border-t pt-8 first:border-0 first:pt-0">
                     <div className="flex flex-wrap items-center justify-between gap-3">

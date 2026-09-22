@@ -218,7 +218,7 @@ test('a distributor cannot reach a connection belonging to another distributor',
     expect($foreignConnection->fresh()->status)->toBe(SupplierConnectionStatus::Pending);
 });
 
-test('deleting a distributor organization revokes its supplier connections', function () {
+test('deleting a distributor organization takes its supplier connections and catalogue', function () {
     [$user, $distributor] = newOrganizationMember();
     [$supplierUser, $supplier] = newSupplierMember();
 
@@ -232,7 +232,14 @@ test('deleting a distributor organization revokes its supplier connections', fun
         ])
         ->assertSessionHasNoErrors();
 
-    expect($connection->fresh()->status)->toBe(SupplierConnectionStatus::Revoked);
+    /*
+     * The trade belonged to the distributor, so it goes with it -- and so
+     * does the catalogue the supplier was answering for. The supplier keeps
+     * its own organization and everything else it is party to.
+     */
+    $this->assertModelMissing($connection);
+    $this->assertModelMissing($product);
+    $this->assertModelExists($supplier);
 
     $this
         ->actingAs($supplierUser)

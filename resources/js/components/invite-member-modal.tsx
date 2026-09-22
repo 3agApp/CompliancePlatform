@@ -85,7 +85,6 @@ export default function InviteMemberModal({
                                     <Label htmlFor="role">Role</Label>
                                     <Select
                                         name="role"
-                                        data-test="invite-role"
                                         value={inviteRole}
                                         onValueChange={(value) =>
                                             setInviteRole(
@@ -93,7 +92,17 @@ export default function InviteMemberModal({
                                             )
                                         }
                                     >
-                                        <SelectTrigger className="w-full">
+                                        {/*
+                                         * The hook belongs on the trigger,
+                                         * not on the Select: Radix spreads
+                                         * the root's props onto the hidden
+                                         * native control, which nothing can
+                                         * click.
+                                         */}
+                                        <SelectTrigger
+                                            data-test="invite-role"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select a role" />
                                         </SelectTrigger>
                                         <SelectContent>

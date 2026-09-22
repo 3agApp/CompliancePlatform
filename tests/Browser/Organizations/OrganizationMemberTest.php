@@ -18,7 +18,7 @@ test('an invitation is sent through the invite member dialog', function () {
     $page->click('@invite-member-button')
         ->assertSee('Invite an organization member')
         ->fill('@invite-email', 'colleague@example.com')
-        ->click('[role="combobox"]')
+        ->click('@invite-role')
         ->click('[role="option"]:has-text("Admin")')
         ->click('@invite-submit')
         ->assertDontSee('Invite an organization member')

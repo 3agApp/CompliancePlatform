@@ -134,10 +134,10 @@ test('deleting an account winds up an organization nobody else is in', function 
         ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
-    expect(Organization::withTrashed()->find($organization->id)->trashed())->toBeTrue();
+    $this->assertModelMissing($organization);
 });
 
-test('winding up a distributor revokes the connections its suppliers held', function () {
+test('winding up a distributor takes the connections its suppliers held', function () {
     [$owner, $distributor] = newOrganizationMember();
     [, $supplier] = newSupplierMember();
 
@@ -149,10 +149,30 @@ test('winding up a distributor revokes the connections its suppliers held', func
         ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
-    // The distributor is only soft deleted, so nothing cascades. Left live,
-    // the connection would keep a supplier reading and writing products
-    // belonging to an organization that no longer exists.
-    expect($connection->fresh()->status)->toBe(SupplierConnectionStatus::Revoked);
+    // The distributor is gone outright, so the trade goes with it. Left
+    // standing, the connection would keep a supplier reading and writing
+    // products belonging to an organization that no longer exists.
+    $this->assertModelMissing($connection);
+    $this->assertModelMissing($distributor);
+});
+
+test('winding up a supplier ends the trade without touching the distributor', function () {
+    [, $distributor] = newOrganizationMember();
+    [$supplierOwner, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $this->actingAs($supplierOwner)
+        ->delete(route('profile.destroy'), ['password' => 'password'])
+        ->assertRedirect('/');
+
+    // The trade is the distributor's record, and its products still point at
+    // it, so it stays -- ended, and with nobody answering for it.
+    expect($connection->fresh())->not->toBeNull()
+        ->and($connection->fresh()->status)->toBe(SupplierConnectionStatus::Revoked)
+        ->and($connection->fresh()->supplier_organization_id)->toBeNull();
+
+    $this->assertModelExists($distributor);
 });
 
 test('deleting an account leaves organizations it only belonged to alone', function () {
@@ -179,6 +199,6 @@ test('no organization is left without an owner when its owner goes', function ()
         ->delete(route('profile.destroy'), ['password' => 'password'])
         ->assertRedirect('/');
 
-    expect($organization->fresh()->trashed())->toBeFalse()
+    expect($organization->fresh())->not->toBeNull()
         ->and($organization->fresh()->owner())->not->toBeNull();
 });

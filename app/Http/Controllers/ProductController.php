@@ -150,6 +150,14 @@ class ProductController extends Controller
             'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
             'completeness' => $product->completeness(),
             'viewerType' => $currentOrganization->type->value,
+
+            /**
+             * Whether the organization has an AI provider to ask. Only so the
+             * upload dialog can leave out a button that would answer "no
+             * provider is configured" -- the endpoint checks for itself, and
+             * says the same thing whatever the page believed.
+             */
+            'canGuessDocumentKinds' => $currentOrganization->aiSetting()->exists(),
         ]);
     }
 

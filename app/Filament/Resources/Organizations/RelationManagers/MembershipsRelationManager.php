@@ -28,7 +28,7 @@ class MembershipsRelationManager extends RelationManager
      */
     public function isReadOnly(): bool
     {
-        return $this->organization()->trashed();
+        return false;
     }
 
     public function table(Table $table): Table
