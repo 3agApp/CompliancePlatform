@@ -96,6 +96,25 @@ enum ProductRequirement: string
     }
 
     /**
+     * Get the label for one of the product's own columns, if any
+     * requirement asks for it.
+     *
+     * The register already names every field a template can ask a person to
+     * fill in, so the history reads its labels off here rather than keeping
+     * a second list that would drift from this one.
+     */
+    public static function labelForAttribute(string $attribute): ?string
+    {
+        foreach (self::cases() as $requirement) {
+            if ($requirement->productAttribute() === $attribute) {
+                return $requirement->label();
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get the group the requirement belongs to.
      */
     public function group(): string

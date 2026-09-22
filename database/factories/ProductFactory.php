@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\CountryOfOrigin;
+use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -79,6 +80,24 @@ class ProductFactory extends Factory
             'customs_tariff_number' => (string) fake()->numerify('95030075'),
             'country_of_origin' => fake()->randomElement(CountryOfOrigin::cases()),
         ];
+    }
+
+    /**
+     * Indicate where the product stands in its review.
+     *
+     * The timestamps follow the status, because a product in review that
+     * was never submitted and an approved one that was never ruled on are
+     * states the application itself cannot produce.
+     */
+    public function reviewed(ProductReviewStatus $status): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'review_status' => $status,
+            'submitted_at' => $status === ProductReviewStatus::Draft ? null : now(),
+            'reviewed_at' => in_array($status, [ProductReviewStatus::Approved, ProductReviewStatus::ChangesRequested], true)
+                ? now()
+                : null,
+        ]);
     }
 
     /**

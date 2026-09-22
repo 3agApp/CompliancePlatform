@@ -17,6 +17,7 @@ import type {
     ProductCategoryOption,
     ProductCounterparty,
     ProductFilters,
+    ProductReviewStatusOption,
 } from '@/types';
 
 /**
@@ -36,6 +37,7 @@ type Query = {
     connection?: string;
     category?: string;
     brand?: string;
+    status?: string;
     search?: string;
     per_page?: string;
 };
@@ -47,6 +49,7 @@ type Props = {
     counterpartyLabel: string;
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
+    availableStatuses: ProductReviewStatusOption[];
 };
 
 export default function ProductFilterBar({
@@ -56,6 +59,7 @@ export default function ProductFilterBar({
     counterpartyLabel,
     filterableCategories,
     filterableBrands,
+    availableStatuses,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebouncedValue(search);
@@ -105,6 +109,7 @@ export default function ProductFilterBar({
             connection: undefined,
             category: undefined,
             brand: undefined,
+            status: undefined,
             search: undefined,
         });
     };
@@ -229,9 +234,38 @@ export default function ProductFilterBar({
                 </Select>
             ) : null}
 
+            {/*
+             * Whose move it is, which is the filter a reviewer reaches for
+             * first: a distributor opening the catalogue is usually looking
+             * for what is waiting on them.
+             */}
+            <Select
+                value={filters.status === null ? NO_FILTER : filters.status}
+                onValueChange={(value) =>
+                    visit({ status: value === NO_FILTER ? undefined : value })
+                }
+            >
+                <SelectTrigger
+                    data-test="product-filter-status"
+                    aria-label="Filter by review status"
+                    className="w-full sm:w-48"
+                >
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={NO_FILTER}>Any status</SelectItem>
+                    {availableStatuses.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
             {filters.connection !== null ||
             filters.category !== null ||
             filters.brand !== null ||
+            filters.status !== null ||
             filters.search !== null ? (
                 <Button
                     variant="ghost"

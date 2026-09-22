@@ -55,6 +55,14 @@ export default function Dashboard({ viewerType, stats }: Props) {
                   testId: 'dashboard-products',
               },
               {
+                  label: 'Changes requested',
+                  value: stats.changesRequested,
+                  href: productsIndex(organizationSlug, {
+                      query: { status: 'changes_requested' },
+                  }).url,
+                  testId: 'dashboard-changes-requested',
+              },
+              {
                   label: 'Distributors',
                   value: stats.distributors,
                   href: distributorsIndex(organizationSlug).url,
@@ -67,6 +75,14 @@ export default function Dashboard({ viewerType, stats }: Props) {
                   value: stats.products,
                   href: productsIndex(organizationSlug).url,
                   testId: 'dashboard-products',
+              },
+              {
+                  label: 'Awaiting your review',
+                  value: stats.awaitingReview,
+                  href: productsIndex(organizationSlug, {
+                      query: { status: 'in_review' },
+                  }).url,
+                  testId: 'dashboard-awaiting-review',
               },
               {
                   label: 'Active suppliers',
@@ -131,7 +147,7 @@ export default function Dashboard({ viewerType, stats }: Props) {
                 </div>
 
                 <div
-                    className={`grid gap-4 ${isSupplier ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}
+                    className={`grid gap-4 ${isSupplier ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'}`}
                 >
                     {tiles.map((tile) => (
                         <StatTile key={tile.testId} stat={tile} />

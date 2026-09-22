@@ -12,6 +12,7 @@ import { useState } from 'react';
 import CompletenessMeter from '@/components/completeness-meter';
 import DeleteProductModal from '@/components/delete-product-modal';
 import ProductFilterBar from '@/components/product-filter-bar';
+import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import { Badge } from '@/components/ui/badge';
 import PaginationArrow from '@/components/pagination-arrow';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ import type {
     ProductCounterparty,
     ProductFilters,
     ProductPermissions,
+    ProductReviewStatusOption,
     SupplierConnectionOption,
 } from '@/types';
 
@@ -60,6 +62,7 @@ type Props = {
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
     filters: ProductFilters;
+    availableStatuses: ProductReviewStatusOption[];
     hasProducts: boolean;
     viewerType: OrganizationType;
 };
@@ -74,6 +77,7 @@ export default function ProductsIndex({
     filterableCategories,
     filterableBrands,
     filters,
+    availableStatuses,
     hasProducts,
     viewerType,
 }: Props) {
@@ -87,6 +91,7 @@ export default function ProductsIndex({
         filters.connection !== null ||
         filters.category !== null ||
         filters.brand !== null ||
+        filters.status !== null ||
         filters.search !== null;
 
     /**
@@ -194,6 +199,7 @@ export default function ProductsIndex({
                         counterpartyLabel={counterpartyLabel}
                         filterableCategories={filterableCategories}
                         filterableBrands={filterableBrands}
+                        availableStatuses={availableStatuses}
                     />
                 ) : null}
 
@@ -217,6 +223,9 @@ export default function ProductsIndex({
                                     </TableHead>
                                     <TableHead className="px-6">
                                         Country of origin
+                                    </TableHead>
+                                    <TableHead className="px-6">
+                                        Status
                                     </TableHead>
                                     <TableHead className="px-6">
                                         Complete
@@ -293,6 +302,17 @@ export default function ProductsIndex({
                                         >
                                             {product.country_of_origin_label ??
                                                 '—'}
+                                        </TableCell>
+                                        <TableCell
+                                            className="px-6"
+                                            data-label="Status"
+                                        >
+                                            <ProductReviewStatusBadge
+                                                status={product.review_status}
+                                                label={
+                                                    product.review_status_label
+                                                }
+                                            />
                                         </TableCell>
                                         <TableCell
                                             className="px-6"

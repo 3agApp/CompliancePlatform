@@ -474,3 +474,202 @@ test('more files than the batch allows are refused', function () {
 
     $this->assertDatabaseCount('product_documents', 0);
 });
+
+/*
+ * Previewing: the same bytes as a download, shown rather than handed over.
+ */
+
+test('a pdf is shown inline rather than handed over', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocument($organization, $product, UploadedFile::fake()->create('en71-part-1.pdf', 10, 'application/pdf'));
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $product->id,
+            'document' => ProductDocument::sole()->id,
+        ]))
+        ->assertOk();
+
+    expect($response->headers->get('Content-Type'))->toBe('application/pdf');
+    expect($response->headers->get('Content-Disposition'))->toStartWith('inline');
+});
+
+test('an image is shown inline under the type it really is', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocument($organization, $product, UploadedFile::fake()->image('packaging.png'), 'product_image');
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $product->id,
+            'document' => ProductDocument::sole()->id,
+        ]))
+        ->assertOk();
+
+    expect($response->headers->get('Content-Type'))->toBe('image/png');
+});
+
+test('a preview is served under the allowlisted type, not the one the uploader claimed', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    /*
+     * The column holds whatever the uploading browser said. A row claiming
+     * to be a page of markup must not be served as one, or the app hands an
+     * attacker a script on its own origin.
+     */
+    $document = ProductDocument::factory()->for($product)->create([
+        'mime_type' => 'image/png',
+        'path' => 'product-documents/'.$product->id.'/claimed.png',
+    ]);
+
+    Storage::disk(ProductDocument::DISK)->put($document->path, 'not really a png');
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $product->id,
+            'document' => $document->id,
+        ]))
+        ->assertOk();
+
+    expect($response->headers->get('Content-Type'))->toBe('image/png');
+    expect($response->headers->get('X-Content-Type-Options'))->toBe('nosniff');
+    expect($response->headers->get('Content-Security-Policy'))->toContain("default-src 'none'");
+});
+
+test('a jpeg the browser called image/jpg is still shown, as a jpeg', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $document = ProductDocument::factory()->for($product)->create([
+        'mime_type' => 'image/jpg',
+        'path' => 'product-documents/'.$product->id.'/label.jpg',
+    ]);
+
+    Storage::disk(ProductDocument::DISK)->put($document->path, 'bytes');
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $product->id,
+            'document' => $document->id,
+        ]))
+        ->assertOk();
+
+    expect($response->headers->get('Content-Type'))->toBe('image/jpeg');
+});
+
+test('a file the browser cannot show is not previewable', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $document = ProductDocument::factory()->for($product)->create([
+        'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'name' => 'manual.docx',
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $product->id,
+            'document' => $document->id,
+        ]))
+        ->assertNotFound();
+});
+
+test('a preview is refused to whoever may not read the product', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $otherProduct = Product::factory()->create();
+    $otherDocument = ProductDocument::factory()->for($otherProduct)->create(['mime_type' => 'application/pdf']);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $otherProduct->id,
+            'document' => $otherDocument->id,
+        ]))
+        ->assertNotFound();
+});
+
+test('a member who may not file documents may still preview them', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct(OrganizationRole::Member);
+
+    $document = ProductDocument::factory()->for($product)->create([
+        'mime_type' => 'application/pdf',
+        'path' => 'product-documents/'.$product->id.'/report.pdf',
+    ]);
+
+    Storage::disk(ProductDocument::DISK)->put($document->path, '%PDF-1.4');
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.documents.preview', [
+            'current_organization' => $organization->slug,
+            'product' => $product->id,
+            'document' => $document->id,
+        ]))
+        ->assertOk();
+});
+
+test('the page is told how each document may be shown', function () {
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
+        'name' => 'report.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ProductImage)->create([
+        'name' => 'packaging.png',
+        'mime_type' => 'image/png',
+    ]);
+
+    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ManualOrInstructions)->create([
+        'name' => 'manual.docx',
+        'mime_type' => 'application/msword',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('product.documents', 3));
+
+    /*
+     * Read by name rather than by position: the three rows are filed in the
+     * same second and the relation orders on nothing finer than that.
+     */
+    $kinds = collect($response->viewData('page')['props']['product']['documents'])
+        ->pluck('preview_kind', 'name')
+        ->all();
+
+    expect($kinds)->toMatchArray([
+        'report.pdf' => 'pdf',
+        'packaging.png' => 'image',
+        'manual.docx' => null,
+    ]);
+});

@@ -133,6 +133,64 @@ export type ProductCategoryPermissions = {
     canDeleteCategory: boolean;
 };
 
+/**
+ * Whose move it is on a product: the supplier fills it in and offers it up,
+ * the distributor signs it off or hands it back with a note. Mirrors the
+ * ProductReviewStatus enum on the server.
+ */
+export type ProductReviewStatus =
+    | 'draft'
+    | 'in_review'
+    | 'approved'
+    | 'changes_requested';
+
+export type ProductReviewStatusOption = {
+    value: ProductReviewStatus;
+    label: string;
+};
+
+/**
+ * One thing that happened to a product. Mirrors ProductEventType.
+ */
+export type ProductEventType =
+    | 'created'
+    | 'updated'
+    | 'document_uploaded'
+    | 'document_removed'
+    | 'submitted'
+    | 'approved'
+    | 'changes_requested'
+    | 'returned_to_draft';
+
+/**
+ * One field that changed, as the history kept it: both sides are the text
+ * they read as at the time, never the ids behind them.
+ */
+export type ProductEventChange = {
+    field: string;
+    label: string;
+    from: string | null;
+    to: string | null;
+};
+
+/**
+ * One line of a product's history.
+ *
+ * The actor is a name rather than an account, because the record has to
+ * survive the account being closed.
+ */
+export type ProductEvent = {
+    id: number;
+    type: ProductEventType;
+    type_label: string;
+    is_review_step: boolean;
+    actor: string | null;
+    actor_organization: string | null;
+    note: string | null;
+    changes: ProductEventChange[];
+    created_at: string | null;
+};
+
 export type Product = {
     id: number;
     name: string;
@@ -143,6 +201,11 @@ export type Product = {
     product_template_id: number;
     template_label: string;
     completeness_score: number;
+    review_status: ProductReviewStatus;
+    review_status_label: string;
+    review_status_description: string;
+    submitted_at: string | null;
+    reviewed_at: string | null;
     ean: string | null;
     internal_article_number: string | null;
     supplier_article_number: string | null;
@@ -160,6 +223,7 @@ export type ProductPermissions = {
     canCreateProduct: boolean;
     canUpdateProduct: boolean;
     canDeleteProduct: boolean;
+    canReviewProduct: boolean;
 };
 
 export type ProductFilters = {
@@ -167,6 +231,7 @@ export type ProductFilters = {
     category: number | null;
     brand: number | null;
     search: string | null;
+    status: ProductReviewStatus | null;
     perPage: number;
 };
 
@@ -200,12 +265,19 @@ export type ProductDocumentTypeOption = {
     label: string;
 };
 
+/**
+ * How a document can be shown without being downloaded first, or null when
+ * the browser has no viewer for it and a download is the only way in.
+ */
+export type DocumentPreviewKind = 'pdf' | 'image';
+
 export type ProductDocument = {
     id: number;
     type: ProductDocumentType;
     type_label: string;
     name: string;
     size: number;
+    preview_kind: DocumentPreviewKind | null;
     uploaded_by: string | null;
     created_at: string | null;
 };
