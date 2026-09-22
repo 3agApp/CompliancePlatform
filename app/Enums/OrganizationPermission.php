@@ -23,6 +23,7 @@ enum OrganizationPermission: string
     case UpdateProduct = 'product:update';
     case DeleteProduct = 'product:delete';
     case ReviewProduct = 'product:review';
+    case OverrideProductSeal = 'product:override_seal';
 
     case ViewProductCategory = 'product_category:view';
     case CreateProductCategory = 'product_category:create';

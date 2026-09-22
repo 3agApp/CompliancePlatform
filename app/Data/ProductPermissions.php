@@ -9,6 +9,7 @@ readonly class ProductPermissions
         public bool $canUpdateProduct,
         public bool $canDeleteProduct,
         public bool $canReviewProduct,
+        public bool $canOverrideSeal,
     ) {
         //
     }

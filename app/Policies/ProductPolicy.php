@@ -76,6 +76,19 @@ class ProductPolicy
     }
 
     /**
+     * Determine whether the user can set the public seal by hand.
+     *
+     * Only the distributor that owns the product. The seal speaks in their
+     * name on a page anybody can read, so it is theirs to set and theirs to
+     * answer for -- and a supplier, who is the one being checked, never
+     * gets to decide how the check reads.
+     */
+    public function overrideSeal(User $user, Product $product): bool
+    {
+        return $user->hasOrganizationPermission($product->organization, OrganizationPermission::OverrideProductSeal);
+    }
+
+    /**
      * Determine whether the user can delete the product.
      *
      * Only the distributor that owns the product may delete it. A supplier is

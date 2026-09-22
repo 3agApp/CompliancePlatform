@@ -215,6 +215,11 @@ trait HasOrganizations
              * off or send it back.
              */
             canReviewProduct: $ownsProducts && ($role?->hasPermission(OrganizationPermission::ReviewProduct) ?? false),
+            /**
+             * The seal is on the distributor's own product and speaks in
+             * their name, so only they may set one by hand.
+             */
+            canOverrideSeal: $ownsProducts && ($role?->hasPermission(OrganizationPermission::OverrideProductSeal) ?? false),
         );
     }
 

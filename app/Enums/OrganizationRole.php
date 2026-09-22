@@ -37,6 +37,7 @@ enum OrganizationRole: string
                 OrganizationPermission::UpdateProduct,
                 OrganizationPermission::DeleteProduct,
                 OrganizationPermission::ReviewProduct,
+                OrganizationPermission::OverrideProductSeal,
                 OrganizationPermission::ViewProductCategory,
                 OrganizationPermission::CreateProductCategory,
                 OrganizationPermission::UpdateProductCategory,
