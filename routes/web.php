@@ -9,6 +9,7 @@ use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
+use App\Http\Controllers\ProductQrCodeController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
@@ -70,6 +71,16 @@ Route::prefix('{current_organization}')
             Route::post('products/{product}/submit', [ProductReviewController::class, 'submit'])->name('products.submit');
             Route::post('products/{product}/approve', [ProductReviewController::class, 'approve'])->name('products.approve');
             Route::post('products/{product}/request-changes', [ProductReviewController::class, 'requestChanges'])->name('products.request-changes');
+
+            /**
+             * The artwork that puts the public page on the product itself:
+             * a picture of the code, and a sheet to print.
+             */
+            Route::get('products/{product}/qr/{format}', [ProductQrCodeController::class, 'show'])
+                ->whereIn('format', ['png', 'svg'])
+                ->name('products.qr');
+
+            Route::get('products/{product}/label', [ProductQrCodeController::class, 'label'])->name('products.label');
 
             /**
              * The public seal, set by hand. A distributor-only move, and one

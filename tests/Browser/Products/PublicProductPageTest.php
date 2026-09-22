@@ -158,3 +158,29 @@ test('a distributor sets the public seal by hand from the product page', functio
 
     expect($product->fresh()->seal_override)->toBe(ProductSealStatus::Verified);
 });
+
+test('the product page shows the code and offers it in three formats', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Magnetic Building Set',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]));
+
+    $page->assertSee('QR code')
+        /** Drawn on screen, so a wrong code is caught before it is printed. */
+        ->assertPresent('@product-qr-preview')
+        ->assertPresent('@product-qr-png')
+        ->assertPresent('@product-qr-svg')
+        ->assertPresent('@product-qr-pdf')
+        ->assertSee("Scanning it opens this product's public page.")
+        ->assertNoJavaScriptErrors();
+});

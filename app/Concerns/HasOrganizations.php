@@ -220,6 +220,12 @@ trait HasOrganizations
              * their name, so only they may set one by hand.
              */
             canOverrideSeal: $ownsProducts && ($role?->hasPermission(OrganizationPermission::OverrideProductSeal) ?? false),
+            /**
+             * The code encodes nothing secret, but the label goes on the
+             * packet the distributor places on the market, so the artwork
+             * is theirs.
+             */
+            canDownloadLabel: $ownsProducts && ($role?->hasPermission(OrganizationPermission::ViewProduct) ?? false),
         );
     }
 

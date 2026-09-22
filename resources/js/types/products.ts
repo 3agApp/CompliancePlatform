@@ -285,6 +285,7 @@ export type ProductPermissions = {
     canDeleteProduct: boolean;
     canReviewProduct: boolean;
     canOverrideSeal: boolean;
+    canDownloadLabel: boolean;
 };
 
 export type ProductFilters = {

@@ -89,6 +89,19 @@ class ProductPolicy
     }
 
     /**
+     * Determine whether the user can take away the product's label artwork.
+     *
+     * The distributor only. The code itself encodes nothing secret -- it is
+     * the public address, which anyone may hold -- but the label goes on the
+     * packet the distributor places on the market, and putting their code on
+     * something is their decision to make.
+     */
+    public function downloadLabel(User $user, Product $product): bool
+    {
+        return $user->hasOrganizationPermission($product->organization, OrganizationPermission::ViewProduct);
+    }
+
+    /**
      * Determine whether the user can delete the product.
      *
      * Only the distributor that owns the product may delete it. A supplier is
