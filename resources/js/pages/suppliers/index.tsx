@@ -115,7 +115,10 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                             >
                                                 {connection.contactEmail}
                                             </td>
-                                            <td className="px-6" data-label="Status">
+                                            <td
+                                                className="px-6"
+                                                data-label="Status"
+                                            >
                                                 <Badge
                                                     variant={
                                                         connection.status ===

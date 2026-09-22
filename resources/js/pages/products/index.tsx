@@ -294,7 +294,10 @@ export default function ProductsIndex({
                                             {product.country_of_origin_label ??
                                                 '—'}
                                         </TableCell>
-                                        <TableCell className="px-6" data-label="Complete">
+                                        <TableCell
+                                            className="px-6"
+                                            data-label="Complete"
+                                        >
                                             <CompletenessMeter
                                                 score={
                                                     product.completeness_score
