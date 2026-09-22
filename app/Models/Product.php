@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Data\ProductCompleteness;
+use App\Data\ProductSeal;
 use App\Enums\CountryOfOrigin;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
+use App\Enums\ProductSealStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,9 +17,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
+ * @property string $uuid
  * @property int $organization_id
  * @property int $supplier_connection_id
  * @property string $name
@@ -40,6 +44,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property ProductReviewStatus $review_status
  * @property CarbonImmutable|null $submitted_at
  * @property CarbonImmutable|null $reviewed_at
+ * @property ProductSealStatus|null $seal_override
+ * @property string|null $seal_override_reason
+ * @property int|null $seal_overridden_by
+ * @property CarbonImmutable|null $seal_overridden_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
@@ -49,6 +57,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read SupplierConnection|null $supplierConnection
  * @property-read Collection<int, ProductDocument> $documents
  * @property-read Collection<int, ProductEvent> $events
+ * @property-read User|null $sealOverriddenBy
  */
 #[Fillable([
     'name',
@@ -76,6 +85,24 @@ class Product extends Model
     use HasFactory;
 
     /**
+     * Bootstrap the model and its traits.
+     *
+     * The public name is given here rather than by the database, because
+     * every way a product is created -- the form, a factory, a seeder --
+     * has to end up with one: a product without a uuid has no public page.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (Product $product) {
+            if (empty($product->uuid)) {
+                $product->uuid = (string) Str::uuid();
+            }
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -85,6 +112,8 @@ class Product extends Model
         return [
             'country_of_origin' => CountryOfOrigin::class,
             'review_status' => ProductReviewStatus::class,
+            'seal_override' => ProductSealStatus::class,
+            'seal_overridden_at' => 'datetime',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];
@@ -207,6 +236,36 @@ class Product extends Model
             'note' => $note,
             'changes' => $changes === [] ? null : $changes,
         ]);
+    }
+
+    /**
+     * Get whoever last set the public seal by hand, while their account
+     * still exists.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function sealOverriddenBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seal_overridden_by');
+    }
+
+    /**
+     * Read the seal the product shows in public.
+     *
+     * Expects the template and documents to be loaded, like the
+     * completeness score it is partly read from.
+     */
+    public function seal(): ProductSeal
+    {
+        return ProductSeal::for($this);
+    }
+
+    /**
+     * Get the address the product answers to in public.
+     */
+    public function publicUrl(): string
+    {
+        return route('products.public', ['product' => $this->uuid]);
     }
 
     /**

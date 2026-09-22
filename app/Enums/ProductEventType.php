@@ -21,6 +21,8 @@ enum ProductEventType: string
     case Approved = 'approved';
     case ChangesRequested = 'changes_requested';
     case ReturnedToDraft = 'returned_to_draft';
+    case SealOverridden = 'seal_overridden';
+    case SealOverrideCleared = 'seal_override_cleared';
 
     /**
      * Get the display label for the event.
@@ -36,6 +38,8 @@ enum ProductEventType: string
             self::Approved => 'Approved',
             self::ChangesRequested => 'Changes requested',
             self::ReturnedToDraft => 'Returned to draft',
+            self::SealOverridden => 'Public seal set by hand',
+            self::SealOverrideCleared => 'Public seal handed back to the review',
         };
     }
 
@@ -50,7 +54,8 @@ enum ProductEventType: string
     public function isReviewStep(): bool
     {
         return match ($this) {
-            self::Submitted, self::Approved, self::ChangesRequested, self::ReturnedToDraft => true,
+            self::Submitted, self::Approved, self::ChangesRequested, self::ReturnedToDraft,
+            self::SealOverridden, self::SealOverrideCleared => true,
             default => false,
         };
     }

@@ -9,6 +9,7 @@ use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
 use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
+use App\Enums\ProductSealStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Brand;
@@ -148,7 +149,7 @@ class ProductController extends Controller
 
         $isSupplier = $currentOrganization->isSupplier();
 
-        $product->load(['organization', 'brand', 'category', 'template', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader']);
+        $product->load(['organization', 'brand', 'category', 'template', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader', 'sealOverriddenBy']);
 
         return Inertia::render('products/edit', [
             'product' => [
@@ -167,6 +168,10 @@ class ProductController extends Controller
             'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
             'completeness' => $product->completeness(),
             'reviewNote' => $product->latestReviewNote(),
+            'seal' => $product->seal(),
+            'sealOverride' => $this->toSealOverrideArray($product),
+            'availableSeals' => ProductSealStatus::options(),
+            'publicUrl' => $product->publicUrl(),
             'viewerType' => $currentOrganization->type->value,
 
             /**
@@ -563,6 +568,32 @@ class ProductController extends Controller
             ])
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Transform the hand-set seal for the frontend, if the product carries
+     * one.
+     *
+     * Null when the seal simply follows the review, which is the ordinary
+     * case and needs nothing said about it.
+     *
+     * @return array{seal: string, label: string, reason: string|null, setBy: string|null, setAt: string|null}|null
+     */
+    protected function toSealOverrideArray(Product $product): ?array
+    {
+        $override = $product->seal_override;
+
+        if ($override === null) {
+            return null;
+        }
+
+        return [
+            'seal' => $override->value,
+            'label' => $override->label(),
+            'reason' => $product->seal_override_reason,
+            'setBy' => $product->sealOverriddenBy?->name,
+            'setAt' => $product->seal_overridden_at?->toISOString(),
+        ];
     }
 
     /**

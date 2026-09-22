@@ -9,8 +9,11 @@ use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
+use App\Http\Controllers\ProductQrCodeController;
 use App\Http\Controllers\ProductReviewController;
+use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
+use App\Http\Controllers\PublicProductController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
 use App\Http\Controllers\Suppliers\SupplierConnectionController;
@@ -34,6 +37,18 @@ Route::get('dashboard', DashboardRedirectController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard.redirect');
 
+/**
+ * The product's public face, off a label or a QR code: no account, no
+ * organization, and addressed by the uuid so nobody can walk the catalogue
+ * by counting. Declared before the organization prefix so the two-segment
+ * shape is read as this and not as somebody's slug.
+ */
+Route::get('p/{product:uuid}', [PublicProductController::class, 'show'])->name('products.public');
+
+Route::get('p/{product:uuid}/images/{document}', [PublicProductController::class, 'image'])
+    ->scopeBindings()
+    ->name('products.public.image');
+
 Route::prefix('{current_organization}')
     ->middleware(['auth', 'verified', EnsureOrganizationMembership::class])
     ->group(function () {
@@ -56,6 +71,22 @@ Route::prefix('{current_organization}')
             Route::post('products/{product}/submit', [ProductReviewController::class, 'submit'])->name('products.submit');
             Route::post('products/{product}/approve', [ProductReviewController::class, 'approve'])->name('products.approve');
             Route::post('products/{product}/request-changes', [ProductReviewController::class, 'requestChanges'])->name('products.request-changes');
+
+            /**
+             * The artwork that puts the public page on the product itself:
+             * a picture of the code, and a sheet to print.
+             */
+            Route::get('products/{product}/qr/{format}', [ProductQrCodeController::class, 'show'])
+                ->whereIn('format', ['png', 'svg'])
+                ->name('products.qr');
+
+            Route::get('products/{product}/label', [ProductQrCodeController::class, 'label'])->name('products.label');
+
+            /**
+             * The public seal, set by hand. A distributor-only move, and one
+             * the product's history keeps a line about either way.
+             */
+            Route::patch('products/{product}/seal', [ProductSealController::class, 'update'])->name('products.seal.update');
 
             Route::post('products/{product}/documents', [ProductDocumentController::class, 'store'])->name('products.documents.store');
 

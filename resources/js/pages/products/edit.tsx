@@ -10,6 +10,8 @@ import ProductFormFields from '@/components/product-form-fields';
 import ProductHistoryPanel, {
     ProductHistorySkeleton,
 } from '@/components/product-history-panel';
+import ProductPublicPanel from '@/components/product-public-panel';
+import ProductQrPanel from '@/components/product-qr-panel';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
 import ProductReviewPanel from '@/components/product-review-panel';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
@@ -30,6 +32,9 @@ import type {
     ProductPermissions,
     ProductRequirementKey,
     ProductRequirementOption,
+    ProductSeal,
+    ProductSealOption,
+    ProductSealOverride,
     ProductTemplateOption,
     SupplierConnectionOption,
 } from '@/types';
@@ -64,6 +69,10 @@ type Props = {
     canGuessDocumentKinds: boolean;
     completeness: ProductCompleteness;
     reviewNote: string | null;
+    seal: ProductSeal;
+    sealOverride: ProductSealOverride | null;
+    availableSeals: ProductSealOption[];
+    publicUrl: string;
     /**
      * Deferred: the one thing on this page that grows without bound, and
      * the only one nobody reads before everything above it.
@@ -85,6 +94,10 @@ export default function ProductEdit({
     canGuessDocumentKinds,
     completeness,
     reviewNote,
+    seal,
+    sealOverride,
+    availableSeals,
+    publicUrl,
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
@@ -489,6 +502,24 @@ export default function ProductEdit({
                             completeness={completeness}
                             templateLabel={savedTemplateLabel}
                         />
+
+                        <ProductPublicPanel
+                            organizationSlug={organizationSlug}
+                            productId={product.id}
+                            seal={seal}
+                            override={sealOverride}
+                            availableSeals={availableSeals}
+                            publicUrl={publicUrl}
+                            canOverrideSeal={permissions.canOverrideSeal}
+                        />
+
+                        {permissions.canDownloadLabel ? (
+                            <ProductQrPanel
+                                organizationSlug={organizationSlug}
+                                productId={product.id}
+                                productName={product.name}
+                            />
+                        ) : null}
                     </div>
                 </div>
             </div>

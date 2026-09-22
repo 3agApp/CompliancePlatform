@@ -1,10 +1,12 @@
 import {
     Check,
+    CircleDot,
     FilePlus2,
     FileX2,
     Pencil,
     PlusCircle,
     Send,
+    ShieldCheck,
     Undo2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -26,7 +28,16 @@ const ICONS: Record<ProductEventType, LucideIcon> = {
     approved: Check,
     changes_requested: Undo2,
     returned_to_draft: Undo2,
+    seal_overridden: ShieldCheck,
+    seal_override_cleared: ShieldCheck,
 };
+
+/**
+ * What an event is drawn with when the server knows a kind this page does
+ * not. A history that has recorded something is worth showing whatever it
+ * was: a missing icon must never be the reason the page will not render.
+ */
+const FALLBACK_ICON = CircleDot;
 
 /**
  * When something happened, to the minute.
@@ -97,7 +108,7 @@ export default function ProductHistoryPanel({ events }: Props) {
             ) : (
                 <ol className="space-y-5" data-test="product-history">
                     {events.map((event) => {
-                        const Icon = ICONS[event.type];
+                        const Icon = ICONS[event.type] ?? FALLBACK_ICON;
 
                         return (
                             <li

@@ -160,7 +160,9 @@ export type ProductEventType =
     | 'submitted'
     | 'approved'
     | 'changes_requested'
-    | 'returned_to_draft';
+    | 'returned_to_draft'
+    | 'seal_overridden'
+    | 'seal_override_cleared';
 
 /**
  * One field that changed, as the history kept it: both sides are the text
@@ -189,6 +191,64 @@ export type ProductEvent = {
     note: string | null;
     changes: ProductEventChange[];
     created_at: string | null;
+};
+
+/**
+ * What the public seal on a product says. Mirrors ProductSealStatus.
+ */
+export type ProductSealStatus = 'verified' | 'in_progress' | 'not_verified';
+
+export type ProductSealOption = {
+    value: ProductSealStatus;
+    label: string;
+    message: string;
+};
+
+/**
+ * The seal as the public page and the product page both read it.
+ *
+ * The score is only worth showing on an unfinished check; the date only
+ * exists on a product that actually passed one.
+ */
+export type ProductSeal = {
+    status: ProductSealStatus;
+    label: string;
+    message: string;
+    score: number;
+    approvedAt: string | null;
+    isOverridden: boolean;
+};
+
+/**
+ * A seal somebody set by hand, and who to ask about it.
+ */
+export type ProductSealOverride = {
+    seal: ProductSealStatus;
+    label: string;
+    reason: string | null;
+    setBy: string | null;
+    setAt: string | null;
+};
+
+/**
+ * One picture of the article, as the public page shows it.
+ */
+export type PublicProductImage = {
+    id: number;
+    url: string;
+    name: string;
+};
+
+/**
+ * A product as a reader without an account sees it: what the article is,
+ * and nothing about who supplies it or what it cost.
+ */
+export type PublicProduct = {
+    uuid: string;
+    name: string;
+    brand: string | null;
+    ean: string | null;
+    internal_article_number: string | null;
 };
 
 export type Product = {
@@ -224,6 +284,8 @@ export type ProductPermissions = {
     canUpdateProduct: boolean;
     canDeleteProduct: boolean;
     canReviewProduct: boolean;
+    canOverrideSeal: boolean;
+    canDownloadLabel: boolean;
 };
 
 export type ProductFilters = {
