@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentPreviewKind;
 use App\Enums\ProductDocumentType;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductDocumentFactory;
@@ -80,6 +81,22 @@ class ProductDocument extends Model
             'type' => ProductDocumentType::class,
             'size' => 'integer',
         ];
+    }
+
+    /**
+     * Get how this file would be shown unopened, or null if it cannot be.
+     */
+    public function previewKind(): ?DocumentPreviewKind
+    {
+        return DocumentPreviewKind::forContentType($this->mime_type);
+    }
+
+    /**
+     * Get the content type a preview of this file is served under.
+     */
+    public function previewContentType(): ?string
+    {
+        return DocumentPreviewKind::contentTypeFor($this->mime_type);
     }
 
     /**

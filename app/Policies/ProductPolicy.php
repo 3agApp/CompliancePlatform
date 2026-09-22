@@ -50,6 +50,32 @@ class ProductPolicy
     }
 
     /**
+     * Determine whether the user can offer the product up for review.
+     *
+     * Whoever may fill the product in may submit it, which is the supplier
+     * on most products and the distributor on their own. The status decides
+     * whether there is anything to submit; this decides who may.
+     */
+    public function submit(User $user, Product $product): bool
+    {
+        return $this->update($user, $product);
+    }
+
+    /**
+     * Determine whether the user can rule on the product.
+     *
+     * Only the distributor that owns it. A supplier holding the review
+     * permission inside their own organization reaches this product through
+     * the connection rather than through membership, so there is no supplier
+     * branch here -- which is what stops a supplier signing off their own
+     * homework.
+     */
+    public function review(User $user, Product $product): bool
+    {
+        return $user->hasOrganizationPermission($product->organization, OrganizationPermission::ReviewProduct);
+    }
+
+    /**
      * Determine whether the user can delete the product.
      *
      * Only the distributor that owns the product may delete it. A supplier is

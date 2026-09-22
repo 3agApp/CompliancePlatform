@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Products\GuessDocumentKinds;
+use App\Actions\Products\ReviewProduct;
+use App\Enums\ProductEventType;
 use App\Http\Requests\Products\SaveProductDocumentRequest;
 use App\Http\Requests\Products\SuggestProductDocumentKindsRequest;
 use App\Models\Organization;
@@ -10,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +31,11 @@ use Throwable;
  */
 class ProductDocumentController extends Controller
 {
+    public function __construct(protected ReviewProduct $review)
+    {
+        //
+    }
+
     /**
      * File documents against the product.
      *
@@ -62,7 +70,24 @@ class ProductDocumentController extends Controller
                 ];
             }
 
-            DB::transaction(fn () => $product->documents()->createMany($rows));
+            DB::transaction(function () use ($product, $rows, $request, $currentOrganization) {
+                $product->documents()->createMany($rows);
+
+                /**
+                 * One line of history per paper rather than one for the
+                 * batch: they are filed together but they are read one at a
+                 * time, and "who filed this certificate" is the question
+                 * the history gets asked.
+                 */
+                foreach ($rows as $row) {
+                    $product->recordEvent(
+                        ProductEventType::DocumentUploaded,
+                        $request->user(),
+                        $currentOrganization,
+                        changes: ['document' => ['from' => null, 'to' => $row['name']]],
+                    );
+                }
+            });
         } catch (Throwable $exception) {
             /**
              * The bytes are written before the rows and cannot be rolled
@@ -74,6 +99,13 @@ class ProductDocumentController extends Controller
 
             throw $exception;
         }
+
+        /**
+         * Filing a paper is filling the product in, so it withdraws a
+         * product the supplier had already offered up the same way editing
+         * a field does.
+         */
+        $this->review->withdrawAfterEdit($product, $request->user(), $currentOrganization);
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -122,13 +154,61 @@ class ProductDocumentController extends Controller
     }
 
     /**
+     * Show the file behind the document without handing it over.
+     *
+     * The same authorization as a download, because it is the same bytes:
+     * anyone who may read the product may read its papers, whichever way
+     * they are put in front of them.
+     *
+     * A file the browser has no viewer for -- a manual still in Word -- is
+     * not previewable and is not served here at all. The page never offers a
+     * preview for one, so a request for it is a request for something that
+     * does not exist.
+     */
+    public function preview(Organization $currentOrganization, Product $product, ProductDocument $document): StreamedResponse
+    {
+        Gate::authorize('view', $product);
+
+        abort_unless($document->previewContentType() !== null, 404);
+
+        return Storage::disk(ProductDocument::DISK)->response($document->path, $document->name, [
+            /**
+             * From the allowlist, not from the column: the stored type is
+             * whatever the uploading browser said it was.
+             */
+            'Content-Type' => $document->previewContentType(),
+            /** And no sniffing around it either, whatever the bytes look like. */
+            'X-Content-Type-Options' => 'nosniff',
+            /**
+             * A PDF can carry scripts and links of its own. None of it gets
+             * to reach anything: the file is shown, and that is all it does.
+             *
+             * Deliberately without `sandbox`, which Chrome's PDF viewer
+             * refuses to render under.
+             */
+            'Content-Security-Policy' => "default-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+            /** Private papers; no shared cache may keep a copy. */
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
+        ]);
+    }
+
+    /**
      * Remove the document, and the file with it.
      */
-    public function destroy(Organization $currentOrganization, Product $product, ProductDocument $document): RedirectResponse
+    public function destroy(Request $request, Organization $currentOrganization, Product $product, ProductDocument $document): RedirectResponse
     {
         Gate::authorize('update', $product);
 
         $document->delete();
+
+        $product->recordEvent(
+            ProductEventType::DocumentRemoved,
+            $request->user(),
+            $currentOrganization,
+            changes: ['document' => ['from' => $document->name, 'to' => null]],
+        );
+
+        $this->review->withdrawAfterEdit($product, $request->user(), $currentOrganization);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Document deleted.')]);
 

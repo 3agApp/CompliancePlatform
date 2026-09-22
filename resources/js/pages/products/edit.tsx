@@ -1,4 +1,4 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Deferred, Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
@@ -7,7 +7,12 @@ import ProductClassificationFields from '@/components/product-classification-fie
 import ProductComplianceFields from '@/components/product-compliance-fields';
 import ProductDocumentsPanel from '@/components/product-documents-panel';
 import ProductFormFields from '@/components/product-form-fields';
+import ProductHistoryPanel, {
+    ProductHistorySkeleton,
+} from '@/components/product-history-panel';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
+import ProductReviewPanel from '@/components/product-review-panel';
+import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import { Button } from '@/components/ui/button';
 import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
@@ -21,6 +26,7 @@ import type {
     ProductCompleteness,
     ProductDetail,
     ProductDocumentTypeOption,
+    ProductEvent,
     ProductPermissions,
     ProductRequirementKey,
     ProductRequirementOption,
@@ -57,6 +63,12 @@ type Props = {
     canCreateBrand: boolean;
     canGuessDocumentKinds: boolean;
     completeness: ProductCompleteness;
+    reviewNote: string | null;
+    /**
+     * Deferred: the one thing on this page that grows without bound, and
+     * the only one nobody reads before everything above it.
+     */
+    history?: ProductEvent[];
     viewerType: OrganizationType;
 };
 
@@ -72,6 +84,7 @@ export default function ProductEdit({
     canCreateBrand,
     canGuessDocumentKinds,
     completeness,
+    reviewNote,
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
@@ -213,6 +226,7 @@ export default function ProductEdit({
                 <SectionBadge>{product.documents.length}</SectionBadge>
             ) : undefined,
         },
+        { id: 'product-history', label: 'History' },
     ];
 
     return (
@@ -239,6 +253,10 @@ export default function ProductEdit({
                         <h1 className="page-title break-words">
                             {product.name}
                         </h1>
+                        <ProductReviewStatusBadge
+                            status={product.review_status}
+                            label={product.review_status_label}
+                        />
                         {product.counterparty ? (
                             <p className="text-muted-foreground text-sm">
                                 {viewerType === 'supplier'
@@ -433,6 +451,19 @@ export default function ProductEdit({
                                 canGuessKinds={canGuessDocumentKinds}
                             />
                         </section>
+
+                        <section
+                            id="product-history"
+                            tabIndex={-1}
+                            className="scroll-mt-6 outline-none"
+                        >
+                            <Deferred
+                                data="history"
+                                fallback={<ProductHistorySkeleton />}
+                            >
+                                <History />
+                            </Deferred>
+                        </section>
                     </div>
 
                     <div className="grid gap-4 lg:sticky lg:top-6">
@@ -445,6 +476,13 @@ export default function ProductEdit({
                             sections={sections}
                             idPrefix="edit-product"
                             className="hidden lg:block"
+                        />
+
+                        <ProductReviewPanel
+                            organizationSlug={organizationSlug}
+                            product={product}
+                            permissions={permissions}
+                            reviewNote={reviewNote}
                         />
 
                         <ProductRequirementsPanel
@@ -463,6 +501,19 @@ export default function ProductEdit({
             />
         </>
     );
+}
+
+/**
+ * The history, once it has arrived.
+ *
+ * A component of its own because Deferred renders its children only when
+ * the prop has landed, and the prop is read off the page rather than
+ * threaded down through it.
+ */
+function History() {
+    const { history } = usePage<{ history?: ProductEvent[] }>().props;
+
+    return <ProductHistoryPanel events={history ?? []} />;
 }
 
 /**

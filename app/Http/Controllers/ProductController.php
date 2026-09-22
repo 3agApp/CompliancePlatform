@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Products\ReviewProduct;
 use App\Data\ProductFilters;
 use App\Enums\CountryOfOrigin;
 use App\Enums\ProductDocumentType;
+use App\Enums\ProductEventType;
 use App\Enums\ProductRequirement;
+use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Http\Requests\Products\SaveProductRequest;
 use App\Models\Brand;
@@ -13,8 +16,10 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductDocument;
+use App\Models\ProductEvent;
 use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
+use App\Support\ProductChanges;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +38,11 @@ use Inertia\Response;
  */
 class ProductController extends Controller
 {
+    public function __construct(protected ReviewProduct $review)
+    {
+        //
+    }
+
     /**
      * Display a listing of the organization's products.
      */
@@ -72,6 +82,7 @@ class ProductController extends Controller
             'filterableCategories' => $this->filterableCategories($currentOrganization, $isSupplier),
             'filterableBrands' => $this->filterableBrands($currentOrganization, $isSupplier),
             'filters' => $filters,
+            'availableStatuses' => ProductReviewStatus::options(),
             'hasProducts' => $products->total() > 0
                 || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
             'viewerType' => $currentOrganization->type->value,
@@ -114,6 +125,12 @@ class ProductController extends Controller
 
         $product = $currentOrganization->products()->create($request->validated());
 
+        /**
+         * The first line of the product's history, so the record starts
+         * where the product does rather than at whoever edited it first.
+         */
+        $product->recordEvent(ProductEventType::Created, $request->user(), $currentOrganization);
+
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product created.')]);
 
         return to_route('products.edit', [
@@ -149,7 +166,16 @@ class ProductController extends Controller
             'availableRequirements' => ProductRequirement::options(),
             'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
             'completeness' => $product->completeness(),
+            'reviewNote' => $product->latestReviewNote(),
             'viewerType' => $currentOrganization->type->value,
+
+            /**
+             * Everything that has ever happened to the product, newest
+             * first. Deferred, because it is the one thing on this page
+             * that grows without bound and the only one nobody looks at
+             * before they have looked at everything above it.
+             */
+            'history' => Inertia::defer(fn () => $this->toHistoryArray($product)),
 
             /**
              * Whether the organization has an AI provider to ask. Only so the
@@ -169,6 +195,20 @@ class ProductController extends Controller
         Gate::authorize('update', $product);
 
         $product->update($request->validated());
+
+        /**
+         * Read after the save, so what is recorded is what was written
+         * rather than what was submitted: a form sent back untouched is not
+         * a change and does not belong in the history -- nor does it
+         * withdraw a product that is under review.
+         */
+        $changes = ProductChanges::of($product);
+
+        if ($changes !== []) {
+            $product->recordEvent(ProductEventType::Updated, $request->user(), $currentOrganization, changes: $changes);
+
+            $this->review->withdrawAfterEdit($product, $request->user(), $currentOrganization);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product updated.')]);
 
@@ -241,6 +281,7 @@ class ProductController extends Controller
             ->when($filters->category, fn ($query, int $categoryId) => $query->inCategory($categoryId))
             ->when($filters->brand, fn ($query, int $brandId) => $query->ofBrand($brandId))
             ->when($filters->search, fn ($query, string $term) => $query->matching($term))
+            ->when($filters->status, fn ($query, ProductReviewStatus $status) => $query->inReviewStatus($status))
             ->orderBy('products.name')
             ->paginate($filters->perPage)
             ->withQueryString();
@@ -500,7 +541,7 @@ class ProductController extends Controller
      * the download link itself, so nothing here is a URL that could be
      * mistaken for one that works on its own.
      *
-     * @return array<array{id: int, type: string, type_label: string, name: string, size: int, uploaded_by: string|null, created_at: string|null}>
+     * @return array<array{id: int, type: string, type_label: string, name: string, size: int, preview_kind: string|null, uploaded_by: string|null, created_at: string|null}>
      */
     protected function toDocumentArray(Product $product): array
     {
@@ -511,8 +552,42 @@ class ProductController extends Controller
                 'type_label' => $document->type->label(),
                 'name' => $document->name,
                 'size' => $document->size,
+                /**
+                 * How the page may show the file, if it may at all. The bare
+                 * content type is not sent: the page has no other use for it,
+                 * and the one decision that rests on it is made in one place.
+                 */
+                'preview_kind' => $document->previewKind()?->value,
                 'uploaded_by' => $document->uploader?->name,
                 'created_at' => $document->created_at?->toISOString(),
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Transform the product's history for the frontend.
+     *
+     * The names are read off the event rather than off the accounts behind
+     * it, because an account that has since been closed must not take what
+     * it did out of the record with it.
+     *
+     * @return array<array{id: int, type: string, type_label: string, is_review_step: bool, actor: string|null, actor_organization: string|null, note: string|null, changes: array<array{field: string, label: string, from: string|null, to: string|null}>, created_at: string|null}>
+     */
+    protected function toHistoryArray(Product $product): array
+    {
+        return $product->events()
+            ->get()
+            ->map(fn (ProductEvent $event) => [
+                'id' => $event->id,
+                'type' => $event->type->value,
+                'type_label' => $event->type->label(),
+                'is_review_step' => $event->type->isReviewStep(),
+                'actor' => $event->actorName(),
+                'actor_organization' => $event->actorOrganizationName(),
+                'note' => $event->note,
+                'changes' => $event->changedFields(),
+                'created_at' => $event->created_at?->toISOString(),
             ])
             ->values()
             ->toArray();
@@ -525,7 +600,7 @@ class ProductController extends Controller
      * it is read from do not: the prose is scored here and left here, so a
      * catalog listing names still carries nothing but the number.
      *
-     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int, counterparty: string|null, connection_status: string|null, created_at: string|null}
+     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, review_status: string, review_status_label: string, review_status_description: string, submitted_at: string|null, reviewed_at: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int, counterparty: string|null, connection_status: string|null, created_at: string|null}
      */
     protected function toProductArray(Product $product, bool $asSupplier = false): array
     {
@@ -541,6 +616,11 @@ class ProductController extends Controller
             'product_template_id' => $product->product_template_id,
             'template_label' => $product->template->name,
             'completeness_score' => $product->completeness()->score,
+            'review_status' => $product->review_status->value,
+            'review_status_label' => $product->review_status->label(),
+            'review_status_description' => $product->review_status->description(),
+            'submitted_at' => $product->submitted_at?->toISOString(),
+            'reviewed_at' => $product->reviewed_at?->toISOString(),
             'ean' => $product->ean,
             'internal_article_number' => $product->internal_article_number,
             'supplier_article_number' => $product->supplier_article_number,

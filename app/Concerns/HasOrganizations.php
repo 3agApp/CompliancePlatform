@@ -209,6 +209,12 @@ trait HasOrganizations
             canCreateProduct: $ownsProducts && ($role?->hasPermission(OrganizationPermission::CreateProduct) ?? false),
             canUpdateProduct: $role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false,
             canDeleteProduct: $ownsProducts && ($role?->hasPermission(OrganizationPermission::DeleteProduct) ?? false),
+            /**
+             * A review is the distributor reading what their supplier
+             * answered, so only the side that owns the product can sign one
+             * off or send it back.
+             */
+            canReviewProduct: $ownsProducts && ($role?->hasPermission(OrganizationPermission::ReviewProduct) ?? false),
         );
     }
 

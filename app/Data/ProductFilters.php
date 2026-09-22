@@ -2,6 +2,7 @@
 
 namespace App\Data;
 
+use App\Enums\ProductReviewStatus;
 use Illuminate\Http\Request;
 
 /**
@@ -34,6 +35,7 @@ readonly class ProductFilters
         public ?int $category = null,
         public ?int $brand = null,
         public ?string $search = null,
+        public ?ProductReviewStatus $status = null,
         public int $perPage = self::PAGE_SIZES[0],
     ) {
         //
@@ -49,8 +51,21 @@ readonly class ProductFilters
             category: self::id($request, 'category'),
             brand: self::id($request, 'brand'),
             search: self::value($request, 'search', self::MAX_SEARCH_LENGTH),
+            status: self::status($request),
             perPage: self::perPage($request),
         );
+    }
+
+    /**
+     * Read the state of review being filtered for.
+     *
+     * A word that names no state is not a filter, the same way an id that
+     * names no row is not one: a stale bookmark or a hand-edited URL leaves
+     * the whole list showing rather than an empty one.
+     */
+    protected static function status(Request $request): ?ProductReviewStatus
+    {
+        return ProductReviewStatus::tryFrom(trim((string) $request->query('status', '')));
     }
 
     /**

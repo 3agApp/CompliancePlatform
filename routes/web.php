@@ -9,6 +9,7 @@ use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
+use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductTemplateController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
@@ -47,6 +48,15 @@ Route::prefix('{current_organization}')
             Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
             Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
+            /**
+             * Handing the product between the two sides. A move rather than
+             * an edit, so each one posts to its own address and carries
+             * nothing but the reviewer's note.
+             */
+            Route::post('products/{product}/submit', [ProductReviewController::class, 'submit'])->name('products.submit');
+            Route::post('products/{product}/approve', [ProductReviewController::class, 'approve'])->name('products.approve');
+            Route::post('products/{product}/request-changes', [ProductReviewController::class, 'requestChanges'])->name('products.request-changes');
+
             Route::post('products/{product}/documents', [ProductDocumentController::class, 'store'])->name('products.documents.store');
 
             /**
@@ -58,6 +68,13 @@ Route::prefix('{current_organization}')
                 ->name('products.documents.suggest');
 
             Route::get('products/{product}/documents/{document}', [ProductDocumentController::class, 'show'])->name('products.documents.show');
+
+            /**
+             * The same file as show, shown rather than handed over, so a
+             * reader can check a certificate without collecting it.
+             */
+            Route::get('products/{product}/documents/{document}/preview', [ProductDocumentController::class, 'preview'])
+                ->name('products.documents.preview');
             Route::delete('products/{product}/documents/{document}', [ProductDocumentController::class, 'destroy'])->name('products.documents.destroy');
 
             /**

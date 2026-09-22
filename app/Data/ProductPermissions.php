@@ -8,6 +8,7 @@ readonly class ProductPermissions
         public bool $canCreateProduct,
         public bool $canUpdateProduct,
         public bool $canDeleteProduct,
+        public bool $canReviewProduct,
     ) {
         //
     }

@@ -1,7 +1,8 @@
-import { FileText, Trash2, Upload } from 'lucide-react';
+import { Download, FileText, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import DeleteProductDocumentModal from '@/components/delete-product-document-modal';
 import Heading from '@/components/heading';
+import PreviewDocumentModal from '@/components/preview-document-modal';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
 import { Button } from '@/components/ui/button';
 import { show } from '@/routes/products/documents';
@@ -82,10 +83,18 @@ export default function ProductDocumentsPanel({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [documentToDelete, setDocumentToDelete] =
         useState<ProductDocument | null>(null);
+    const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+    const [documentToPreview, setDocumentToPreview] =
+        useState<ProductDocument | null>(null);
 
     const confirmDelete = (document: ProductDocument) => {
         setDocumentToDelete(document);
         setDeleteDialogOpen(true);
+    };
+
+    const openPreview = (document: ProductDocument) => {
+        setDocumentToPreview(document);
+        setPreviewDialogOpen(true);
     };
 
     const groups = availableDocumentTypes
@@ -163,22 +172,49 @@ export default function ProductDocumentsPanel({
 
                                             <div className="min-w-0 flex-1">
                                                 {/*
-                                                 * A plain anchor, not an
-                                                 * Inertia link: the response
-                                                 * is a file, and an XHR visit
-                                                 * would choke on it.
+                                                 * The name opens the paper
+                                                 * where it can be opened, and
+                                                 * fetches it where it cannot:
+                                                 * clicking what a document is
+                                                 * called should show the
+                                                 * document, and for a Word
+                                                 * manual the only way to show
+                                                 * it is to hand it over.
                                                  */}
-                                                <a
-                                                    href={show.url([
-                                                        organizationSlug,
-                                                        productId,
-                                                        document.id,
-                                                    ])}
-                                                    data-test="product-document-download"
-                                                    className="text-sm font-medium break-all underline-offset-4 hover:underline"
-                                                >
-                                                    {document.name}
-                                                </a>
+                                                {document.preview_kind !==
+                                                null ? (
+                                                    <button
+                                                        type="button"
+                                                        data-test="product-document-preview"
+                                                        onClick={() =>
+                                                            openPreview(
+                                                                document,
+                                                            )
+                                                        }
+                                                        className="text-left text-sm font-medium break-all underline-offset-4 hover:underline"
+                                                    >
+                                                        {document.name}
+                                                    </button>
+                                                ) : (
+                                                    /*
+                                                     * A plain anchor, not an
+                                                     * Inertia link: the
+                                                     * response is a file, and
+                                                     * an XHR visit would choke
+                                                     * on it.
+                                                     */
+                                                    <a
+                                                        href={show.url([
+                                                            organizationSlug,
+                                                            productId,
+                                                            document.id,
+                                                        ])}
+                                                        data-test="product-document-download"
+                                                        className="text-sm font-medium break-all underline-offset-4 hover:underline"
+                                                    >
+                                                        {document.name}
+                                                    </a>
+                                                )}
                                                 <p className="text-muted-foreground text-xs">
                                                     {[
                                                         humanSize(
@@ -193,6 +229,34 @@ export default function ProductDocumentsPanel({
                                                         .join(' · ')}
                                                 </p>
                                             </div>
+
+                                            {/*
+                                             * Downloading is no longer what
+                                             * the name does, so it keeps a
+                                             * button of its own -- and keeps
+                                             * it on every row, because a
+                                             * reader who cannot file papers
+                                             * still collects them.
+                                             */}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                asChild
+                                            >
+                                                <a
+                                                    href={show.url([
+                                                        organizationSlug,
+                                                        productId,
+                                                        document.id,
+                                                    ])}
+                                                    data-test="product-document-download-button"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    <span className="sr-only">
+                                                        Download {document.name}
+                                                    </span>
+                                                </a>
+                                            </Button>
 
                                             {canUpload ? (
                                                 <Button
@@ -244,6 +308,14 @@ export default function ProductDocumentsPanel({
                 document={documentToDelete}
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
+            />
+
+            <PreviewDocumentModal
+                organizationSlug={organizationSlug}
+                productId={productId}
+                document={documentToPreview}
+                open={previewDialogOpen}
+                onOpenChange={setPreviewDialogOpen}
             />
         </>
     );

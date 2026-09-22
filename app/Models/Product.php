@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Data\ProductCompleteness;
 use App\Enums\CountryOfOrigin;
+use App\Enums\ProductEventType;
+use App\Enums\ProductReviewStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -35,6 +37,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $usage_restrictions
  * @property string|null $safety_instructions
  * @property string|null $additional_notes
+ * @property ProductReviewStatus $review_status
+ * @property CarbonImmutable|null $submitted_at
+ * @property CarbonImmutable|null $reviewed_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
@@ -43,6 +48,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read ProductTemplate $template
  * @property-read SupplierConnection|null $supplierConnection
  * @property-read Collection<int, ProductDocument> $documents
+ * @property-read Collection<int, ProductEvent> $events
  */
 #[Fillable([
     'name',
@@ -78,6 +84,9 @@ class Product extends Model
     {
         return [
             'country_of_origin' => CountryOfOrigin::class,
+            'review_status' => ProductReviewStatus::class,
+            'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -161,6 +170,76 @@ class Product extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ProductDocument::class)->oldest();
+    }
+
+    /**
+     * Get everything that has ever happened to the product, newest first.
+     *
+     * The id breaks the tie rather than the timestamp alone: a request that
+     * writes two events -- an edit that withdraws a product from review
+     * writes the edit and the withdrawal -- writes them in the same second,
+     * and they only read correctly in the order they happened.
+     *
+     * @return HasMany<ProductEvent, $this>
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(ProductEvent::class)->latest('id');
+    }
+
+    /**
+     * Record one thing that happened to the product.
+     *
+     * The actor is kept twice over -- as the account and organization that
+     * did it, and as the names they held at the time -- so closing an
+     * account never blanks out what it did.
+     *
+     * @param  array<string, array{from: string|null, to: string|null}>  $changes
+     */
+    public function recordEvent(ProductEventType $type, ?User $actor = null, ?Organization $organization = null, ?string $note = null, array $changes = []): ProductEvent
+    {
+        return $this->events()->create([
+            'user_id' => $actor?->id,
+            'organization_id' => $organization?->id,
+            'actor_name' => $actor?->name,
+            'actor_organization_name' => $organization?->name,
+            'type' => $type,
+            'note' => $note,
+            'changes' => $changes === [] ? null : $changes,
+        ]);
+    }
+
+    /**
+     * Get the note the product was last sent back with, while it is still
+     * waiting on those changes.
+     *
+     * Read separately from the history, which is deferred: the note is the
+     * one thing on a product sent back that has to be in front of the
+     * supplier the moment the page opens, because it is the instruction for
+     * everything else they are about to do.
+     */
+    public function latestReviewNote(): ?string
+    {
+        if ($this->review_status !== ProductReviewStatus::ChangesRequested) {
+            return null;
+        }
+
+        return $this->events()
+            ->where('type', ProductEventType::ChangesRequested)
+            ->value('note');
+    }
+
+    /**
+     * Scope the query to the products in one state of review.
+     *
+     * Applied on top of a query that is already scoped to the viewer, like
+     * every other filter here.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeInReviewStatus(Builder $query, ProductReviewStatus $status): void
+    {
+        $query->where('products.review_status', $status);
     }
 
     /**
