@@ -44,9 +44,10 @@ return new class extends Migration
              * A distributor and a supplier organization share exactly one row
              * forever. The constraint is inert while the supplier side is null
              * (a distributor may have several invitations outstanding) and
-             * becomes live at claim time, which is where the race is.
+             * becomes live at claim time, which is where the race is. Named
+             * by hand: the generated name exceeds MySQL's 64-character limit.
              */
-            $table->unique(['distributor_organization_id', 'supplier_organization_id']);
+            $table->unique(['distributor_organization_id', 'supplier_organization_id'], 'supplier_connections_distributor_supplier_unique');
             $table->index(['supplier_organization_id', 'status']);
         });
     }
