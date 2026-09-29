@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 export type SectionDefinition = {
     /** The id of the section the link jumps to. */
@@ -13,6 +13,11 @@ type Props = {
     sections: SectionDefinition[];
     /** Distinguishes the test hooks when a page carries more than one nav. */
     idPrefix: string;
+    /**
+     * Vertical beside a page, or horizontal above one where there is no
+     * room for a column, such as inside the settings panel.
+     */
+    orientation?: "vertical" | "horizontal";
     className?: string;
 };
 
@@ -27,18 +32,23 @@ type Props = {
  * The link for the section currently under the top of the viewport is
  * marked, so the list doubles as a position indicator.
  */
-export function SectionNav({ sections, idPrefix, className }: Props) {
-    const [active, setActive] = useState(sections[0]?.id ?? '');
+export function SectionNav({
+    sections,
+    idPrefix,
+    orientation = "vertical",
+    className,
+}: Props) {
+    const [active, setActive] = useState(sections[0]?.id ?? "");
 
     /**
      * Joined rather than passed as the array, because the caller builds a
      * fresh one (badges and all) on every render and the observer should
      * only be rebuilt when the sections themselves change.
      */
-    const sectionIds = sections.map((section) => section.id).join(' ');
+    const sectionIds = sections.map((section) => section.id).join(" ");
 
     useEffect(() => {
-        const ids = sectionIds.split(' ');
+        const ids = sectionIds.split(" ");
 
         const elements = ids
             .map((id) => document.getElementById(id))
@@ -71,7 +81,7 @@ export function SectionNav({ sections, idPrefix, className }: Props) {
                     setActive(current);
                 }
             },
-            { rootMargin: '0px 0px -55% 0px' },
+            { rootMargin: "0px 0px -55% 0px" },
         );
 
         for (const element of elements) {
@@ -97,12 +107,12 @@ export function SectionNav({ sections, idPrefix, className }: Props) {
         setActive(id);
 
         const reducedMotion = window.matchMedia(
-            '(prefers-reduced-motion: reduce)',
+            "(prefers-reduced-motion: reduce)",
         ).matches;
 
         target.scrollIntoView({
-            behavior: reducedMotion ? 'auto' : 'smooth',
-            block: 'start',
+            behavior: reducedMotion ? "auto" : "smooth",
+            block: "start",
         });
 
         target.focus({ preventScroll: true });
@@ -112,24 +122,35 @@ export function SectionNav({ sections, idPrefix, className }: Props) {
         <nav
             aria-label="Sections"
             data-test={`${idPrefix}-section-nav`}
-            className={cn('workspace-panel p-2', className)}
+            className={cn("workspace-panel p-2", className)}
         >
-            <ul className="grid gap-0.5">
+            <ul
+                className={cn(
+                    orientation === "horizontal"
+                        ? "flex gap-0.5 overflow-x-auto"
+                        : "grid gap-0.5",
+                )}
+            >
                 {sections.map((section) => {
                     const isActive = section.id === active;
 
                     return (
-                        <li key={section.id}>
+                        <li
+                            key={section.id}
+                            className={cn(
+                                orientation === "horizontal" && "shrink-0",
+                            )}
+                        >
                             <a
                                 href={`#${section.id}`}
                                 data-test={`${idPrefix}-jump-${section.id}`}
-                                aria-current={isActive ? 'true' : undefined}
+                                aria-current={isActive ? "true" : undefined}
                                 onClick={(event) => jump(event, section.id)}
                                 className={cn(
-                                    'focus-visible:ring-ring flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2',
+                                    "focus-visible:ring-ring flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2",
                                     isActive
-                                        ? 'bg-muted text-foreground'
-                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                                        ? "bg-muted text-foreground"
+                                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                                 )}
                             >
                                 {section.label}
@@ -148,21 +169,21 @@ export function SectionNav({ sections, idPrefix, className }: Props) {
  */
 export function SectionBadge({
     children,
-    tone = 'muted',
+    tone = "muted",
     testId,
 }: {
     children: React.ReactNode;
-    tone?: 'muted' | 'attention';
+    tone?: "muted" | "attention";
     testId?: string;
 }) {
     return (
         <span
             data-test={testId}
             className={cn(
-                'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums',
-                tone === 'attention'
-                    ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                    : 'bg-muted-foreground/15 text-muted-foreground',
+                "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums",
+                tone === "attention"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                    : "bg-muted-foreground/15 text-muted-foreground",
             )}
         >
             {children}
