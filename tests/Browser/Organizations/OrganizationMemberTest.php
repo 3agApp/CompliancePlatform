@@ -73,7 +73,7 @@ test('a pending invitation is cancelled through the confirmation dialog', functi
     $this->assertModelMissing($invitation);
 });
 
-test('the role of a member is changed through the role dropdown', function () {
+test('the role of a member is changed through the role dropdown, after confirming', function () {
     [$owner, $organization] = newOrganizationMember();
     $member = User::factory()->withoutOrganization()->create(['name' => 'Jordan Lee']);
     $organization->members()->attach($member, ['role' => OrganizationRole::Member->value]);
@@ -83,7 +83,9 @@ test('the role of a member is changed through the role dropdown', function () {
     $page = visit(route('organizations.edit', ['organization' => $organization->slug]));
 
     $page->click('@member-role-trigger')
-        ->click('[role="menuitem"]:has-text("Admin")')
+        ->click('[role="menuitemradio"]:has-text("Admin")')
+        ->assertSee('Change role')
+        ->click('@member-role-confirm')
         ->assertSee('Member role updated.')
         ->assertNoJavaScriptErrors();
 
