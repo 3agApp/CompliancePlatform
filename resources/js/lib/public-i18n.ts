@@ -65,6 +65,7 @@ const en = {
     historyCount: '{count} earlier checks',
     historyCountOne: '1 earlier check',
     historyMore: 'and {count} more',
+    timeZoneNote: 'Times are shown in your time zone ({zone}).',
     thisDevice: 'This device',
     otherDevice: 'Another device',
 
@@ -160,6 +161,7 @@ const de: Dictionary = {
     historyCount: '{count} frühere Prüfungen',
     historyCountOne: '1 frühere Prüfung',
     historyMore: 'und {count} weitere',
+    timeZoneNote: 'Zeiten in Ihrer Zeitzone ({zone}).',
     thisDevice: 'Dieses Gerät',
     otherDevice: 'Anderes Gerät',
 
@@ -244,7 +246,16 @@ export function formatPublicDate(
             day: 'numeric',
             month: 'long',
             year: 'numeric',
-            ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+            ...(withTime
+                ? { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }
+                : {}),
         },
     );
+}
+
+/**
+ * The reader's own time zone, as their browser names it.
+ */
+export function readerTimeZone(): string {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
