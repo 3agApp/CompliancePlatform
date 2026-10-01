@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $path
  * @property string $mime_type
  * @property int $size
+ * @property bool $is_public
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Product $product
@@ -80,6 +81,7 @@ class ProductDocument extends Model
         return [
             'type' => ProductDocumentType::class,
             'size' => 'integer',
+            'is_public' => 'boolean',
         ];
     }
 

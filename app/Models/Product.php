@@ -58,6 +58,8 @@ use Illuminate\Support\Str;
  * @property-read Collection<int, ProductDocument> $documents
  * @property-read Collection<int, ProductEvent> $events
  * @property-read User|null $sealOverriddenBy
+ * @property-read Collection<int, LabelBatch> $labelBatches
+ * @property-read Collection<int, ProductUnit> $units
  */
 #[Fillable([
     'name',
@@ -214,6 +216,27 @@ class Product extends Model
     public function events(): HasMany
     {
         return $this->hasMany(ProductEvent::class)->latest('id');
+    }
+
+    /**
+     * Get the runs of serialised labels printed for the product, newest
+     * first.
+     *
+     * @return HasMany<LabelBatch, $this>
+     */
+    public function labelBatches(): HasMany
+    {
+        return $this->hasMany(LabelBatch::class)->latest('id');
+    }
+
+    /**
+     * Get every packet of the product that carries a serial.
+     *
+     * @return HasMany<ProductUnit, $this>
+     */
+    public function units(): HasMany
+    {
+        return $this->hasMany(ProductUnit::class);
     }
 
     /**

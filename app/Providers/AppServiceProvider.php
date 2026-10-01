@@ -50,6 +50,19 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(30)->by('ai-suggestions-organization:'.($organization instanceof Organization ? $organization->id : 'none')),
             ];
         });
+
+        /**
+         * The public product page and its pictures. Generous, because one
+         * visit fetches every picture on the page, but capped all the same:
+         * the page is open to anyone.
+         */
+        RateLimiter::for('public-product', fn (Request $request) => Limit::perMinute(120)->by('public-product:'.$request->ip()));
+
+        /**
+         * Checking serials. Tighter, because a serial
+         * is the one thing on the public side worth guessing at.
+         */
+        RateLimiter::for('unit-check', fn (Request $request) => Limit::perMinute(30)->by('unit-check:'.$request->ip()));
     }
 
     /**

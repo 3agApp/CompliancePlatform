@@ -10,7 +10,8 @@ readonly class ProductPermissions
         public bool $canDeleteProduct,
         public bool $canReviewProduct,
         public bool $canOverrideSeal,
-        public bool $canDownloadLabel,
+        public bool $canManageSerialLabels,
+        public bool $canPublishDocuments,
     ) {
         //
     }

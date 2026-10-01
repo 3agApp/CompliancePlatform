@@ -163,7 +163,11 @@ export type ProductEventType =
     | 'approval_revoked'
     | 'returned_to_draft'
     | 'seal_overridden'
-    | 'seal_override_cleared';
+    | 'seal_override_cleared'
+    | 'labels_issued'
+    | 'labels_revoked'
+    | 'document_published'
+    | 'document_unpublished';
 
 /**
  * One field that changed, as the history kept it: both sides are the text
@@ -252,6 +256,79 @@ export type PublicProduct = {
     internal_article_number: string | null;
 };
 
+/**
+ * What a check of one serial found. Mirrors ProductUnitStatus.
+ */
+export type ProductUnitStatus =
+    | 'unknown'
+    | 'revoked'
+    | 'first_check'
+    | 'checked_before'
+    | 'checked_elsewhere';
+
+/**
+ * The answer to a check somebody just made, with the checks that came
+ * before theirs.
+ */
+export type UnitCheckResult = {
+    serial: string;
+    status: ProductUnitStatus;
+    checkedAt: string | null;
+    earlierChecks: number;
+    history: { at: string; thisDevice: boolean }[];
+};
+
+/**
+ * A document the distributor released to the public page.
+ */
+export type PublicProductDocument = {
+    id: number;
+    type: ProductDocumentType;
+    name: string;
+    size: number;
+    url: string;
+};
+
+/**
+ * What the reader needs to use the article safely.
+ */
+export type PublicProductSafety = {
+    age_grading: string | null;
+    warning_text: string | null;
+    safety_notice: string | null;
+    safety_instructions: string | null;
+    material_information: string | null;
+    usage_restrictions: string | null;
+};
+
+/**
+ * One run of serialised labels, as the product page lists it.
+ */
+export type LabelBatchSummary = {
+    id: number;
+    quantity: number;
+    issuedFor: string;
+    checked: number;
+    checks: number;
+    unusual: number;
+    createdAt: string | null;
+    createdBy: string | null;
+    revokedAt: string | null;
+};
+
+/**
+ * One packet in a run, as the run's overview lists it.
+ */
+export type LabelUnitOverview = {
+    id: number;
+    serial: string;
+    checks: number;
+    devices: number;
+    firstCheckedAt: string | null;
+    lastCheckedAt: string | null;
+    revoked: boolean;
+};
+
 export type Product = {
     id: number;
     name: string;
@@ -286,7 +363,8 @@ export type ProductPermissions = {
     canDeleteProduct: boolean;
     canReviewProduct: boolean;
     canOverrideSeal: boolean;
-    canDownloadLabel: boolean;
+    canManageSerialLabels: boolean;
+    canPublishDocuments: boolean;
 };
 
 export type ProductFilters = {
@@ -341,6 +419,7 @@ export type ProductDocument = {
     name: string;
     size: number;
     preview_kind: DocumentPreviewKind | null;
+    is_public: boolean;
     uploaded_by: string | null;
     created_at: string | null;
 };

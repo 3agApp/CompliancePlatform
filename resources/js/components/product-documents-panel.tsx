@@ -1,11 +1,12 @@
-import { Download, FileText, Trash2, Upload } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { Download, FileText, Globe, Lock, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import DeleteProductDocumentModal from '@/components/delete-product-document-modal';
 import Heading from '@/components/heading';
 import PreviewDocumentModal from '@/components/preview-document-modal';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
 import { Button } from '@/components/ui/button';
-import { show } from '@/routes/products/documents';
+import { show, visibility } from '@/routes/products/documents';
 import type { ProductDocument, ProductDocumentTypeOption } from '@/types';
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
      */
     outstandingTypes?: ProductDocumentTypeOption[];
     canUpload: boolean;
+    /** Whether the viewer may release documents to the public page. */
+    canPublish?: boolean;
     /** Whether the organization has an AI provider to ask for kinds. */
     canGuessKinds?: boolean;
 };
@@ -77,6 +80,7 @@ export default function ProductDocumentsPanel({
     availableDocumentTypes,
     outstandingTypes = [],
     canUpload,
+    canPublish = false,
     canGuessKinds = false,
 }: Props) {
     const [uploadOpen, setUploadOpen] = useState(false);
@@ -227,8 +231,57 @@ export default function ProductDocumentsPanel({
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' · ')}
+                                                    {document.is_public ? (
+                                                        <span
+                                                            className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                                            data-test="product-document-public-badge"
+                                                        >
+                                                            <Globe className="h-3 w-3" />
+                                                            Public
+                                                        </span>
+                                                    ) : null}
                                                 </p>
                                             </div>
+
+                                            {canPublish ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    data-test="product-document-visibility-button"
+                                                    title={
+                                                        document.is_public
+                                                            ? 'Hide from the public page'
+                                                            : 'Show on the public page'
+                                                    }
+                                                    onClick={() =>
+                                                        router.patch(
+                                                            visibility.url([
+                                                                organizationSlug,
+                                                                productId,
+                                                                document.id,
+                                                            ]),
+                                                            {
+                                                                is_public:
+                                                                    !document.is_public,
+                                                            },
+                                                            {
+                                                                preserveScroll: true,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    {document.is_public ? (
+                                                        <Lock className="h-4 w-4" />
+                                                    ) : (
+                                                        <Globe className="h-4 w-4" />
+                                                    )}
+                                                    <span className="sr-only">
+                                                        {document.is_public
+                                                            ? `Hide ${document.name} from the public page`
+                                                            : `Show ${document.name} on the public page`}
+                                                    </span>
+                                                </Button>
+                                            ) : null}
 
                                             {/*
                                              * Downloading is no longer what

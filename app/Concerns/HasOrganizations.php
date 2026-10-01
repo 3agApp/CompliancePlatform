@@ -221,11 +221,15 @@ trait HasOrganizations
              */
             canOverrideSeal: $ownsProducts && ($role?->hasPermission(OrganizationPermission::OverrideProductSeal) ?? false),
             /**
-             * The code encodes nothing secret, but the label goes on the
-             * packet the distributor places on the market, so the artwork
-             * is theirs.
+             * A run of serials is vouched for in the distributor's name, so
+             * it is for those who may edit the product.
              */
-            canDownloadLabel: $ownsProducts && ($role?->hasPermission(OrganizationPermission::ViewProduct) ?? false),
+            canManageSerialLabels: $ownsProducts && ($role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false),
+            /**
+             * The public page speaks in the distributor's name, so what goes
+             * on it is theirs to decide.
+             */
+            canPublishDocuments: $ownsProducts && ($role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false),
         );
     }
 

@@ -89,16 +89,33 @@ class ProductPolicy
     }
 
     /**
-     * Determine whether the user can take away the product's label artwork.
+     * Determine whether the user can issue, reprint and withdraw the
+     * product's serialised labels.
      *
-     * The distributor only. The code itself encodes nothing secret -- it is
-     * the public address, which anyone may hold -- but the label goes on the
-     * packet the distributor places on the market, and putting their code on
-     * something is their decision to make.
+     * The distributor only, and only those who may edit the product: a run
+     * of serials is a promise printed on every packet that the platform will
+     * vouch for it, and withdrawing a run tells every buyer holding one of
+     * those packets not to trust it. A member who may only look at the
+     * catalogue gets the plain code, not that decision.
      */
-    public function downloadLabel(User $user, Product $product): bool
+    public function manageSerialLabels(User $user, Product $product): bool
     {
-        return $user->hasOrganizationPermission($product->organization, OrganizationPermission::ViewProduct);
+        return $product->organization->isDistributor()
+            && $user->hasOrganizationPermission($product->organization, OrganizationPermission::UpdateProduct);
+    }
+
+    /**
+     * Determine whether the user can release the product's documents to its
+     * public page, or take them back.
+     *
+     * The distributor only: the public page speaks in their name, and a
+     * supplier's test report is the distributor's to show, not the
+     * supplier's to publish over their head.
+     */
+    public function publishDocuments(User $user, Product $product): bool
+    {
+        return $product->organization->isDistributor()
+            && $user->hasOrganizationPermission($product->organization, OrganizationPermission::UpdateProduct);
     }
 
     /**

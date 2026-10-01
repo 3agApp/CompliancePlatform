@@ -1,9 +1,13 @@
 import {
+    Ban,
     Check,
     CircleDot,
     FilePlus2,
+    Globe,
     FileX2,
     Pencil,
+    Printer,
+    Lock,
     PlusCircle,
     RotateCcw,
     Send,
@@ -32,6 +36,10 @@ const ICONS: Record<ProductEventType, LucideIcon> = {
     returned_to_draft: Undo2,
     seal_overridden: ShieldCheck,
     seal_override_cleared: ShieldCheck,
+    labels_issued: Printer,
+    labels_revoked: Ban,
+    document_published: Globe,
+    document_unpublished: Lock,
 };
 
 /**
