@@ -1,7 +1,8 @@
 import { Form } from '@inertiajs/react';
-import { Check, Send, Undo2 } from 'lucide-react';
+import { Check, RotateCcw, Send, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
+import ReopenProductReviewModal from '@/components/reopen-product-review-modal';
 import RequestProductChangesModal from '@/components/request-product-changes-modal';
 import { Button } from '@/components/ui/button';
 import { approve, submit } from '@/routes/products';
@@ -47,6 +48,7 @@ export default function ProductReviewPanel({
     reviewNote,
 }: Props) {
     const [changesDialogOpen, setChangesDialogOpen] = useState(false);
+    const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
 
     const canSubmit =
         permissions.canUpdateProduct &&
@@ -55,6 +57,9 @@ export default function ProductReviewPanel({
 
     const canRule =
         permissions.canReviewProduct && product.review_status === 'in_review';
+
+    const canReopen =
+        permissions.canReviewProduct && product.review_status === 'approved';
 
     return (
         <div
@@ -144,6 +149,21 @@ export default function ProductReviewPanel({
             ) : null}
 
             {/*
+             * Quieter than the moves above on purpose: this is the way out
+             * of a sign-off given by mistake, not a step in the usual run.
+             */}
+            {canReopen ? (
+                <Button
+                    variant="outline"
+                    className="w-full"
+                    data-test="product-reopen-review"
+                    onClick={() => setReopenDialogOpen(true)}
+                >
+                    <RotateCcw className="h-4 w-4" /> Take back approval
+                </Button>
+            ) : null}
+
+            {/*
              * A supplier looking at a product that is already with the
              * distributor has nothing to press, and should be told that
              * rather than left looking for the button.
@@ -159,6 +179,13 @@ export default function ProductReviewPanel({
                 product={product}
                 open={changesDialogOpen}
                 onOpenChange={setChangesDialogOpen}
+            />
+
+            <ReopenProductReviewModal
+                organizationSlug={organizationSlug}
+                product={product}
+                open={reopenDialogOpen}
+                onOpenChange={setReopenDialogOpen}
             />
         </div>
     );

@@ -72,6 +72,15 @@ enum ProductReviewStatus: string
     }
 
     /**
+     * Determine if a reviewer can take back the sign-off on a product in
+     * this state.
+     */
+    public function isReopenable(): bool
+    {
+        return $this === self::Approved;
+    }
+
+    /**
      * Determine if an edit by the supplier should put the product back in
      * draft.
      *

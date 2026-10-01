@@ -108,6 +108,47 @@ test('a reviewer cannot send a product back without saying why', function () {
     expect($product->fresh()->review_status)->toBe(ProductReviewStatus::InReview);
 });
 
+test('a reviewer takes back an approval given by mistake, with a reason', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $product = Product::factory()
+        ->for($distributor)
+        ->reviewed(ProductReviewStatus::Approved)
+        ->create([
+            'name' => 'Magnetic Building Set',
+            'supplier_connection_id' => $connection->id,
+        ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $distributor->slug,
+        'product' => $product->id,
+    ]))
+        ->assertSee('Approved')
+        ->click('@product-reopen-review')
+        ->assertSee('Take back the approval on Magnetic Building Set?')
+        /** A reason is required before anything changes. */
+        ->click('@reopen-review-confirm')
+        ->assertSee('Say why the approval is being taken back')
+        ->fill('@reopen-note', 'Approved by mistake: the test report has not been checked yet.')
+        ->click('@reopen-review-confirm')
+        ->assertSee('Approval taken back. The product is in review again.')
+        ->assertSee('In review')
+        /** Back in front of the reviewer, with both moves offered again. */
+        ->assertVisible('@product-approve')
+        ->assertVisible('@product-request-changes')
+        ->assertMissing('@product-reopen-review')
+        ->assertSee('Approval taken back')
+        ->assertSee('Approved by mistake: the test report has not been checked yet.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->review_status)->toBe(ProductReviewStatus::InReview);
+});
+
 test('the history says who did what, and an edit by the supplier withdraws the product', function () {
     [, $distributor] = newOrganizationMember();
     [$supplierUser, $supplier] = newSupplierMember();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Products\ReviewProduct;
+use App\Http\Requests\Products\ReopenProductReviewRequest;
 use App\Http\Requests\Products\RequestProductChangesRequest;
 use App\Models\Organization;
 use App\Models\Product;
@@ -77,6 +78,27 @@ class ProductReviewController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Sent back to the supplier.')]);
+
+        return $this->backToProduct($currentOrganization, $product);
+    }
+
+    /**
+     * Take back the sign-off on an approved product.
+     */
+    public function reopen(ReopenProductReviewRequest $request, Organization $currentOrganization, Product $product): RedirectResponse
+    {
+        Gate::authorize('review', $product);
+
+        abort_unless($product->review_status->isReopenable(), 409);
+
+        $this->review->reopen(
+            $product,
+            $request->user(),
+            $currentOrganization,
+            $request->validated('note'),
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Approval taken back. The product is in review again.')]);
 
         return $this->backToProduct($currentOrganization, $product);
     }

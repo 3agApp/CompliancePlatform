@@ -70,6 +70,28 @@ class ReviewProduct
     }
 
     /**
+     * Take back the sign-off and put the product in front of the reviewer
+     * again.
+     *
+     * For an approval given by mistake. The supplier's submission still
+     * stands, so the product goes back into review rather than to draft:
+     * the distributor can then approve it again or send it back with a
+     * note. The original approval stays in the history; this is written
+     * after it, with the reason, rather than over it.
+     */
+    public function reopen(Product $product, User $actor, Organization $organization, string $note): void
+    {
+        DB::transaction(function () use ($product, $actor, $organization, $note) {
+            $product->forceFill([
+                'review_status' => ProductReviewStatus::InReview,
+                'reviewed_at' => null,
+            ])->save();
+
+            $product->recordEvent(ProductEventType::ApprovalRevoked, $actor, $organization, note: $note);
+        });
+    }
+
+    /**
      * Withdraw the product after the supplier changed it.
      *
      * A product under review is being read as it stands, and an approved one

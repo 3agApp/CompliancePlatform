@@ -160,6 +160,7 @@ export type ProductEventType =
     | 'submitted'
     | 'approved'
     | 'changes_requested'
+    | 'approval_revoked'
     | 'returned_to_draft'
     | 'seal_overridden'
     | 'seal_override_cleared';
