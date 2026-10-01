@@ -100,18 +100,51 @@ test('a distributor issues a run of labels and withdraws it', function () {
 
     visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertSee('Serialised labels')
+        ->assertMissing('@product-qr-panel')
         ->fill('@label-quantity', '12')
         ->click('@label-issue')
-        ->assertSee('Labels issued. Download them below.')
-        ->assertSee('12 packets')
-        ->assertSee('0 checked')
+        ->assertSee('Say who or what these labels are for')
+        ->fill('@label-issued-for', 'Spielwaren Muster AG')
+        ->fill('@label-quantity', '12')
+        ->click('@label-issue')
+        ->assertSee('Spielwaren Muster AG')
+        ->assertSee('12 boxes')
+        ->assertSee('0 / 12 checked')
         ->assertPresent('@label-batch-pdf')
         ->click('@label-batch-withdraw')
         ->click('@label-batch-withdraw-confirm')
-        ->assertSee('Labels withdrawn.')
         ->assertMissing('@label-batch-pdf')
         ->assertNoJavaScriptErrors();
 
     expect($product->units()->count())->toBe(12)
         ->and($product->units()->whereNull('revoked_at')->count())->toBe(0);
+});
+
+test('the run overview shows unusual serials first and filters between them', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Magnetic Building Set',
+        'supplier_connection_id' => newSupplierConnection($organization)->id,
+    ]);
+
+    $batch = LabelBatch::issue($product, 5, 'Spielwaren Muster AG', null, $user, $organization);
+    $copied = $batch->units()->first();
+
+    foreach (range(1, config('labels.unusual_checks')) as $time) {
+        $copied->check(str_pad((string) $time, 64, 'd'));
+    }
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSee('1 unusual')
+        ->click('@label-batch-overview')
+        ->assertSee('Labels for Spielwaren Muster AG')
+        ->assertPresent('@label-batch-unusual-warning')
+        ->assertCount('@label-unit-row', 1)
+        ->assertSeeIn('@label-unit-row', $copied->formattedSerial())
+        ->click('@label-filter-all')
+        ->assertCount('@label-unit-row', 5)
+        ->assertNoJavaScriptErrors();
 });

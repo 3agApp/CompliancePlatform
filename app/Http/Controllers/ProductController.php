@@ -677,18 +677,25 @@ class ProductController extends Controller
      * Get the product's runs of serialised labels, newest first, with how
      * many of each run's packets have been checked by a buyer.
      *
-     * @return array<array{id: int, quantity: int, checked: int, createdAt: string|null, createdBy: string|null, revokedAt: string|null}>
+     * @return array<array{id: int, quantity: int, issuedFor: string, checked: int, checks: int, unusual: int, createdAt: string|null, createdBy: string|null, revokedAt: string|null}>
      */
     protected function toLabelBatchArray(Product $product): array
     {
         return $product->labelBatches()
             ->with('creator')
-            ->withCount(['units as checked_count' => fn ($query) => $query->whereNotNull('first_checked_at')])
+            ->withCount([
+                'units as checked_count' => fn ($query) => $query->whereNotNull('first_checked_at'),
+                'units as unusual_count' => fn ($query) => $query->has('checks', '>=', (int) config('labels.unusual_checks')),
+                'checks',
+            ])
             ->get()
             ->map(fn (LabelBatch $batch) => [
                 'id' => $batch->id,
                 'quantity' => $batch->quantity,
+                'issuedFor' => $batch->issued_for,
                 'checked' => (int) $batch->getAttribute('checked_count'),
+                'checks' => (int) $batch->getAttribute('checks_count'),
+                'unusual' => (int) $batch->getAttribute('unusual_count'),
                 'createdAt' => $batch->created_at?->toIso8601String(),
                 'createdBy' => $batch->creator?->name,
                 'revokedAt' => $batch->revoked_at?->toIso8601String(),

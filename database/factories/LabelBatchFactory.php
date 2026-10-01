@@ -25,6 +25,8 @@ class LabelBatchFactory extends Factory
             'organization_id' => fn (array $attributes) => Product::query()->whereKey($attributes['product_id'])->value('organization_id'),
             'created_by' => null,
             'quantity' => 1,
+            'issued_for' => fake()->company(),
+            'note' => null,
             'revoked_at' => null,
         ];
     }

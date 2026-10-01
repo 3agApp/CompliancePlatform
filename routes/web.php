@@ -12,7 +12,6 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
 use App\Http\Controllers\ProductDocumentVisibilityController;
-use App\Http\Controllers\ProductQrCodeController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
@@ -102,19 +101,10 @@ Route::prefix('{current_organization}')
             Route::post('products/{product}/reopen', [ProductReviewController::class, 'reopen'])->name('products.reopen');
 
             /**
-             * The artwork that puts the public page on the product itself:
-             * a picture of the code, and a sheet to print.
-             */
-            Route::get('products/{product}/qr/{format}', [ProductQrCodeController::class, 'show'])
-                ->whereIn('format', ['png', 'svg'])
-                ->name('products.qr');
-
-            Route::get('products/{product}/label', [ProductQrCodeController::class, 'label'])->name('products.label');
-
-            /**
              * Runs of serialised labels, one serial per packet.
              */
             Route::post('products/{product}/label-batches', [SerialLabelController::class, 'store'])->name('products.label-batches.store');
+            Route::get('products/{product}/label-batches/{label_batch}', [SerialLabelController::class, 'show'])->name('products.label-batches.show');
             Route::get('products/{product}/label-batches/{label_batch}/pdf', [SerialLabelController::class, 'pdf'])->name('products.label-batches.pdf');
             Route::delete('products/{product}/label-batches/{label_batch}', [SerialLabelController::class, 'destroy'])->name('products.label-batches.destroy');
 

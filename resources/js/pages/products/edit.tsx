@@ -11,7 +11,6 @@ import ProductHistoryPanel, {
     ProductHistorySkeleton,
 } from '@/components/product-history-panel';
 import ProductPublicPanel from '@/components/product-public-panel';
-import ProductQrPanel from '@/components/product-qr-panel';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
 import ProductReviewPanel from '@/components/product-review-panel';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
@@ -517,14 +516,6 @@ export default function ProductEdit({
                             publicUrl={publicUrl}
                             canOverrideSeal={permissions.canOverrideSeal}
                         />
-
-                        {permissions.canDownloadLabel ? (
-                            <ProductQrPanel
-                                organizationSlug={organizationSlug}
-                                productId={product.id}
-                                productName={product.name}
-                            />
-                        ) : null}
 
                         {permissions.canManageSerialLabels ? (
                             <SerialLabelsPanel

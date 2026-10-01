@@ -23,6 +23,14 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained()->cascadeOnDelete();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedInteger('quantity');
+
+            /**
+             * Who or what the run was printed for -- a customer, a shipment,
+             * an order -- so a code that turns up checked a hundred times
+             * can be traced back to where its roll went.
+             */
+            $table->string('issued_for');
+            $table->text('note')->nullable();
             $table->timestamp('revoked_at')->nullable();
             $table->timestamps();
 

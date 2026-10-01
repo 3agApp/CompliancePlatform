@@ -6,14 +6,17 @@ use App\Models\LabelBatch;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductUnit;
-use App\Support\ProductQrCode;
+use App\Support\QrCode;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 /**
  * Runs of serialised labels: one serial for every packet in a shipment.
@@ -44,15 +47,84 @@ class SerialLabelController extends Controller
 
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:'.config('labels.max_batch')],
+            'issued_for' => ['required', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'issued_for.required' => __('Say who or what these labels are for, such as a customer, shipment or order.'),
         ]);
 
-        LabelBatch::issue($product, (int) $validated['quantity'], $request->user(), $currentOrganization);
+        LabelBatch::issue(
+            $product,
+            (int) $validated['quantity'],
+            $validated['issued_for'],
+            $validated['note'] ?? null,
+            $request->user(),
+            $currentOrganization,
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Labels issued. Download them below.')]);
 
         return to_route('products.edit', [
             'current_organization' => $currentOrganization->slug,
             'product' => $product->id,
+        ]);
+    }
+
+    /**
+     * Show how a run's labels are being checked.
+     *
+     * Every packet in the run with how often it was checked and from how
+     * many devices, most-checked first. A buyer checks a new box once or
+     * twice; a serial checked far more often than that is a label that was
+     * copied or handed round, and the run it came off says where it went.
+     */
+    public function show(Organization $currentOrganization, Product $product, LabelBatch $labelBatch): InertiaResponse
+    {
+        Gate::authorize('manageSerialLabels', $product);
+
+        $labelBatch->load('creator');
+        $threshold = (int) config('labels.unusual_checks');
+
+        $units = $labelBatch->units()
+            ->withCount([
+                'checks',
+                'checks as devices_count' => fn ($query) => $query->select(DB::raw('count(distinct device_hash)')),
+            ])
+            ->withMax('checks', 'created_at')
+            ->get()
+            ->sortBy([['checks_count', 'desc'], ['id', 'asc']])
+            ->values();
+
+        $checks = (int) $units->sum('checks_count');
+
+        return Inertia::render('products/label-batch', [
+            'product' => ['id' => $product->id, 'name' => $product->name],
+            'batch' => [
+                'id' => $labelBatch->id,
+                'quantity' => $labelBatch->quantity,
+                'issuedFor' => $labelBatch->issued_for,
+                'note' => $labelBatch->note,
+                'createdAt' => $labelBatch->created_at?->toIso8601String(),
+                'createdBy' => $labelBatch->creator?->name,
+                'revokedAt' => $labelBatch->revoked_at?->toIso8601String(),
+            ],
+            'summary' => [
+                'checked' => $units->where('checks_count', '>', 0)->count(),
+                'checks' => $checks,
+                'unusual' => $units->where('checks_count', '>=', $threshold)->count(),
+            ],
+            'unusualThreshold' => $threshold,
+            'units' => $units->map(fn (ProductUnit $unit) => [
+                'id' => $unit->id,
+                'serial' => $unit->formattedSerial(),
+                'checks' => (int) $unit->getAttribute('checks_count'),
+                'devices' => (int) $unit->getAttribute('devices_count'),
+                'firstCheckedAt' => $unit->first_checked_at?->toIso8601String(),
+                'lastCheckedAt' => $unit->getAttribute('checks_max_created_at') === null
+                    ? null
+                    : Date::parse($unit->getAttribute('checks_max_created_at'))->toIso8601String(),
+                'revoked' => $unit->revoked_at !== null,
+            ])->all(),
         ]);
     }
 
@@ -76,7 +148,7 @@ class SerialLabelController extends Controller
             'product' => $product,
             'units' => $units->map(fn (ProductUnit $unit) => [
                 'serial' => $unit->formattedSerial(),
-                'qr' => ProductQrCode::dataUriFor($unit->url(), self::QR_SIZE),
+                'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
             ]),
         ])->setPaper([
             0,

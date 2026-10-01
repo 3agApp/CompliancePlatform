@@ -30,4 +30,17 @@ return [
 
     'max_batch' => 400,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Unusual Checks
+    |--------------------------------------------------------------------------
+    |
+    | How many checks of one serial the overview flags as unusual. A buyer
+    | checks a new box once or twice; a label copied onto many boxes, or
+    | handed round, is checked far more often than that.
+    |
+    */
+
+    'unusual_checks' => 20,
+
 ];

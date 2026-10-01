@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -24,6 +25,8 @@ use Illuminate\Support\Str;
  * @property int $product_id
  * @property int|null $created_by
  * @property int $quantity
+ * @property string $issued_for
+ * @property string|null $note
  * @property CarbonImmutable|null $revoked_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -31,8 +34,9 @@ use Illuminate\Support\Str;
  * @property-read Product $product
  * @property-read User|null $creator
  * @property-read Collection<int, ProductUnit> $units
+ * @property-read Collection<int, ProductUnitCheck> $checks
  */
-#[Fillable(['quantity', 'revoked_at'])]
+#[Fillable(['quantity', 'issued_for', 'note', 'revoked_at'])]
 class LabelBatch extends Model
 {
     /** @use HasFactory<LabelBatchFactory> */
@@ -71,10 +75,10 @@ class LabelBatch extends Model
      * at all -- half a roll of serials the platform does not know would
      * read as counterfeits to whoever bought those packets.
      */
-    public static function issue(Product $product, int $quantity, User $actor, Organization $organization): self
+    public static function issue(Product $product, int $quantity, string $issuedFor, ?string $note, User $actor, Organization $organization): self
     {
-        return DB::transaction(function () use ($product, $quantity, $actor, $organization) {
-            $batch = new self(['quantity' => $quantity]);
+        return DB::transaction(function () use ($product, $quantity, $issuedFor, $note, $actor, $organization) {
+            $batch = new self(['quantity' => $quantity, 'issued_for' => $issuedFor, 'note' => $note]);
             $batch->organization()->associate($product->organization_id);
             $batch->product()->associate($product);
             $batch->creator()->associate($actor);
@@ -98,7 +102,7 @@ class LabelBatch extends Model
                 ProductEventType::LabelsIssued,
                 $actor,
                 $organization,
-                note: trans_choice(':count serialised label|:count serialised labels', $quantity),
+                note: trans_choice(':count serialised label for :for|:count serialised labels for :for', $quantity, ['for' => $issuedFor]),
             );
 
             return $batch;
@@ -152,7 +156,7 @@ class LabelBatch extends Model
                 ProductEventType::LabelsRevoked,
                 $actor,
                 $organization,
-                note: trans_choice(':count serialised label|:count serialised labels', $this->quantity),
+                note: trans_choice(':count serialised label for :for|:count serialised labels for :for', $this->quantity, ['for' => $this->issued_for]),
             );
         });
     }
@@ -195,5 +199,15 @@ class LabelBatch extends Model
     public function units(): HasMany
     {
         return $this->hasMany(ProductUnit::class)->orderBy('id');
+    }
+
+    /**
+     * Get every check of every packet in the run.
+     *
+     * @return HasManyThrough<ProductUnitCheck, ProductUnit, $this>
+     */
+    public function checks(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProductUnitCheck::class, ProductUnit::class);
     }
 }

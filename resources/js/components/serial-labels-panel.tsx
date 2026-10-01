@@ -1,5 +1,5 @@
-import { Form, router } from '@inertiajs/react';
-import { Ban, FileText, Printer } from 'lucide-react';
+import { Form, Link, router } from '@inertiajs/react';
+import { Ban, BarChart3, FileText, Printer, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { destroy, pdf, store } from '@/routes/products/label-batches';
+import { Textarea } from '@/components/ui/textarea';
+import { destroy, pdf, show, store } from '@/routes/products/label-batches';
 import type { LabelBatchSummary } from '@/types';
 
 type Props = {
@@ -34,11 +35,11 @@ function onDay(timestamp: string | null): string {
 }
 
 /**
- * Labels with a serial for every packet in a shipment.
+ * Labels with a serial for every box in a shipment.
  *
- * One label per box: the serial and a code that leads to it. A copied
- * label gives itself away the moment a second buyer finds its serial
- * was checked before.
+ * Each run says who or what it was printed for, so a serial that turns up
+ * checked far more often than one buyer would check it can be traced back
+ * to where its roll went.
  */
 export default function SerialLabelsPanel({
     organizationSlug,
@@ -80,12 +81,24 @@ export default function SerialLabelsPanel({
                 {...store.form([organizationSlug, productId])}
                 options={{ preserveScroll: true }}
                 resetOnSuccess
-                className="space-y-2"
+                className="space-y-3"
             >
                 {({ errors, processing: issuing }) => (
                     <>
-                        <Label htmlFor="label-quantity">Packets</Label>
-                        <div className="flex gap-2">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="label-issued-for">Issued for</Label>
+                            <Input
+                                id="label-issued-for"
+                                name="issued_for"
+                                placeholder="Customer, shipment or order"
+                                aria-invalid={!!errors.issued_for}
+                                data-test="label-issued-for"
+                            />
+                            <InputError message={errors.issued_for} />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="label-quantity">Boxes</Label>
                             <Input
                                 id="label-quantity"
                                 name="quantity"
@@ -96,17 +109,35 @@ export default function SerialLabelsPanel({
                                 aria-invalid={!!errors.quantity}
                                 data-test="label-quantity"
                             />
-                            <Button
-                                type="submit"
-                                size="sm"
-                                className="h-9"
-                                disabled={issuing}
-                                data-test="label-issue"
-                            >
-                                <Printer className="h-4 w-4" /> Issue
-                            </Button>
+                            <InputError message={errors.quantity} />
                         </div>
-                        <InputError message={errors.quantity} />
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="label-note">
+                                Note{' '}
+                                <span className="text-muted-foreground font-normal">
+                                    (optional)
+                                </span>
+                            </Label>
+                            <Textarea
+                                id="label-note"
+                                name="note"
+                                rows={2}
+                                placeholder="Anything worth remembering about this run"
+                                data-test="label-note"
+                            />
+                            <InputError message={errors.note} />
+                        </div>
+
+                        <Button
+                            type="submit"
+                            size="sm"
+                            className="w-full"
+                            disabled={issuing}
+                            data-test="label-issue"
+                        >
+                            <Printer className="h-4 w-4" /> Issue labels
+                        </Button>
                     </>
                 )}
             </Form>
@@ -116,54 +147,102 @@ export default function SerialLabelsPanel({
                     {batches.map((batch) => (
                         <li
                             key={batch.id}
-                            className="flex items-center justify-between gap-2 py-2"
+                            className="space-y-1.5 py-3"
                             data-test="label-batch"
                         >
-                            <div className="min-w-0">
-                                <p
-                                    className={
-                                        batch.revokedAt
-                                            ? 'text-muted-foreground line-through'
-                                            : 'font-medium'
-                                    }
+                            <div className="flex items-start justify-between gap-2">
+                                <Link
+                                    href={show([
+                                        organizationSlug,
+                                        productId,
+                                        batch.id,
+                                    ])}
+                                    className="min-w-0 hover:underline"
+                                    data-test="label-batch-overview"
                                 >
-                                    {batch.quantity} packets
-                                </p>
-                                <p className="text-muted-foreground truncate text-xs">
-                                    {batch.revokedAt
-                                        ? `Withdrawn ${onDay(batch.revokedAt)}`
-                                        : `${batch.checked} checked · ${onDay(batch.createdAt)}${batch.createdBy ? ` · ${batch.createdBy}` : ''}`}
-                                </p>
-                            </div>
+                                    <p
+                                        className={
+                                            batch.revokedAt
+                                                ? 'text-muted-foreground truncate line-through'
+                                                : 'truncate font-medium'
+                                        }
+                                    >
+                                        {batch.issuedFor}
+                                    </p>
+                                    <p className="text-muted-foreground text-xs">
+                                        {batch.revokedAt
+                                            ? `Withdrawn ${onDay(batch.revokedAt)}`
+                                            : `${batch.quantity} boxes · ${onDay(batch.createdAt)}${batch.createdBy ? ` · ${batch.createdBy}` : ''}`}
+                                    </p>
+                                </Link>
 
-                            {batch.revokedAt ? null : (
                                 <div className="flex shrink-0 gap-1">
                                     <Button variant="ghost" size="sm" asChild>
-                                        <a
-                                            href={
-                                                pdf([
-                                                    organizationSlug,
-                                                    productId,
-                                                    batch.id,
-                                                ]).url
-                                            }
-                                            aria-label={`Download labels for ${batch.quantity} packets`}
-                                            data-test="label-batch-pdf"
+                                        <Link
+                                            href={show([
+                                                organizationSlug,
+                                                productId,
+                                                batch.id,
+                                            ])}
+                                            aria-label={`Check overview for ${batch.issuedFor}`}
                                         >
-                                            <FileText className="h-4 w-4" /> PDF
-                                        </a>
+                                            <BarChart3 className="h-4 w-4" />
+                                        </Link>
                                     </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setWithdrawing(batch)}
-                                        aria-label={`Withdraw labels for ${batch.quantity} packets`}
-                                        data-test="label-batch-withdraw"
-                                    >
-                                        <Ban className="h-4 w-4" />
-                                    </Button>
+                                    {batch.revokedAt ? null : (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                asChild
+                                            >
+                                                <a
+                                                    href={
+                                                        pdf([
+                                                            organizationSlug,
+                                                            productId,
+                                                            batch.id,
+                                                        ]).url
+                                                    }
+                                                    aria-label={`Download labels for ${batch.issuedFor}`}
+                                                    data-test="label-batch-pdf"
+                                                >
+                                                    <FileText className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setWithdrawing(batch)
+                                                }
+                                                aria-label={`Withdraw labels for ${batch.issuedFor}`}
+                                                data-test="label-batch-withdraw"
+                                            >
+                                                <Ban className="h-4 w-4" />
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
-                            )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                <span className="bg-muted rounded-full px-2 py-0.5">
+                                    {batch.checked} / {batch.quantity} checked
+                                </span>
+                                <span className="bg-muted rounded-full px-2 py-0.5">
+                                    {batch.checks} checks
+                                </span>
+                                {batch.unusual > 0 ? (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                                        data-test="label-batch-unusual"
+                                    >
+                                        <TriangleAlert className="h-3 w-3" />
+                                        {batch.unusual} unusual
+                                    </span>
+                                ) : null}
+                            </div>
                         </li>
                     ))}
                 </ul>
@@ -177,11 +256,11 @@ export default function SerialLabelsPanel({
                     <DialogHeader>
                         <DialogTitle>Withdraw labels</DialogTitle>
                         <DialogDescription>
-                            Every one of these {withdrawing?.quantity} serials
-                            will read as withdrawn to anyone who checks it,
-                            including packets already sold. Use this for a roll
-                            that went missing or was printed by mistake. It
-                            cannot be undone.
+                            Every one of the {withdrawing?.quantity} serials
+                            issued for {withdrawing?.issuedFor} will read as
+                            withdrawn to anyone who checks it, including boxes
+                            already sold. Use this for a roll that went missing
+                            or was printed by mistake. It cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
 

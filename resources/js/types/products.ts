@@ -307,10 +307,26 @@ export type PublicProductSafety = {
 export type LabelBatchSummary = {
     id: number;
     quantity: number;
+    issuedFor: string;
     checked: number;
+    checks: number;
+    unusual: number;
     createdAt: string | null;
     createdBy: string | null;
     revokedAt: string | null;
+};
+
+/**
+ * One packet in a run, as the run's overview lists it.
+ */
+export type LabelUnitOverview = {
+    id: number;
+    serial: string;
+    checks: number;
+    devices: number;
+    firstCheckedAt: string | null;
+    lastCheckedAt: string | null;
+    revoked: boolean;
 };
 
 export type Product = {
@@ -347,7 +363,6 @@ export type ProductPermissions = {
     canDeleteProduct: boolean;
     canReviewProduct: boolean;
     canOverrideSeal: boolean;
-    canDownloadLabel: boolean;
     canManageSerialLabels: boolean;
     canPublishDocuments: boolean;
 };
