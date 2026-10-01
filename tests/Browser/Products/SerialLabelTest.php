@@ -57,7 +57,7 @@ test('a buyer checking a code someone else checked sees the warning and the hist
         ->assertSee('1 earlier check')
         ->assertSee('Another device')
         ->assertPresent('@check-history-entry')
-        ->assertSee('Times are shown in your time zone')
+        ->assertSeeIn('@check-history-entry', ', GMT')
         ->assertNoJavaScriptErrors();
 });
 

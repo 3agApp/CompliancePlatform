@@ -65,7 +65,6 @@ const en = {
     historyCount: '{count} earlier checks',
     historyCountOne: '1 earlier check',
     historyMore: 'and {count} more',
-    timeZoneNote: 'Times are shown in your time zone ({zone}).',
     thisDevice: 'This device',
     otherDevice: 'Another device',
 
@@ -161,7 +160,6 @@ const de: Dictionary = {
     historyCount: '{count} frühere Prüfungen',
     historyCountOne: '1 frühere Prüfung',
     historyMore: 'und {count} weitere',
-    timeZoneNote: 'Zeiten in Ihrer Zeitzone ({zone}).',
     thisDevice: 'Dieses Gerät',
     otherDevice: 'Anderes Gerät',
 
@@ -234,23 +232,38 @@ export function usePublicLocale(initial: string | undefined) {
 
 /**
  * A date the way a reader in that language writes it.
+ *
+ * With a time, it is the reader's own clock -- a buyer in New York sees New
+ * York time -- followed by the zone in brackets, because a screenshot of it
+ * travels: whoever it is forwarded to, in another country, still knows
+ * which clock it was read off. The offset is worked out for that date, so a
+ * time from summer reads in summer time.
  */
 export function formatPublicDate(
     timestamp: string,
     locale: PublicLocale,
     withTime = false,
 ): string {
-    return new Date(timestamp).toLocaleString(
-        locale === 'de' ? 'de-CH' : 'en-GB',
-        {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-            ...(withTime
-                ? { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }
-                : {}),
-        },
-    );
+    const date = new Date(timestamp);
+    const language = locale === 'de' ? 'de-CH' : 'en-GB';
+
+    const text = date.toLocaleString(language, {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+    });
+
+    if (!withTime) {
+        return text;
+    }
+
+    const offset =
+        new Intl.DateTimeFormat('en-GB', { timeZoneName: 'shortOffset' })
+            .formatToParts(date)
+            .find((part) => part.type === 'timeZoneName')?.value ?? '';
+
+    return `${text} (${[readerTimeZone(), offset].filter(Boolean).join(', ')})`;
 }
 
 /**

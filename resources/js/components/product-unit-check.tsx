@@ -14,7 +14,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatPublicDate, readerTimeZone } from '@/lib/public-i18n';
+import { formatPublicDate } from '@/lib/public-i18n';
 import type { PublicLocale, PublicTranslate } from '@/lib/public-i18n';
 import { cn } from '@/lib/utils';
 import type { ProductUnitStatus, UnitCheckResult } from '@/types';
@@ -259,18 +259,6 @@ function Result({
                             {t('historyMore', { count: String(hidden) })}
                         </p>
                     ) : null}
-                    {/*
-                     * Checks are stored in UTC and drawn in the reader's own
-                     * zone, so a check made minutes ago reads as minutes ago
-                     * -- and the zone is named, so nobody mistakes it for
-                     * somebody else's clock.
-                     */}
-                    <p
-                        className="mt-2 text-[11px] opacity-70"
-                        data-test="check-history-timezone"
-                    >
-                        {t('timeZoneNote', { zone: readerTimeZone() })}
-                    </p>
                 </div>
             ) : null}
         </div>
