@@ -24,6 +24,10 @@ enum ProductEventType: string
     case ReturnedToDraft = 'returned_to_draft';
     case SealOverridden = 'seal_overridden';
     case SealOverrideCleared = 'seal_override_cleared';
+    case LabelsIssued = 'labels_issued';
+    case LabelsRevoked = 'labels_revoked';
+    case DocumentPublished = 'document_published';
+    case DocumentUnpublished = 'document_unpublished';
 
     /**
      * Get the display label for the event.
@@ -42,6 +46,10 @@ enum ProductEventType: string
             self::ReturnedToDraft => 'Returned to draft',
             self::SealOverridden => 'Public seal set by hand',
             self::SealOverrideCleared => 'Public seal handed back to the review',
+            self::LabelsIssued => 'Serialised labels issued',
+            self::LabelsRevoked => 'Serialised labels withdrawn',
+            self::DocumentPublished => 'Document released to the public page',
+            self::DocumentUnpublished => 'Document taken off the public page',
         };
     }
 

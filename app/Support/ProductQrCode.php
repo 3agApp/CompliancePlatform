@@ -62,6 +62,25 @@ class ProductQrCode
     }
 
     /**
+     * Render a code for any address as a data address, at a given size.
+     *
+     * For the serialised labels, where every packet's code carries its own
+     * serial and hundreds are drawn into one file: drawn smaller than the
+     * artwork, because each one is printed at a couple of centimetres and a
+     * run of them has to render in seconds rather than minutes.
+     */
+    public static function dataUriFor(string $url, int $size = self::SIZE): string
+    {
+        return (new Builder(
+            writer: new PngWriter,
+            data: $url,
+            errorCorrectionLevel: ErrorCorrectionLevel::Medium,
+            size: $size,
+            margin: 0,
+        ))->build()->getDataUri();
+    }
+
+    /**
      * Get the name the downloaded file is offered under.
      *
      * Named after the product rather than its id, because it is about to

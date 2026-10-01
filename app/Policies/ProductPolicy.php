@@ -102,6 +102,36 @@ class ProductPolicy
     }
 
     /**
+     * Determine whether the user can issue, reprint and withdraw the
+     * product's serialised labels.
+     *
+     * The distributor only, and only those who may edit the product: a run
+     * of serials is a promise printed on every packet that the platform will
+     * vouch for it, and withdrawing a run tells every buyer holding one of
+     * those packets not to trust it. A member who may only look at the
+     * catalogue gets the plain code, not that decision.
+     */
+    public function manageSerialLabels(User $user, Product $product): bool
+    {
+        return $product->organization->isDistributor()
+            && $user->hasOrganizationPermission($product->organization, OrganizationPermission::UpdateProduct);
+    }
+
+    /**
+     * Determine whether the user can release the product's documents to its
+     * public page, or take them back.
+     *
+     * The distributor only: the public page speaks in their name, and a
+     * supplier's test report is the distributor's to show, not the
+     * supplier's to publish over their head.
+     */
+    public function publishDocuments(User $user, Product $product): bool
+    {
+        return $product->organization->isDistributor()
+            && $user->hasOrganizationPermission($product->organization, OrganizationPermission::UpdateProduct);
+    }
+
+    /**
      * Determine whether the user can delete the product.
      *
      * Only the distributor that owns the product may delete it. A supplier is

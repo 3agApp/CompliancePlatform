@@ -226,6 +226,16 @@ trait HasOrganizations
              * is theirs.
              */
             canDownloadLabel: $ownsProducts && ($role?->hasPermission(OrganizationPermission::ViewProduct) ?? false),
+            /**
+             * A run of serials is vouched for in the distributor's name, so
+             * it is for those who may edit the product.
+             */
+            canManageSerialLabels: $ownsProducts && ($role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false),
+            /**
+             * The public page speaks in the distributor's name, so what goes
+             * on it is theirs to decide.
+             */
+            canPublishDocuments: $ownsProducts && ($role?->hasPermission(OrganizationPermission::UpdateProduct) ?? false),
         );
     }
 

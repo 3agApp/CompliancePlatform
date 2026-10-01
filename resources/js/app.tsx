@@ -25,6 +25,7 @@ void createInertiaApp({
             case name === 'error-page':
             /** A page for readers with no account, so no app shell either. */
             case name === 'products/public':
+            case name === 'check':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

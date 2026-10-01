@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CaptchaController;
+use App\Http\Controllers\CheckUnitController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\ImpersonationController;
@@ -9,16 +11,19 @@ use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
+use App\Http\Controllers\ProductDocumentVisibilityController;
 use App\Http\Controllers\ProductQrCodeController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
 use App\Http\Controllers\PublicProductController;
+use App\Http\Controllers\SerialLabelController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
 use App\Http\Controllers\Suppliers\SupplierConnectionController;
 use App\Http\Middleware\EnsureOrganizationMembership;
 use App\Http\Middleware\EnsureOrganizationType;
+use App\Http\Middleware\SetPublicLocale;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -43,11 +48,34 @@ Route::get('dashboard', DashboardRedirectController::class)
  * by counting. Declared before the organization prefix so the two-segment
  * shape is read as this and not as somebody's slug.
  */
-Route::get('p/{product:uuid}', [PublicProductController::class, 'show'])->name('products.public');
+Route::middleware(['throttle:public-product', SetPublicLocale::class])->group(function () {
+    Route::get('p/{product:uuid}', [PublicProductController::class, 'show'])->name('products.public');
 
-Route::get('p/{product:uuid}/images/{document}', [PublicProductController::class, 'image'])
-    ->scopeBindings()
-    ->name('products.public.image');
+    Route::get('p/{product:uuid}/images/{document}', [PublicProductController::class, 'image'])
+        ->scopeBindings()
+        ->name('products.public.image');
+
+    Route::get('p/{product:uuid}/documents/{document}', [PublicProductController::class, 'document'])
+        ->scopeBindings()
+        ->name('products.public.document');
+});
+
+/**
+ * One packet, off its serialised label. Throttled harder than the plain
+ * page, because a serial is the one thing on it worth guessing at.
+ */
+Route::middleware(['throttle:unit-check', SetPublicLocale::class])->group(function () {
+    Route::get('p/{product:uuid}/u/{serial}', [PublicProductController::class, 'unit'])
+        ->where('serial', '[0-9A-Za-z\-]{12,20}')
+        ->name('products.public.unit');
+
+    Route::post('p/{product:uuid}/check', [PublicProductController::class, 'check'])->name('products.public.check');
+
+    Route::get('captcha', CaptchaController::class)->name('captcha');
+
+    Route::get('check', [CheckUnitController::class, 'show'])->name('check');
+    Route::post('check', [CheckUnitController::class, 'store'])->name('check.store');
+});
 
 Route::prefix('{current_organization}')
     ->middleware(['auth', 'verified', EnsureOrganizationMembership::class])
@@ -84,6 +112,13 @@ Route::prefix('{current_organization}')
             Route::get('products/{product}/label', [ProductQrCodeController::class, 'label'])->name('products.label');
 
             /**
+             * Runs of serialised labels, one serial per packet.
+             */
+            Route::post('products/{product}/label-batches', [SerialLabelController::class, 'store'])->name('products.label-batches.store');
+            Route::get('products/{product}/label-batches/{label_batch}/pdf', [SerialLabelController::class, 'pdf'])->name('products.label-batches.pdf');
+            Route::delete('products/{product}/label-batches/{label_batch}', [SerialLabelController::class, 'destroy'])->name('products.label-batches.destroy');
+
+            /**
              * The public seal, set by hand. A distributor-only move, and one
              * the product's history keeps a line about either way.
              */
@@ -108,6 +143,11 @@ Route::prefix('{current_organization}')
             Route::get('products/{product}/documents/{document}/preview', [ProductDocumentController::class, 'preview'])
                 ->name('products.documents.preview');
             Route::delete('products/{product}/documents/{document}', [ProductDocumentController::class, 'destroy'])->name('products.documents.destroy');
+
+            /**
+             * Releasing a document to the public page, or taking it back.
+             */
+            Route::patch('products/{product}/documents/{document}/visibility', ProductDocumentVisibilityController::class)->name('products.documents.visibility');
 
             /**
              * Brands are named under a supplier connection, so both sides

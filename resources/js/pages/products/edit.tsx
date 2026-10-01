@@ -15,6 +15,7 @@ import ProductQrPanel from '@/components/product-qr-panel';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
 import ProductReviewPanel from '@/components/product-review-panel';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
+import SerialLabelsPanel from '@/components/serial-labels-panel';
 import { Button } from '@/components/ui/button';
 import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
@@ -23,6 +24,7 @@ import { index, update } from '@/routes/products';
 import type {
     BrandOption,
     CountryOption,
+    LabelBatchSummary,
     OrganizationType,
     ProductCategoryOption,
     ProductCompleteness,
@@ -73,6 +75,7 @@ type Props = {
     sealOverride: ProductSealOverride | null;
     availableSeals: ProductSealOption[];
     publicUrl: string;
+    labelBatches: LabelBatchSummary[];
     /**
      * Deferred: the one thing on this page that grows without bound, and
      * the only one nobody reads before everything above it.
@@ -98,6 +101,7 @@ export default function ProductEdit({
     sealOverride,
     availableSeals,
     publicUrl,
+    labelBatches,
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
@@ -461,6 +465,7 @@ export default function ProductEdit({
                                 availableDocumentTypes={availableDocumentTypes}
                                 outstandingTypes={outstandingDocumentTypes}
                                 canUpload={permissions.canUpdateProduct}
+                                canPublish={permissions.canPublishDocuments}
                                 canGuessKinds={canGuessDocumentKinds}
                             />
                         </section>
@@ -518,6 +523,14 @@ export default function ProductEdit({
                                 organizationSlug={organizationSlug}
                                 productId={product.id}
                                 productName={product.name}
+                            />
+                        ) : null}
+
+                        {permissions.canManageSerialLabels ? (
+                            <SerialLabelsPanel
+                                organizationSlug={organizationSlug}
+                                productId={product.id}
+                                batches={labelBatches}
                             />
                         ) : null}
                     </div>

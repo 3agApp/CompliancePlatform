@@ -184,3 +184,65 @@ test('the product page shows the code and offers it in three formats', function 
         ->assertSee("Scanning it opens this product's public page.")
         ->assertNoJavaScriptErrors();
 });
+
+test('a distributor releases a test report and the public page offers it for download', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization] = newOrganizationMember();
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Magnetic Building Set',
+        'supplier_connection_id' => newSupplierConnection($organization)->id,
+        'warning_text' => 'Not suitable for children under 3 years.',
+    ]);
+
+    $path = ProductDocument::directoryFor($product).'/report.pdf';
+    Storage::disk(ProductDocument::DISK)->put($path, '%PDF-1.4 report');
+
+    $document = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
+        'name' => 'report.pdf',
+        'path' => $path,
+        'mime_type' => 'application/pdf',
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->click('@product-document-visibility-button')
+        ->assertPresent('@product-document-public-badge')
+        ->assertSee('Document released to the public page')
+        ->assertNoJavaScriptErrors();
+
+    expect($document->fresh()->is_public)->toBeTrue();
+});
+
+test('the public page shows released documents grouped by kind, safety information and who places the product on the market', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct(['warning_text' => 'Not suitable for children under 3 years.']);
+
+    foreach (['certificate-en71.pdf', 'certificate-reach.pdf'] as $name) {
+        ProductDocument::factory()->for($product)->ofType(ProductDocumentType::Certificate)->create([
+            'name' => $name,
+            'mime_type' => 'application/pdf',
+            'is_public' => true,
+        ]);
+    }
+
+    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
+        'name' => 'test-report.pdf',
+        'mime_type' => 'application/pdf',
+        'is_public' => true,
+    ]);
+
+    visit($product->publicUrl())
+        ->assertSee('Safety information')
+        ->assertSee('Not suitable for children under 3 years.')
+        ->assertCount('@product-public-document-group', 2)
+        ->assertSeeIn('[data-type="certificate"]', 'certificate-en71.pdf')
+        ->assertSeeIn('[data-type="certificate"]', 'certificate-reach.pdf')
+        ->assertSeeIn('[data-type="test_report"]', 'test-report.pdf')
+        ->assertSee('Placed on the market by')
+        ->assertSee($product->organization->name)
+        ->assertNoJavaScriptErrors();
+});
