@@ -4,6 +4,7 @@ use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
+use App\Enums\ProductSealStatus;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
@@ -118,6 +119,63 @@ test('sending a product back without saying why is refused', function () {
         ->assertSessionHasErrors('note');
 
     expect($product->fresh()->review_status)->toBe(ProductReviewStatus::InReview);
+});
+
+test('the distributor takes back an approval given by mistake', function () {
+    [$distributorUser, $distributor, , , $product] = tradeWithProduct(ProductReviewStatus::Approved);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.reopen', ['current_organization' => $distributor->slug, 'product' => $product->id]), [
+            'note' => 'Approved by mistake: the test report has not been checked yet.',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    $product->refresh();
+
+    expect($product->review_status)->toBe(ProductReviewStatus::InReview)
+        ->and($product->reviewed_at)->toBeNull()
+        ->and($product->seal()->status)->not->toBe(ProductSealStatus::Verified);
+
+    $event = $product->events()->latest('id')->first();
+
+    expect($event->type)->toBe(ProductEventType::ApprovalRevoked)
+        ->and($event->note)->toBe('Approved by mistake: the test report has not been checked yet.')
+        ->and($event->actor_name)->toBe($distributorUser->name);
+});
+
+test('taking back an approval without saying why is refused', function () {
+    [$distributorUser, $distributor, , , $product] = tradeWithProduct(ProductReviewStatus::Approved);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.reopen', ['current_organization' => $distributor->slug, 'product' => $product->id]), ['note' => '  '])
+        ->assertSessionHasErrors('note');
+
+    expect($product->fresh()->review_status)->toBe(ProductReviewStatus::Approved);
+});
+
+test('only an approved product can have its approval taken back', function () {
+    [$distributorUser, $distributor, , , $product] = tradeWithProduct(ProductReviewStatus::InReview);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.reopen', ['current_organization' => $distributor->slug, 'product' => $product->id]), ['note' => 'Wrong one.'])
+        ->assertStatus(409);
+
+    expect($product->fresh()->review_status)->toBe(ProductReviewStatus::InReview);
+});
+
+test('a supplier cannot take back an approval', function () {
+    [, , $supplierUser, $supplier, $product] = tradeWithProduct(ProductReviewStatus::Approved);
+
+    $this
+        ->actingAs($supplierUser)
+        ->post(route('products.reopen', ['current_organization' => $supplier->slug, 'product' => $product->id]), ['note' => 'Please look again.'])
+        ->assertForbidden();
+
+    expect($product->fresh()->review_status)->toBe(ProductReviewStatus::Approved);
 });
 
 test('a supplier cannot sign off their own homework', function () {

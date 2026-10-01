@@ -71,6 +71,7 @@ Route::prefix('{current_organization}')
             Route::post('products/{product}/submit', [ProductReviewController::class, 'submit'])->name('products.submit');
             Route::post('products/{product}/approve', [ProductReviewController::class, 'approve'])->name('products.approve');
             Route::post('products/{product}/request-changes', [ProductReviewController::class, 'requestChanges'])->name('products.request-changes');
+            Route::post('products/{product}/reopen', [ProductReviewController::class, 'reopen'])->name('products.reopen');
 
             /**
              * The artwork that puts the public page on the product itself:
