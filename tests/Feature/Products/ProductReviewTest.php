@@ -1,14 +1,18 @@
 <?php
 
+use App\Enums\Locale;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Enums\ProductSealStatus;
+use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\Products\ProductChangesRequested;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -108,6 +112,96 @@ test('the distributor sends a product back with a note the supplier can read', f
             ->where('product.review_status', 'changes_requested')
             ->where('reviewNote', 'The test report covers the 2021 article number, not this one.'),
         );
+});
+
+test('sending a product back emails the people at the supplier who can make the changes', function () {
+    Notification::fake();
+
+    [$distributorUser, $distributor, $supplierOwner, $supplier, $product] = tradeWithProduct(ProductReviewStatus::InReview);
+
+    $supplierAdmin = User::factory()->withoutOrganization()->create();
+    $supplier->members()->attach($supplierAdmin, ['role' => OrganizationRole::Admin->value]);
+
+    $supplierMember = User::factory()->withoutOrganization()->create();
+    $supplier->members()->attach($supplierMember, ['role' => OrganizationRole::Member->value]);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.request-changes', ['current_organization' => $distributor->slug, 'product' => $product->id]), [
+            'note' => "Please send:\n\n1. An EN 71-3 test report.\n2. A signed declaration of conformity.",
+        ])
+        ->assertSessionHasNoErrors();
+
+    Notification::assertSentTo([$supplierOwner, $supplierAdmin], ProductChangesRequested::class);
+    Notification::assertNotSentTo([$supplierMember, $distributorUser], ProductChangesRequested::class);
+
+    Notification::assertSentTo($supplierOwner, ProductChangesRequested::class, function (ProductChangesRequested $notification) use ($supplierOwner, $supplier, $product, $distributorUser): bool {
+        $mail = $notification->toMail($supplierOwner);
+
+        return str_contains($mail->subject, 'Magnetic Building Set')
+            && array_slice($mail->introLines, 1) === ['Please send:', '1. An EN 71-3 test report.', '2. A signed declaration of conformity.']
+            && str_contains($mail->introLines[0], $distributorUser->name)
+            && $mail->actionUrl === route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]);
+    });
+});
+
+test('a supplier who has not claimed the connection, or whose connection is revoked, is not emailed', function (SupplierConnectionStatus $status) {
+    Notification::fake();
+
+    [$distributorUser, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $product = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::InReview)->create([
+        'supplier_connection_id' => newSupplierConnection($distributor, $supplier, ['status' => $status])->id,
+    ]);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.request-changes', ['current_organization' => $distributor->slug, 'product' => $product->id]), [
+            'note' => 'The test report is for another article.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    Notification::assertNothingSent();
+})->with([SupplierConnectionStatus::Revoked]);
+
+test('a connection nobody has claimed yet sends no email', function () {
+    Notification::fake();
+
+    [$distributorUser, $distributor] = newOrganizationMember();
+
+    $product = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::InReview)->create([
+        'supplier_connection_id' => newSupplierConnection($distributor)->id,
+    ]);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.request-changes', ['current_organization' => $distributor->slug, 'product' => $product->id]), [
+            'note' => 'The test report is for another article.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    Notification::assertNothingSent();
+});
+
+test('the email reaches each person in their own language', function () {
+    Notification::fake();
+
+    [$distributorUser, $distributor, $supplierOwner, , $product] = tradeWithProduct(ProductReviewStatus::InReview);
+
+    $supplierOwner->update(['locale' => Locale::German]);
+
+    $this
+        ->actingAs($distributorUser)
+        ->post(route('products.request-changes', ['current_organization' => $distributor->slug, 'product' => $product->id]), [
+            'note' => 'Bitte EN 71-3 nachreichen.',
+        ]);
+
+    Notification::assertSentTo(
+        $supplierOwner,
+        ProductChangesRequested::class,
+        fn (ProductChangesRequested $notification, array $channels, User $notifiable, ?string $locale): bool => $locale === 'de',
+    );
 });
 
 test('sending a product back without saying why is refused', function () {
