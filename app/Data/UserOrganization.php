@@ -10,6 +10,7 @@ readonly class UserOrganization
         public string $slug,
         public string $type,
         public string $typeLabel,
+        public string $locale,
         public ?string $role,
         public ?string $roleLabel,
         public ?bool $isCurrent = null,

@@ -164,7 +164,7 @@ class OrganizationController extends Controller
         $organization = DB::transaction(function () use ($request, $organization) {
             $organization = Organization::whereKey($organization->id)->lockForUpdate()->firstOrFail();
 
-            $organization->update(['name' => $request->validated('name')]);
+            $organization->update($request->safe()->only(['name', 'locale']));
 
             return $organization;
         });

@@ -2,5 +2,10 @@
     "The code did not match. Type the new code shown in the picture.": "Der Code stimmte nicht. Bitte geben Sie den neuen Code aus dem Bild ein.",
     "This code is not registered. The product may not be genuine.": "Dieser Code ist nicht registriert. Das Produkt ist möglicherweise nicht echt.",
     "This code is not registered for this product. The product may not be genuine.": "Dieser Code ist für dieses Produkt nicht registriert. Das Produkt ist möglicherweise nicht echt.",
-    "Enter the serial printed beside the QR code.": "Bitte geben Sie die Seriennummer neben dem QR-Code ein."
+    "Enter the serial printed beside the QR code.": "Bitte geben Sie die Seriennummer neben dem QR-Code ein.",
+    "Settings": "Einstellungen",
+    "Language": "Sprache",
+    "Log out": "Abmelden",
+    "Admin panel": "Admin-Bereich",
+    "Organization default (:language)": "Standard der Organisation (:language)"
 }

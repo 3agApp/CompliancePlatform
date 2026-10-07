@@ -71,7 +71,7 @@ class OrganizationInvitationController extends Controller
         ]);
 
         Notification::route('mail', $invitation->email)
-            ->notify(new OrganizationInvitationNotification($invitation));
+            ->notify((new OrganizationInvitationNotification($invitation))->locale($organization->locale->value));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation sent.')]);
 
@@ -94,7 +94,7 @@ class OrganizationInvitationController extends Controller
         $invitation->update(['expires_at' => now()->addDays(3)]);
 
         Notification::route('mail', $invitation->email)
-            ->notify(new OrganizationInvitationNotification($invitation));
+            ->notify((new OrganizationInvitationNotification($invitation))->locale($organization->locale->value));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation sent again.')]);
 

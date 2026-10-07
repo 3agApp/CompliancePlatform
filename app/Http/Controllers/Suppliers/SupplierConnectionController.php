@@ -172,11 +172,15 @@ class SupplierConnectionController extends Controller
 
     /**
      * Mail the claim link to the contact address.
+     *
+     * Written in the distributor's language: the recipient has no account
+     * to have chosen one with, and the distributor knows who they trade
+     * with.
      */
     protected function sendInvitation(SupplierConnection $connection): void
     {
         Notification::route('mail', $connection->contact_email)
-            ->notify(new SupplierConnectionInvitation($connection));
+            ->notify((new SupplierConnectionInvitation($connection))->locale($connection->distributorOrganization->locale->value));
     }
 
     /**

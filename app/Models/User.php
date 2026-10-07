@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Concerns\HasOrganizations;
+use App\Enums\Locale;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
@@ -22,6 +24,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property Locale|null $locale
  * @property CarbonImmutable|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -36,9 +39,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read Collection<int, Membership> $organizationMemberships
  * @property-read Collection<int, Organization> $organizations
  */
-#[Fillable(['name', 'email', 'password', 'current_organization_id'])]
+#[Fillable(['name', 'email', 'locale', 'password', 'current_organization_id'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser, MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements FilamentUser, HasLocalePreference, MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasOrganizations, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
@@ -62,6 +65,19 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail, Pas
     }
 
     /**
+     * Get the language the person reads the application in.
+     *
+     * Their own choice if they made one, otherwise whatever the organization
+     * they are working in speaks by default. Mail sent to them goes out in
+     * the same language, which is why this is the locale preference Laravel
+     * asks a notifiable for.
+     */
+    public function preferredLocale(): string
+    {
+        return ($this->locale ?? $this->currentOrganization->locale ?? Locale::default())->value;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -72,6 +88,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail, Pas
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'locale' => Locale::class,
         ];
     }
 }

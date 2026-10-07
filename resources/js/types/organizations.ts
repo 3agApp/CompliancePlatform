@@ -1,3 +1,4 @@
+import type { Locale } from '@/lib/i18n';
 export type OrganizationRole = 'owner' | 'admin' | 'member';
 
 export type OrganizationType = 'distributor' | 'supplier';
@@ -14,6 +15,8 @@ export type Organization = {
     slug: string;
     type: OrganizationType;
     typeLabel: string;
+    /** The language the organization speaks by default. */
+    locale: Locale;
     role?: OrganizationRole;
     roleLabel?: string;
     isCurrent?: boolean;

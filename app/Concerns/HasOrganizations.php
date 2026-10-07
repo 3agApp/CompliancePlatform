@@ -165,6 +165,7 @@ trait HasOrganizations
             slug: $organization->slug,
             type: $organization->type->value,
             typeLabel: $organization->type->label(),
+            locale: $organization->locale->value,
             role: $role?->value,
             roleLabel: $role?->label(),
             isCurrent: $this->isCurrentOrganization($organization),

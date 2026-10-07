@@ -4,11 +4,18 @@ use App\Http\Controllers\Organizations\OrganizationAiSettingController;
 use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\Organizations\OrganizationMemberController;
+use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Middleware\EnsureOrganizationMembership;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
+
+/**
+ * Signed in or not: the login page needs a language switch as much as the
+ * dashboard does.
+ */
+Route::patch('settings/language', LanguageController::class)->name('language.update');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');

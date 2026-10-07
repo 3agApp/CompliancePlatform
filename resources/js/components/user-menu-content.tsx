@@ -6,8 +6,10 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { LanguageSubmenu } from '@/components/language-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { t } from '@/lib/i18n';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
@@ -42,9 +44,10 @@ export function UserMenuContent({ user }: Props) {
                         onClick={cleanup}
                     >
                         <Settings className="mr-2" />
-                        Settings
+                        {t('Settings')}
                     </Link>
                 </DropdownMenuItem>
+                <LanguageSubmenu />
                 {auth.isAdmin ? (
                     <DropdownMenuItem asChild>
                         {/* The admin panel is not part of the Inertia app, so use a plain link. */}
@@ -54,7 +57,7 @@ export function UserMenuContent({ user }: Props) {
                             data-test="admin-panel-link"
                         >
                             <ShieldCheck className="mr-2" />
-                            Admin panel
+                            {t('Admin panel')}
                         </a>
                     </DropdownMenuItem>
                 ) : null}
@@ -69,7 +72,7 @@ export function UserMenuContent({ user }: Props) {
                     data-test="logout-button"
                 >
                     <LogOut className="mr-2" />
-                    Log out
+                    {t('Log out')}
                 </Link>
             </DropdownMenuItem>
         </>
