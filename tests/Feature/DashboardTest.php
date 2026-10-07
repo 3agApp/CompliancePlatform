@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\OrganizationInvitation;
@@ -107,5 +108,96 @@ test('the dashboard counts ignore another organization data', function () {
             ->where('stats.products', 0)
             ->where('stats.activeSuppliers', 0)
             ->where('stats.pendingInvitations', 0),
+        );
+});
+
+test('the dashboard splits a distributor catalog across the review stages, empty ones included', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    Product::factory()->count(3)->for($distributor)->create(['supplier_connection_id' => $connection->id]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create(['supplier_connection_id' => $connection->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('pipeline', [
+                ['status' => 'draft', 'label' => 'Draft', 'count' => 3],
+                ['status' => 'in_review', 'label' => 'In review', 'count' => 0],
+                ['status' => 'changes_requested', 'label' => 'Changes requested', 'count' => 0],
+                ['status' => 'approved', 'label' => 'Approved', 'count' => 1],
+            ]),
+        );
+});
+
+test('a distributor queue names the products waiting on review, longest waiting first', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $this->travelTo(now()->subDays(3));
+    $older = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::InReview)
+        ->create(['name' => 'Older', 'supplier_connection_id' => $connection->id]);
+    $this->travelBack();
+
+    $newer = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::InReview)
+        ->create(['name' => 'Newer', 'supplier_connection_id' => $connection->id]);
+
+    /** Neither of these is the distributor's move. */
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $connection->id]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create(['supplier_connection_id' => $connection->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('queue.total', 2)
+            ->has('queue.items', 2)
+            ->where('queue.items.0.id', $older->id)
+            ->where('queue.items.0.counterparty', $supplier->name)
+            ->where('queue.items.0.completeness_score', 100)
+            ->where('queue.items.1.id', $newer->id),
+        );
+});
+
+test('a supplier queue puts products sent back ahead of drafts and stops at five', function () {
+    [$supplierUser, $supplier] = newSupplierMember();
+    [, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    Product::factory()->count(5)->for($distributor)->create(['supplier_connection_id' => $connection->id]);
+    $sentBack = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::ChangesRequested)
+        ->create(['supplier_connection_id' => $connection->id]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::InReview)->create(['supplier_connection_id' => $connection->id]);
+
+    $this
+        ->actingAs($supplierUser)
+        ->get(route('dashboard', ['current_organization' => $supplier->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('queue.total', 6)
+            ->has('queue.items', 5)
+            ->where('queue.items.0.id', $sentBack->id)
+            ->where('queue.items.0.review_status', 'changes_requested')
+            ->where('queue.items.0.counterparty', $distributor->name)
+            ->where('queue.items.1.review_status', 'draft')
+            ->where('pipeline.1.count', 1),
+        );
+});
+
+test('the dashboard pipeline and queue ignore another organization products', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $otherDistributor] = newOrganizationMember();
+
+    Product::factory()->for($otherDistributor)->reviewed(ProductReviewStatus::InReview)
+        ->create(['supplier_connection_id' => newSupplierConnection($otherDistributor)->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('pipeline.1.count', 0)
+            ->where('queue.total', 0)
+            ->has('queue.items', 0),
         );
 });
