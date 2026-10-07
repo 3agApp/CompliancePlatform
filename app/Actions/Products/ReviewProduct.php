@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\Products\ProductChangesRequested;
+use App\Notifications\Products\ProductSubmittedForReview;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
@@ -28,6 +29,8 @@ class ReviewProduct
      */
     public function submit(Product $product, User $actor, Organization $organization): void
     {
+        $isResubmission = $product->review_status === ProductReviewStatus::ChangesRequested;
+
         DB::transaction(function () use ($product, $actor, $organization) {
             $product->forceFill([
                 'review_status' => ProductReviewStatus::InReview,
@@ -37,6 +40,35 @@ class ReviewProduct
 
             $product->recordEvent(ProductEventType::Submitted, $actor, $organization);
         });
+
+        $this->tellReviewers($product, $actor, $organization, $isResubmission);
+    }
+
+    /**
+     * Email the distributor's reviewers that the product is waiting on them.
+     *
+     * Only for a supplier's submission. A distributor submitting their own
+     * product is already the one who reviews it, and does not need telling.
+     */
+    protected function tellReviewers(Product $product, User $actor, Organization $organization, bool $isResubmission): void
+    {
+        if ($organization->id === $product->organization_id) {
+            return;
+        }
+
+        $distributor = $product->organization;
+
+        $reviewers = $distributor->members()
+            ->get()
+            ->filter(fn (User $member): bool => $member->hasOrganizationPermission($distributor, OrganizationPermission::ReviewProduct));
+
+        $product->loadMissing(['template', 'documents']);
+
+        $outstanding = collect($product->completeness()->items)
+            ->reject(fn (array $item): bool => $item['satisfied'])
+            ->count();
+
+        Notification::send($reviewers, new ProductSubmittedForReview($product, $organization, $actor->name, $isResubmission, $outstanding));
     }
 
     /**

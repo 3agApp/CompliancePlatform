@@ -4,6 +4,7 @@ use App\Enums\Locale;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
+use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
 use App\Enums\ProductSealStatus;
 use App\Enums\SupplierConnectionStatus;
@@ -11,6 +12,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\Products\ProductChangesRequested;
+use App\Notifications\Products\ProductSubmittedForReview;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -90,6 +92,78 @@ test('a supplier submits a product and the distributor approves it', function ()
         ->and($product->reviewed_at)->not->toBeNull()
         ->and($product->events()->get()->pluck('type.value')->all())
         ->toBe([ProductEventType::Approved->value, ProductEventType::Submitted->value]);
+});
+
+test('a supplier submitting a product emails the distributor people who can review it', function () {
+    Notification::fake();
+
+    [$distributorOwner, $distributor, $supplierUser, $supplier, $product] = tradeWithProduct();
+
+    $distributorAdmin = User::factory()->withoutOrganization()->create();
+    $distributor->members()->attach($distributorAdmin, ['role' => OrganizationRole::Admin->value]);
+
+    $distributorMember = User::factory()->withoutOrganization()->create();
+    $distributor->members()->attach($distributorMember, ['role' => OrganizationRole::Member->value]);
+
+    $this
+        ->actingAs($supplierUser)
+        ->post(route('products.submit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
+        ->assertRedirect();
+
+    Notification::assertSentTo([$distributorOwner, $distributorAdmin], ProductSubmittedForReview::class);
+    Notification::assertNotSentTo([$distributorMember, $supplierUser], ProductSubmittedForReview::class);
+
+    Notification::assertSentTo($distributorOwner, ProductSubmittedForReview::class, function (ProductSubmittedForReview $notification) use ($distributorOwner, $distributor, $product, $supplierUser): bool {
+        $mail = $notification->toMail($distributorOwner);
+
+        return $mail->subject === __(':supplierName submitted :productName for review', ['supplierName' => $notification->supplier->name, 'productName' => 'Magnetic Building Set'])
+            && str_contains($mail->introLines[0], $supplierUser->name)
+            && $mail->actionUrl === route('products.edit', ['current_organization' => $distributor->slug, 'product' => $product->id]);
+    });
+});
+
+test('a product coming back after changes were asked for says so in the email', function () {
+    Notification::fake();
+
+    [$distributorOwner, , $supplierUser, $supplier, $product] = tradeWithProduct(ProductReviewStatus::ChangesRequested);
+
+    $this
+        ->actingAs($supplierUser)
+        ->post(route('products.submit', ['current_organization' => $supplier->slug, 'product' => $product->id]));
+
+    Notification::assertSentTo($distributorOwner, ProductSubmittedForReview::class, fn (ProductSubmittedForReview $notification): bool => $notification->isResubmission
+        && str_contains($notification->toMail($distributorOwner)->subject, 'resubmitted'));
+});
+
+test('the email says how much of the template is still open', function () {
+    Notification::fake();
+
+    [$distributorOwner, , $supplierUser, $supplier, $product] = tradeWithProduct();
+
+    $product->template->forceFill([
+        ProductRequirement::TestReport->value => true,
+        ProductRequirement::DeclarationOfConformity->value => true,
+    ])->save();
+
+    $this
+        ->actingAs($supplierUser)
+        ->post(route('products.submit', ['current_organization' => $supplier->slug, 'product' => $product->id]));
+
+    Notification::assertSentTo($distributorOwner, ProductSubmittedForReview::class, fn (ProductSubmittedForReview $notification): bool => $notification->outstandingRequirements >= 2
+        && in_array(trans_choice('1 requirement of its template is still open.|:count requirements of its template are still open.', $notification->outstandingRequirements), $notification->toMail($distributorOwner)->introLines, true));
+});
+
+test('a distributor submitting their own product emails nobody', function () {
+    Notification::fake();
+
+    [$distributorOwner, $distributor, , , $product] = tradeWithProduct();
+
+    $this
+        ->actingAs($distributorOwner)
+        ->post(route('products.submit', ['current_organization' => $distributor->slug, 'product' => $product->id]))
+        ->assertRedirect();
+
+    Notification::assertNothingSent();
 });
 
 test('the distributor sends a product back with a note the supplier can read', function () {
