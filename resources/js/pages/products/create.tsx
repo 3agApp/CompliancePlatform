@@ -23,6 +23,7 @@ type Props = {
     availableTemplates: ProductTemplateOption[];
     availableConnections: SupplierConnectionOption[];
     availableRequirements: ProductRequirementOption[];
+    canAddSupplier: boolean;
 };
 
 /**
@@ -40,6 +41,7 @@ export default function ProductsCreate({
     availableTemplates,
     availableConnections,
     availableRequirements,
+    canAddSupplier,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
@@ -137,6 +139,9 @@ export default function ProductsCreate({
                                 connectionId={connectionId}
                                 onConnectionChange={setConnectionId}
                                 idPrefix="create-product"
+                                addSupplier={
+                                    canAddSupplier ? { organizationSlug } : null
+                                }
                             />
 
                             <div className="grid gap-2">

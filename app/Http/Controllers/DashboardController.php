@@ -160,7 +160,7 @@ class DashboardController extends Controller
      * Three indexed counts, so there is nothing here worth deferring. Reach
      * for Inertia::optional only once something expensive joins them.
      *
-     * @return array{products: int, awaitingReview: int, activeSuppliers: int, pendingInvitations: int}
+     * @return array{products: int, awaitingReview: int, activeSuppliers: int, pendingInvitations: int, notInvited: int}
      */
     protected function distributorStats(Organization $organization): array
     {
@@ -179,6 +179,16 @@ class DashboardController extends Controller
                 ->count(),
             'pendingInvitations' => $organization->supplierConnections()
                 ->where('status', SupplierConnectionStatus::Pending)
+                ->whereNotNull('invited_at')
+                ->count(),
+            /**
+             * Suppliers added while setting up a catalog and not told yet.
+             * Easy to forget, since nothing on their side will prompt
+             * anybody, so the dashboard keeps count until they are invited.
+             */
+            'notInvited' => $organization->supplierConnections()
+                ->where('status', SupplierConnectionStatus::Pending)
+                ->whereNull('invited_at')
                 ->count(),
         ];
     }

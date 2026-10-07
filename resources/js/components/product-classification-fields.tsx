@@ -1,4 +1,8 @@
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
+import InviteSupplierModal from '@/components/invite-supplier-modal';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -33,6 +37,11 @@ type Props = {
     onConnectionChange: (connectionId: number) => void;
     disabled?: boolean;
     idPrefix?: string;
+    /**
+     * Offer to add a supplier without leaving the form. Needs the page's
+     * slug, since the new supplier is filed under its organization.
+     */
+    addSupplier?: { organizationSlug: string } | null;
 };
 
 /**
@@ -59,7 +68,10 @@ export default function ProductClassificationFields({
     onConnectionChange,
     disabled = false,
     idPrefix = 'product',
+    addSupplier = null,
 }: Props) {
+    const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
+
     /**
      * Only the distributor that owns a product chooses its supplier. The
      * field is not rendered for a supplier, and the server does not accept
@@ -81,38 +93,57 @@ export default function ProductClassificationFields({
             {canAssignSupplier ? (
                 <div className="grid gap-2">
                     <Label htmlFor={`${idPrefix}-supplier`}>Supplier</Label>
-                    <Select
-                        value={
-                            connectionId === null
-                                ? undefined
-                                : String(connectionId)
-                        }
-                        onValueChange={(value) =>
-                            onConnectionChange(Number(value))
-                        }
-                        disabled={disabled || availableConnections.length === 0}
-                    >
-                        <SelectTrigger
-                            id={`${idPrefix}-supplier`}
-                            data-test="product-supplier"
-                            className="w-full"
+                    <div className="flex gap-2">
+                        <Select
+                            value={
+                                connectionId === null
+                                    ? undefined
+                                    : String(connectionId)
+                            }
+                            onValueChange={(value) =>
+                                onConnectionChange(Number(value))
+                            }
+                            disabled={
+                                disabled || availableConnections.length === 0
+                            }
                         >
-                            <SelectValue placeholder="Select a supplier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableConnections.map((connection) => (
-                                <SelectItem
-                                    key={connection.id}
-                                    value={String(connection.id)}
-                                >
-                                    {connection.label}
-                                    {connection.isPending
-                                        ? ' (invitation pending)'
-                                        : ''}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                            <SelectTrigger
+                                id={`${idPrefix}-supplier`}
+                                data-test="product-supplier"
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Select a supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableConnections.map((connection) => (
+                                    <SelectItem
+                                        key={connection.id}
+                                        value={String(connection.id)}
+                                    >
+                                        {connection.label}
+                                        {connection.isPending
+                                            ? connection.isInvited
+                                                ? ' (invitation pending)'
+                                                : ' (not invited yet)'
+                                            : ''}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {addSupplier && !disabled ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                data-test="product-add-supplier"
+                                aria-label="Add a supplier"
+                                onClick={() => setSupplierDialogOpen(true)}
+                            >
+                                <Plus className="size-4" />
+                            </Button>
+                        ) : null}
+                    </div>
                     <input
                         type="hidden"
                         name="supplier_connection_id"
@@ -120,10 +151,24 @@ export default function ProductClassificationFields({
                     />
                     {availableConnections.length === 0 ? (
                         <p className="text-muted-foreground text-xs">
-                            Invite a supplier first — every product needs one.
+                            {addSupplier
+                                ? 'Add a supplier first — every product needs one. You can invite them later.'
+                                : 'Invite a supplier first — every product needs one.'}
                         </p>
                     ) : null}
                     <InputError message={errors.supplier_connection_id} />
+
+                    {addSupplier ? (
+                        <InviteSupplierModal
+                            organizationSlug={addSupplier.organizationSlug}
+                            open={supplierDialogOpen}
+                            onOpenChange={setSupplierDialogOpen}
+                            reloadOnly={['availableConnections']}
+                            onCreated={(connection) =>
+                                onConnectionChange(connection.id)
+                            }
+                        />
+                    ) : null}
                 </div>
             ) : null}
 

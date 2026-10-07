@@ -23,7 +23,19 @@ class InviteSupplierRequest extends FormRequest
         return [
             'company_name' => ['required', 'string', 'max:255'],
             'contact_email' => ['required', 'string', 'email', 'max:255', new UniqueSupplierConnection($organization)],
+            'send_invitation' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * Determine if the claim link should be mailed now.
+     *
+     * Inviting is what the form has always done, so a request that does
+     * not say otherwise still sends it.
+     */
+    public function sendsInvitation(): bool
+    {
+        return $this->boolean('send_invitation', true);
     }
 
     /**

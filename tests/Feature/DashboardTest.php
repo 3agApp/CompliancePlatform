@@ -201,3 +201,18 @@ test('the dashboard pipeline and queue ignore another organization products', fu
             ->has('queue.items', 0),
         );
 });
+
+test('the dashboard counts suppliers not invited yet apart from pending invitations', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    newSupplierConnection($distributor);
+    newSupplierConnection($distributor, attributes: ['invited_at' => null, 'expires_at' => null]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('stats.pendingInvitations', 1)
+            ->where('stats.notInvited', 1),
+        );
+});

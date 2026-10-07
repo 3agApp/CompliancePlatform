@@ -334,6 +334,39 @@ test('a member sees the product list without the create and delete controls', fu
         ->assertNoJavaScriptErrors();
 });
 
+/**
+ * Adding a product is often when a distributor first names its supplier,
+ * well before there is anything worth inviting them to.
+ */
+test('a supplier is added from the product form without an invitation and chosen for it', function () {
+    Notification::fake();
+
+    [$user, $organization] = newOrganizationMember();
+    newSupplierConnection($organization, attributes: ['company_name' => 'Existing Supplies']);
+
+    ProductTemplate::factory()->create([
+        'product_category_id' => legalFamily($organization)->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.create', ['current_organization' => $organization->slug]))
+        ->fill('@product-name', 'Organic Oat Milk')
+        ->click('@product-add-supplier')
+        ->fill('@supplier-company-name', 'Acme Supplies AG')
+        ->fill('@supplier-contact-email', 'compliance@acme.test')
+        ->click('@supplier-send-invitation')
+        ->click('@invite-supplier-submit')
+        ->assertSee('Supplier added. Invite them whenever you are ready.')
+        ->assertSeeIn('@product-supplier', 'Acme Supplies AG (not invited yet)')
+        /** What was typed before the dialog opened is still there. */
+        ->assertValue('@product-name', 'Organic Oat Milk')
+        ->assertNoJavaScriptErrors();
+
+    Notification::assertNothingSent();
+    expect(SupplierConnection::where('company_name', 'Acme Supplies AG')->sole()->invited_at)->toBeNull();
+});
+
 test('a product opens from its name in the list', function () {
     [$user, $organization] = newOrganizationMember();
     $connection = newSupplierConnection($organization);

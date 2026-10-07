@@ -11,6 +11,8 @@ export type SupplierConnection = {
     status: SupplierConnectionStatus;
     statusLabel: string;
     isClaimed: boolean;
+    /** Whether the claim link has ever been mailed. */
+    isInvited: boolean;
     isAssignable: boolean;
     canResend: boolean;
     canRestore: boolean;
@@ -30,6 +32,8 @@ export type SupplierConnectionOption = {
     id: number;
     label: string;
     isPending: boolean;
+    /** Whether the claim link has been mailed; a pending one may not be yet. */
+    isInvited: boolean;
 };
 
 export type SupplierConnectionPermissions = {

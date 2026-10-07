@@ -354,6 +354,8 @@ export type Product = {
     supplier_connection_id: number;
     counterparty: string | null;
     connection_status: string | null;
+    /** Whether the supplier has been sent the claim link yet. */
+    connection_is_invited: boolean;
     created_at: string | null;
 };
 

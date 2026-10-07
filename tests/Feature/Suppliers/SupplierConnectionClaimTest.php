@@ -227,3 +227,38 @@ test('a pending supplier connection is counted with the other invitations', func
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('pendingInvitationsCount', 1));
 });
+
+/**
+ * Nothing was mailed, so whoever signs in with the address must not find
+ * an invitation waiting that the distributor never sent.
+ */
+test('a supplier that has not been invited yet has no invitation to see or claim', function () {
+    [, $distributor] = newOrganizationMember();
+    $recipient = User::factory()->withoutOrganization()->create();
+
+    $connection = newSupplierConnection($distributor, attributes: [
+        'contact_email' => $recipient->email,
+        'invited_at' => null,
+        'expires_at' => null,
+    ]);
+
+    $this
+        ->actingAs($recipient)
+        ->get(route('onboarding'))
+        ->assertInertia(fn ($page) => $page->where('pendingInvitationsCount', 0));
+
+    $this
+        ->actingAs($recipient)
+        ->get(route('connections.show', ['connection' => $connection->code]))
+        ->assertRedirect(route('invitations.index'));
+
+    $this
+        ->actingAs($recipient)
+        ->post(route('connections.store', ['connection' => $connection->code]), [
+            'mode' => 'create',
+            'name' => 'Acme Supplies',
+        ])
+        ->assertSessionHasErrors('connection');
+
+    expect($connection->fresh()->supplier_organization_id)->toBeNull();
+});
