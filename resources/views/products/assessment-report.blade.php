@@ -148,6 +148,31 @@
         </tr>
     </table>
 
+    @if ($assessment['comparison'])
+        <h2>{{ __('Since the check on :date', ['date' => \Illuminate\Support\Carbon::parse($assessment['comparison']['previous_completed_at'])->isoFormat('LL')]) }}</h2>
+
+        <p>
+            {{ trans_choice('1 fixed|:count fixed', $assessment['comparison']['resolved_count']) }}
+            · {{ trans_choice('1 new|:count new', $assessment['comparison']['new_count']) }}
+            · {{ trans_choice('1 still open|:count still open', $assessment['comparison']['still_open_count']) }}
+        </p>
+
+        @if (count($assessment['comparison']['resolved']) > 0)
+            <p><strong>{{ __('Fixed since the last check') }}</strong></p>
+            <table>
+                @foreach ($assessment['comparison']['resolved'] as $resolved)
+                    <tr>
+                        <td>{{ $resolved['requirement'] }}</td>
+                        <td class="muted">{{ __('was :severity', ['severity' => $resolved['severity_label']]) }}</td>
+                        <td class="muted">{{ $resolved['document_name'] }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+
+        <p class="muted small">{{ __('The AI matches gaps between checks. A gap it words differently can show as one fixed and one new.') }}</p>
+    @endif
+
     <h2>{{ __('Findings') }}</h2>
 
     @forelse ($assessment['findings'] as $finding)
@@ -156,6 +181,11 @@
                 <span class="severity severity-{{ $finding['severity'] }}">{{ $finding['severity_label'] }}</span>
                 <strong>{{ $finding['requirement'] }}</strong>
                 <span class="muted small">· {{ $finding['category_label'] }}</span>
+                @if ($finding['change'] === 'new')
+                    <span class="small"><strong>· {{ __('New') }}</strong></span>
+                @elseif ($finding['change'] === 'still_open')
+                    <span class="muted small">· {{ $finding['previous_severity_label'] ? __('Still open, was :severity', ['severity' => $finding['previous_severity_label']]) : __('Still open') }}</span>
+                @endif
             </p>
             <p>{{ $finding['rationale'] }}</p>
             @if ($finding['evidence'])

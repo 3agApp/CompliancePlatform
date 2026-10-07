@@ -489,6 +489,30 @@ export type ProductAssessmentFinding = {
     /** Null when the finding is about the product as a whole, or the paper has since been removed. */
     document_id: number | null;
     document_name: string | null;
+    /** Against the run before: null when there was none to compare with. */
+    change: 'new' | 'still_open' | null;
+    /** What the earlier run rated it, only when the rating moved. */
+    previous_severity_label: string | null;
+};
+
+/**
+ * What changed since the run before. The AI links the findings, so a
+ * reworded gap may read as one resolved and one new.
+ */
+export type ProductAssessmentComparison = {
+    previous_id: number;
+    previous_completed_at: string | null;
+    new_count: number;
+    still_open_count: number;
+    resolved_count: number;
+    resolved: {
+        id: number;
+        severity: ProductFindingSeverity;
+        severity_label: string;
+        requirement: string;
+        rationale: string;
+        document_name: string | null;
+    }[];
 };
 
 /**
@@ -505,6 +529,7 @@ export type ProductAssessmentDetail = ProductAssessmentSummary & {
     documents: { id: number; name: string }[];
     skipped_documents: { id: number; name: string; reason: string }[];
     findings: ProductAssessmentFinding[];
+    comparison: ProductAssessmentComparison | null;
 };
 
 /**

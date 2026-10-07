@@ -39,7 +39,7 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
      * could change an answer, so two runs that disagree can be told apart
      * from a run that changed its mind.
      */
-    public const string PROMPT_VERSION = '1';
+    public const string PROMPT_VERSION = '2';
 
     /**
      * The document_index given for a finding about the product as a whole.
@@ -49,6 +49,11 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
      * a strict schema, and every one of them accepts an integer.
      */
     public const int NO_DOCUMENT = -1;
+
+    /**
+     * The previous_finding given for a gap the earlier run did not flag.
+     */
+    public const int NEW_FINDING = -1;
 
     /**
      * @param  string  $language  The language a person will read the answer in.
@@ -134,6 +139,14 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
         - document_index is the number of the document the finding is about, copied
           from the list. Use -1 when the finding is about the product as a whole or a
           document that is missing.
+        - When the prompt lists findings from an earlier check, it is because the
+          manufacturer may have sent corrected documents since. Judge the documents
+          as they are now -- do not copy an earlier finding just because it was
+          there. For each finding you report, set previous_finding to the number of
+          the earlier finding it is the same gap as, even if you word it
+          differently or rate it differently now; use -1 for a gap the earlier check
+          did not flag. An earlier finding the documents now resolve is simply left
+          out. When no earlier findings are listed, use -1 throughout.
         - factory_request is a short, polite message to the manufacturer listing what
           to fix and send back, grouped and numbered, without internal severity labels.
           Leave it empty when there is nothing to ask for.
@@ -173,6 +186,8 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
                         ->description('A short quote or page reference, or an empty string.'),
                     'ask_manufacturer' => $schema->string()->required()
                         ->description('What to ask the manufacturer to send or fix.'),
+                    'previous_finding' => $schema->integer()->required()
+                        ->description('The number of the earlier finding this is the same gap as, or -1.'),
                 ]))
                 ->description('Every gap found, most serious first.')
                 ->required(),

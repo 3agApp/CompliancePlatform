@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $product_id
  * @property int $organization_id
  * @property int|null $requested_by
+ * @property int|null $previous_assessment_id
  * @property AssessmentStatus $status
  * @property AiProvider $provider
  * @property string $model
@@ -42,12 +43,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Product $product
  * @property-read Organization $organization
  * @property-read User|null $requester
+ * @property-read ProductAssessment|null $previousAssessment
  * @property-read Collection<int, ProductAssessmentFinding> $findings
  * @property-read int|null $findings_count
  */
 #[Fillable([
     'organization_id',
     'requested_by',
+    'previous_assessment_id',
     'status',
     'provider',
     'model',
@@ -94,6 +97,16 @@ class ProductAssessment extends Model
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    /**
+     * The finished run this one was read against, if there was one.
+     *
+     * @return BelongsTo<ProductAssessment, $this>
+     */
+    public function previousAssessment(): BelongsTo
+    {
+        return $this->belongsTo(ProductAssessment::class, 'previous_assessment_id');
     }
 
     /**

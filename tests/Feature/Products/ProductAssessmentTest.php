@@ -93,7 +93,7 @@ function startAssessment(Organization $organization, Product $product): TestResp
  *
  * @return array<string, mixed>
  */
-function assessmentAnswer(int $documentIndex = 0, string $severity = 'critical'): array
+function assessmentAnswer(int $documentIndex = 0, string $severity = 'critical', int $previousFinding = -1): array
 {
     return [
         'summary' => 'The declaration of conformity does not list the standards applied.',
@@ -106,6 +106,7 @@ function assessmentAnswer(int $documentIndex = 0, string $severity = 'critical')
             'rationale' => 'No EN 71 parts are named on the declaration.',
             'evidence' => 'Page 1, section 5 is blank.',
             'ask_manufacturer' => 'Send a declaration listing EN 71-1, EN 71-2 and EN 71-3.',
+            'previous_finding' => $previousFinding,
         ]],
         'factory_request' => 'Please send an updated declaration of conformity listing EN 71-1, EN 71-2 and EN 71-3.',
     ];
@@ -540,4 +541,151 @@ test('the check always runs on the distributor key, even opened from the supplie
 
     expect($product->assessments()->exists())->toBeFalse();
     DocumentAssessmentAgent::assertNeverPrompted();
+});
+
+/**
+ * A finished earlier run with two gaps: one the factory will fix, one it will not.
+ */
+function earlierRunWithTwoGaps(Organization $organization, Product $product): ProductAssessment
+{
+    $earlier = ProductAssessment::factory()->for($product)->for($organization)->completed()->create();
+
+    $earlier->findings()->create([
+        'severity' => FindingSeverity::Critical,
+        'category' => 'incomplete',
+        'requirement' => 'DoC: harmonised standards applied',
+        'rationale' => 'No EN 71 parts are named.',
+        'position' => 0,
+    ]);
+
+    $earlier->findings()->create([
+        'severity' => FindingSeverity::Major,
+        'category' => 'missing_document',
+        'requirement' => 'EN 71-3 test report',
+        'rationale' => 'No migration test report was filed.',
+        'position' => 1,
+    ]);
+
+    return $earlier;
+}
+
+test('a new run is read against the last run that finished, not one that failed', function () {
+    Queue::fake();
+
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $finished = ProductAssessment::factory()->for($product)->for($organization)->completed()->create();
+    ProductAssessment::factory()->for($product)->for($organization)->failed()->create();
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product)->assertSessionHasNoErrors();
+
+    expect($product->assessments()->first()->previous_assessment_id)->toBe($finished->id);
+});
+
+test('the earlier findings are put to the model so it can say which are still open', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    earlierRunWithTwoGaps($organization, $product);
+
+    DocumentAssessmentAgent::fake([assessmentAnswer()]);
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product);
+
+    DocumentAssessmentAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->contains('Findings from the earlier check')
+        && $prompt->contains('0. [critical] DoC: harmonised standards applied')
+        && $prompt->contains('1. [major] EN 71-3 test report'));
+});
+
+test('a run says what was fixed, what is new and what is still open since the last one', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $earlier = earlierRunWithTwoGaps($organization, $product);
+
+    $answer = assessmentAnswer(severity: 'major', previousFinding: 0);
+    $answer['findings'][] = [...$answer['findings'][0], 'requirement' => 'Warnings in French and Italian', 'previous_finding' => -1];
+
+    DocumentAssessmentAgent::fake([$answer]);
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product);
+
+    $latest = $product->assessments()->first();
+
+    $this->getJson(route('products.assessments.show', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'assessment' => $latest->id,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('comparison.previous_id', $earlier->id)
+        ->assertJsonPath('comparison.still_open_count', 1)
+        ->assertJsonPath('comparison.new_count', 1)
+        ->assertJsonPath('comparison.resolved_count', 1)
+        ->assertJsonPath('comparison.resolved.0.requirement', 'EN 71-3 test report')
+        ->assertJsonPath('findings.0.change', 'still_open')
+        ->assertJsonPath('findings.0.previous_severity_label', 'Critical')
+        ->assertJsonPath('findings.1.change', 'new');
+});
+
+test('a link to an earlier finding that does not exist makes the finding new', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    earlierRunWithTwoGaps($organization, $product);
+
+    DocumentAssessmentAgent::fake([assessmentAnswer(previousFinding: 9)]);
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product);
+
+    expect($product->assessments()->first()->findings()->sole()->previous_finding_id)->toBeNull();
+});
+
+test('the first run has nothing to compare against', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $assessment = ProductAssessment::factory()->for($product)->for($organization)->completed()->hasFindings(1)->create();
+
+    $this->actingAs($user);
+
+    $this->getJson(route('products.assessments.show', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'assessment' => $assessment->id,
+    ]))
+        ->assertJsonPath('comparison', null)
+        ->assertJsonPath('findings.0.change', null);
+});
+
+test('the report says what was fixed since the run before', function () {
+    [, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $earlier = earlierRunWithTwoGaps($organization, $product);
+
+    $latest = ProductAssessment::factory()->for($product)->for($organization)->completed()->create([
+        'previous_assessment_id' => $earlier->id,
+    ]);
+
+    $latest->findings()->create([
+        'previous_finding_id' => $earlier->findings()->where('position', 0)->value('id'),
+        'severity' => FindingSeverity::Major,
+        'category' => 'incomplete',
+        'requirement' => 'DoC: harmonised standards applied',
+        'rationale' => 'Only EN 71-1 is named now.',
+        'position' => 0,
+    ]);
+
+    $html = view('products.assessment-report', ProductAssessmentView::report($latest))->render();
+
+    expect($html)
+        ->toContain('Fixed since the last check')
+        ->toContain('EN 71-3 test report')
+        ->toContain('1 fixed')
+        ->toContain('1 still open')
+        ->toContain('Still open, was Critical');
 });
