@@ -211,7 +211,7 @@ class ProductController extends Controller
                     'runs' => ProductAssessmentView::history($product),
                 ])
                 : null,
-            'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($currentOrganization),
+            'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($product->organization),
         ]);
     }
 
