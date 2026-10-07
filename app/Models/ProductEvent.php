@@ -121,7 +121,10 @@ class ProductEvent extends Model
      */
     public function changedFields(): array
     {
-        return collect($this->getAttribute('changes') ?? [])
+        /** @var array<string, array{from?: string|null, to?: string|null}> $changes */
+        $changes = $this->getAttribute('changes') ?? [];
+
+        return collect($changes)
             ->map(fn (array $change, string $field) => [
                 'field' => $field,
                 'label' => self::labelForField($field),
