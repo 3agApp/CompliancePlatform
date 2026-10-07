@@ -43,9 +43,11 @@ class ProductChanges
     /**
      * Read what a just-saved product changed.
      *
-     * Called after the save, while the model still remembers what it was:
-     * getChanges() is what was actually written, so a field submitted with
-     * the value it already held is not a change and is not recorded.
+     * Called after the save: getChanges() is what was actually written, so
+     * a field submitted with the value it already held is not a change and
+     * is not recorded. The save has already moved the originals on to the
+     * new values, so what each field held before is read from
+     * getPrevious().
      *
      * @return array<string, array{from: string|null, to: string|null}>
      */
@@ -53,13 +55,15 @@ class ProductChanges
     {
         $changes = [];
 
+        $previous = $product->getPrevious();
+
         foreach ($product->getChanges() as $attribute => $value) {
             if (in_array($attribute, self::IGNORED, true)) {
                 continue;
             }
 
             $changes[$attribute] = [
-                'from' => self::readable($attribute, $product->getOriginal($attribute)),
+                'from' => self::readable($attribute, $previous[$attribute] ?? null),
                 'to' => self::readable($attribute, $value),
             ];
         }

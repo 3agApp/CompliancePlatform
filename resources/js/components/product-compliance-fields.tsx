@@ -119,7 +119,18 @@ export default function ProductComplianceFields({
         },
     ];
 
+    /**
+     * Fields kept on screen whatever the template says: asked for by the
+     * person, or typed into. A field shown because the template wanted it
+     * stays once something is in it, so changing the template before
+     * saving never takes typed text off the form unseen.
+     */
     const [revealed, setRevealed] = useState<FieldName[]>([]);
+
+    const keep = (name: FieldName) =>
+        setRevealed((current) =>
+            current.includes(name) ? current : [...current, name],
+        );
 
     /** The field just asked for, which takes the focus once it is drawn. */
     const [justRevealed, setJustRevealed] = useState<FieldName | null>(null);
@@ -143,7 +154,7 @@ export default function ProductComplianceFields({
     const hidden = fields.filter((field) => !isShown(field));
 
     const reveal = (name: FieldName) => {
-        setRevealed((current) => [...current, name]);
+        keep(name);
         setJustRevealed(name);
     };
 
@@ -190,6 +201,7 @@ export default function ProductComplianceFields({
                         }}
                         id={`${idPrefix}-${field.slug}`}
                         name={field.name}
+                        onInput={() => keep(field.name)}
                         data-test={`product-${field.slug}`}
                         className={neededControlClass(owes(field.requirement))}
                         defaultValue={product?.[field.name] ?? ''}

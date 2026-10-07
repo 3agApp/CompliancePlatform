@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { formatFileSize } from '@/lib/format';
 import { t, tc, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { store, suggest } from '@/routes/products/documents';
@@ -106,21 +107,6 @@ function unavailableNotes(): Record<string, string> {
             'Couldn’t reach the AI provider just now. Pick the kinds yourself.',
         ),
     };
-}
-
-/**
- * Show a file size the way the person who picked the file thinks of it.
- */
-function humanSize(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    const kilobytes = bytes / 1024;
-
-    return kilobytes < 1024
-        ? `${Math.round(kilobytes)} KB`
-        : `${(kilobytes / 1024).toFixed(1)} MB`;
 }
 
 /**
@@ -510,7 +496,9 @@ export default function UploadDocumentsModal({
                                                     {row.file.name}
                                                 </p>
                                                 <p className="text-muted-foreground text-xs">
-                                                    {humanSize(row.file.size)}
+                                                    {formatFileSize(
+                                                        row.file.size,
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>

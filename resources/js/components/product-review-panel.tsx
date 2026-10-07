@@ -6,7 +6,8 @@ import CompletenessMeter from '@/components/completeness-meter';
 import ReopenProductReviewModal from '@/components/reopen-product-review-modal';
 import RequestProductChangesModal from '@/components/request-product-changes-modal';
 import { Button } from '@/components/ui/button';
-import { formatLocale, t, tc } from '@/lib/i18n';
+import { formatDay } from '@/lib/format';
+import { t, tc } from '@/lib/i18n';
 import { approve, submit } from '@/routes/products';
 import type {
     ProductCompleteness,
@@ -32,21 +33,6 @@ type StatusProps = {
     /** Take the person to wherever an outstanding item is answered. */
     onOpenItem: (item: ProductCompletenessItem) => void;
 };
-
-/**
- * When something last happened to the product, to the day.
- */
-function on(timestamp: string | null): string {
-    if (timestamp === null) {
-        return '';
-    }
-
-    return new Date(timestamp).toLocaleDateString(formatLocale(), {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    });
-}
 
 /**
  * Who may make which move, worked out once for both halves of the review.
@@ -110,10 +96,10 @@ export default function ProductReviewPanel({
                 {product.submitted_at ? (
                     <p className="text-muted-foreground text-xs">
                         {t('Submitted :date', {
-                            date: on(product.submitted_at),
+                            date: formatDay(product.submitted_at),
                         })}
                         {product.reviewed_at
-                            ? ` · ${t('Reviewed :date', { date: on(product.reviewed_at) })}`
+                            ? ` · ${t('Reviewed :date', { date: formatDay(product.reviewed_at) })}`
                             : null}
                     </p>
                 ) : null}
@@ -170,22 +156,34 @@ export default function ProductReviewPanel({
                 />
 
                 {outstanding.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2">
-                        {outstanding.map((item) => (
-                            <li key={item.requirement}>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    data-test="product-outstanding-item"
-                                    className="border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10"
-                                    onClick={() => onOpenItem(item)}
-                                >
-                                    {item.label}
-                                </Button>
-                            </li>
-                        ))}
-                    </ul>
+                    <div className="grid gap-2">
+                        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                            {t('Still needed')}
+                        </p>
+                        <ul className="flex flex-wrap gap-2">
+                            {outstanding.map((item) => (
+                                <li key={item.requirement}>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        data-test="product-outstanding-item"
+                                        className="border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10"
+                                        onClick={() => onOpenItem(item)}
+                                    >
+                                        {item.label}
+                                        {item.weight === 0 ? (
+                                            <span className="text-muted-foreground text-xs font-normal">
+                                                {t(
+                                                    '(does not affect the score)',
+                                                )}
+                                            </span>
+                                        ) : null}
+                                    </Button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 ) : completeness.items.length > 0 ? (
                     <p className="text-muted-foreground text-sm">
                         {t('Everything the template asks for is in.')}

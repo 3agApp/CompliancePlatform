@@ -108,6 +108,9 @@ test('a distributor issues a run of labels and withdraws it', function () {
         ->fill('@label-quantity', '12')
         ->click('@label-issue')
         ->assertSee('Spielwaren Muster AG')
+        /** Answered with a redirect to the plain address, the tab stays put. */
+        ->assertAriaAttribute('@product-tab-public', 'selected', 'true')
+        ->assertQueryStringHas('tab', 'public')
         ->assertSee('12 boxes')
         ->assertSee('0 / 12 checked')
         ->assertPresent('@label-batch-pdf')

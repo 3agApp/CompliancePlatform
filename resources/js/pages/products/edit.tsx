@@ -176,6 +176,34 @@ export default function ProductEdit({
     });
 
     /**
+     * Keep the open tab in the address without a request, so it survives
+     * a reload and a shared link opens it. Run on every change of tab,
+     * however it came about, and again whenever the page lands on a new
+     * address: the forms on the other tabs are answered with a redirect to
+     * the product's plain address, which keeps the page as it is but drops
+     * the tab from the address bar.
+     */
+    useEffect(() => {
+        if (tabFromUrl(window.location.href) === tab) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+
+        if (tab === 'details') {
+            url.searchParams.delete('tab');
+        } else {
+            url.searchParams.set('tab', tab);
+        }
+
+        router.replace({
+            url: url.pathname + url.search,
+            preserveScroll: true,
+            preserveState: true,
+        });
+    }, [tab, pageUrl]);
+
+    /**
      * Whether the form's own save button is on screen. While it is, it is
      * the only one the page needs. On any other tab it is not, so the
      * floating bar carries an unsaved edit along wherever the person goes.
@@ -273,28 +301,6 @@ export default function ProductEdit({
     });
 
     /**
-     * Kept in the address without a request, so the tab survives a reload
-     * and a redirect back to the page after one of its own forms posts.
-     */
-    const openTab = (next: Tab) => {
-        setTab(next);
-
-        const url = new URL(window.location.href);
-
-        if (next === 'details') {
-            url.searchParams.delete('tab');
-        } else {
-            url.searchParams.set('tab', next);
-        }
-
-        router.replace({
-            url: url.pathname + url.search,
-            preserveScroll: true,
-            preserveState: true,
-        });
-    };
-
-    /**
      * Where an outstanding item from the status strip is answered: the
      * documents tab for a paper, else the section of the details holding
      * the field -- scrolled to once the tab it sits on is showing.
@@ -303,12 +309,12 @@ export default function ProductEdit({
         const section = sectionFor(item);
 
         if (section === 'product-documents') {
-            openTab('documents');
+            setTab('documents');
 
             return;
         }
 
-        openTab('details');
+        setTab('details');
 
         requestAnimationFrame(() => {
             const target = document.getElementById(section);
@@ -490,7 +496,7 @@ export default function ProductEdit({
                     onOpenItem={openItem}
                 />
 
-                <ProductTabs tabs={tabs} active={tab} onChange={openTab} />
+                <ProductTabs tabs={tabs} active={tab} onChange={setTab} />
 
                 {/*
                  * Every tab stays mounted and is only hidden, so an edit
@@ -696,9 +702,15 @@ export default function ProductEdit({
                                 className="hidden lg:block"
                             />
 
+                            {/*
+                             * The status strip above the tabs already lists
+                             * what is still needed, so the rail keeps the
+                             * score and what is done.
+                             */}
                             <ProductRequirementsPanel
                                 completeness={completeness}
                                 templateLabel={savedTemplateLabel}
+                                hideOutstanding
                             />
                         </div>
                     </div>

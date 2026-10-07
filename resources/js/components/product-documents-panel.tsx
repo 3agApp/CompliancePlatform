@@ -6,7 +6,8 @@ import Heading from '@/components/heading';
 import PreviewDocumentModal from '@/components/preview-document-modal';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
 import { Button } from '@/components/ui/button';
-import { formatLocale, t } from '@/lib/i18n';
+import { formatDay, formatFileSize } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { preview, show, visibility } from '@/routes/products/documents';
 import type {
@@ -14,6 +15,9 @@ import type {
     ProductDocumentType,
     ProductDocumentTypeOption,
 } from '@/types';
+
+/** The kinds shown as pictures rather than as rows. */
+const GALLERY_TYPES: ProductDocumentType[] = ['product_image', 'safety_image'];
 
 type Props = {
     organizationSlug: string;
@@ -32,40 +36,6 @@ type Props = {
     /** Whether the organization has an AI provider to ask for kinds. */
     canGuessKinds?: boolean;
 };
-
-/**
- * When a paper was filed, to the day.
- *
- * Evidence is read against dates -- a certificate issued before a standard
- * changed is not the same certificate -- so the day it arrived belongs on
- * the row. The time it arrived does not.
- */
-function filedOn(timestamp: string | null): string {
-    if (timestamp === null) {
-        return '';
-    }
-
-    return new Date(timestamp).toLocaleDateString(formatLocale(), {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-    });
-}
-
-/**
- * Show a file size the way the person who picked the file thinks of it.
- */
-function humanSize(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    const kilobytes = bytes / 1024;
-
-    return kilobytes < 1024
-        ? `${Math.round(kilobytes)} KB`
-        : `${(kilobytes / 1024).toFixed(1)} MB`;
-}
 
 /**
  * The file's extension, for the small mark beside its name.
@@ -136,17 +106,24 @@ export default function ProductDocumentsPanel({
         },
     };
 
-    const images = documents.filter(
-        (document) => document.preview_kind === 'image',
-    );
+    /**
+     * Photos of the product and its safety marks are recognised by sight,
+     * so they get a gallery. Any other paper stays under its kind even when
+     * it was filed as a picture -- a scanned certificate is still looked
+     * for among the certificates.
+     */
+    const isPicture = (document: ProductDocument) =>
+        document.preview_kind === 'image' &&
+        GALLERY_TYPES.includes(document.type);
+
+    const images = documents.filter(isPicture);
 
     const groups = availableDocumentTypes
         .map((option) => ({
             ...option,
             documents: documents.filter(
                 (document) =>
-                    document.type === option.value &&
-                    document.preview_kind !== 'image',
+                    document.type === option.value && !isPicture(document),
             ),
         }))
         .filter((group) => group.documents.length > 0);
@@ -334,7 +311,21 @@ function MissingKindSlot({
                 event.preventDefault();
                 setDragging(true);
             }}
-            onDragLeave={() => setDragging(false)}
+            onDragLeave={(event) => {
+                /*
+                 * Moving onto the label or the button inside the slot
+                 * leaves the slot too; only leaving it altogether ends the
+                 * drag over it.
+                 */
+                if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                ) {
+                    return;
+                }
+
+                setDragging(false);
+            }}
             onDrop={(event) => {
                 event.preventDefault();
                 setDragging(false);
@@ -584,15 +575,15 @@ function DocumentRow({
                     />
                     <span className="text-muted-foreground text-xs md:hidden">
                         {[
-                            humanSize(document.size),
+                            formatFileSize(document.size),
                             document.uploaded_by,
-                            filedOn(document.created_at),
+                            formatDay(document.created_at),
                         ]
                             .filter(Boolean)
                             .join(' · ')}
                     </span>
                     <span className="text-muted-foreground hidden text-xs md:inline">
-                        {humanSize(document.size)}
+                        {formatFileSize(document.size)}
                     </span>
                 </div>
             </div>
@@ -601,7 +592,7 @@ function DocumentRow({
                 {document.uploaded_by}
             </span>
             <span className="text-muted-foreground hidden text-sm md:inline">
-                {filedOn(document.created_at)}
+                {formatDay(document.created_at)}
             </span>
 
             <div className="col-start-1 row-start-2 md:col-start-auto md:row-start-auto">
@@ -667,9 +658,10 @@ function ImageCard({
                         className="truncate"
                     />
                     <span className="text-muted-foreground truncate text-xs">
-                        {[document.type_label, humanSize(document.size)].join(
-                            ' · ',
-                        )}
+                        {[
+                            document.type_label,
+                            formatFileSize(document.size),
+                        ].join(' · ')}
                     </span>
                 </div>
 

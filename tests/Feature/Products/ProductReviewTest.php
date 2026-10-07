@@ -401,6 +401,8 @@ test('a product cannot be submitted twice or approved before it is submitted', f
 test('a supplier editing a submitted product puts it back in draft', function () {
     [, , $supplierUser, $supplier, $product] = tradeWithProduct(ProductReviewStatus::InReview);
 
+    $product->update(['warning_text' => 'Keep away from fire.']);
+
     $this
         ->actingAs($supplierUser)
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
@@ -422,6 +424,7 @@ test('a supplier editing a submitted product puts it back in draft', function ()
     $update = $product->events()->where('type', ProductEventType::Updated)->sole();
 
     expect($update->changes)->toHaveKey('warning_text')
+        ->and($update->changes['warning_text']['from'])->toBe('Keep away from fire.')
         ->and($update->changes['warning_text']['to'])->toBe('Not suitable for children under 3 years.');
 });
 

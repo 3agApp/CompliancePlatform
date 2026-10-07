@@ -226,6 +226,76 @@ test('an edit survives a change of tab and is saved from the bar on another tab'
 });
 
 /**
+ * A save refused from the bar on another tab goes back to the field, and
+ * the address follows, so a reload opens the same place.
+ */
+test('a save refused from another tab shows the details and says so in the address', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Oat Milk',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->fill('@product-ean', '123')
+        ->click('@product-tab-history')
+        ->assertQueryStringHas('tab', 'history')
+        ->click('@product-unsaved-bar-submit')
+        ->assertSee('The EAN/barcode must be 8, 12, 13, or 14 digits.')
+        ->assertAriaAttribute('@product-tab-details', 'selected', 'true')
+        ->assertQueryStringMissing('tab')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * An answer typed into a field the template asked for is not taken off the
+ * form when the template changes before it is saved.
+ */
+test('typed compliance text stays on the form when the template changes', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $template = ProductTemplate::factory()
+        ->requiring(ProductRequirement::WarningText)
+        ->create([
+            'product_category_id' => legalFamily($organization)->id,
+            'name' => 'EU toy safety',
+        ]);
+
+    $product = Product::factory()
+        ->for($organization)
+        ->usingTemplate($template)
+        ->withoutOptionalDetails()
+        ->create([
+            'name' => 'Organic Oat Milk',
+            'supplier_connection_id' => $connection->id,
+        ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->fill('@product-warning-text', 'Not suitable for children under 3 years.')
+        /** Another family clears the template, and with it the requirement. */
+        ->click('@product-category')
+        ->click('[role="option"]:has-text("Filter")')
+        ->assertVisible('@product-warning-text')
+        ->assertValue('@product-warning-text', 'Not suitable for children under 3 years.')
+        /** An untouched answer the template no longer asks for is tucked away. */
+        ->assertPresent('@product-add-safety-notice')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
  * What the template still waits for is listed above the tabs, and each
  * item leads to where it is answered.
  */

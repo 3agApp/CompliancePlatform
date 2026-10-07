@@ -10,6 +10,11 @@ import { t } from '@/lib/i18n';
 type Props = {
     completeness: ProductCompleteness;
     templateLabel: string;
+    /**
+     * Leave out what is still needed, where the page lists it already --
+     * the panel then shows the score and what is done.
+     */
+    hideOutstanding?: boolean;
 };
 
 /**
@@ -23,6 +28,7 @@ type Props = {
 export default function ProductRequirementsPanel({
     completeness,
     templateLabel,
+    hideOutstanding = false,
 }: Props) {
     const { score, items } = completeness;
 
@@ -73,7 +79,7 @@ export default function ProductRequirementsPanel({
                 </p>
             ) : null}
 
-            {outstanding.length > 0 ? (
+            {outstanding.length > 0 && !hideOutstanding ? (
                 <RequirementList
                     title={t('Still needed')}
                     items={outstanding}
