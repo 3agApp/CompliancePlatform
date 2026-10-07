@@ -334,6 +334,23 @@ test('a member sees the product list without the create and delete controls', fu
         ->assertNoJavaScriptErrors();
 });
 
+test('a product opens from its name in the list', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+    Product::factory()->for($organization)->create([
+        'name' => 'Organic Oat Milk',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.index', ['current_organization' => $organization->slug]))
+        ->click('@product-name-link')
+        ->assertSee('Product details')
+        ->assertSee('Save changes')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a supplier invited from the products page can be assigned without a refresh', function () {
     Notification::fake();
 

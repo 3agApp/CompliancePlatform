@@ -483,7 +483,14 @@ export default function ProductEdit({
                         </section>
                     </div>
 
-                    <div className="grid gap-4 lg:sticky lg:top-6">
+                    {/*
+                     * Taller than a laptop screen once every panel is in it,
+                     * so the rail is held to the viewport and scrolls on its
+                     * own. Pinned whole, its lower panels would be out of
+                     * reach until the form beside it ran out. The padding
+                     * keeps focus rings from being clipped by the scroll box.
+                     */}
+                    <div className="grid gap-4 lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto lg:p-1">
                         {/*
                          * Hidden on small screens, where the rail sits below
                          * the form: a link that scrolls backwards past
@@ -500,6 +507,7 @@ export default function ProductEdit({
                             product={product}
                             permissions={permissions}
                             reviewNote={reviewNote}
+                            completeness={completeness}
                         />
 
                         <ProductRequirementsPanel
