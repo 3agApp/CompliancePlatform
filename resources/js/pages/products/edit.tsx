@@ -3,6 +3,9 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import DeleteProductModal from '@/components/delete-product-modal';
 import Heading from '@/components/heading';
+import ProductAssessmentPanel, {
+    ProductAssessmentSkeleton,
+} from '@/components/product-assessment-panel';
 import ProductClassificationFields from '@/components/product-classification-fields';
 import ProductComplianceFields from '@/components/product-compliance-fields';
 import ProductDocumentsPanel from '@/components/product-documents-panel';
@@ -26,6 +29,8 @@ import type {
     CountryOption,
     LabelBatchSummary,
     OrganizationType,
+    ProductAssessmentState,
+    ProductAssessmentUnavailableReason,
     ProductCategoryOption,
     ProductCompleteness,
     ProductDetail,
@@ -82,6 +87,12 @@ type Props = {
      * the only one nobody reads before everything above it.
      */
     history?: ProductEvent[];
+    /**
+     * The AI reading of the papers. Null for anyone who does not rule on
+     * the product; deferred, and so undefined at first, for those who do.
+     */
+    assessment?: ProductAssessmentState | null;
+    assessmentUnavailableReason: ProductAssessmentUnavailableReason | null;
     viewerType: OrganizationType;
 };
 
@@ -104,6 +115,8 @@ export default function ProductEdit({
     availableSeals,
     publicUrl,
     labelBatches,
+    assessment,
+    assessmentUnavailableReason,
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
@@ -245,6 +258,9 @@ export default function ProductEdit({
                 <SectionBadge>{product.documents.length}</SectionBadge>
             ) : undefined,
         },
+        ...(assessment !== null
+            ? [{ id: 'product-assessment', label: t('AI check') }]
+            : []),
         { id: 'product-history', label: t('History') },
     ];
 
@@ -500,6 +516,28 @@ export default function ProductEdit({
                             />
                         </section>
 
+                        {assessment !== null ? (
+                            <section
+                                id="product-assessment"
+                                tabIndex={-1}
+                                className="scroll-mt-6 outline-none"
+                            >
+                                <Deferred
+                                    data="assessment"
+                                    fallback={<ProductAssessmentSkeleton />}
+                                >
+                                    <Assessment
+                                        organizationSlug={organizationSlug}
+                                        product={product}
+                                        unavailableReason={
+                                            assessmentUnavailableReason
+                                        }
+                                        canReview={permissions.canReviewProduct}
+                                    />
+                                </Deferred>
+                            </section>
+                        ) : null}
+
                         <section
                             id="product-history"
                             tabIndex={-1}
@@ -575,6 +613,29 @@ export default function ProductEdit({
             />
         </>
     );
+}
+
+/**
+ * The AI reading, once it has arrived.
+ *
+ * Read off the page for the same reason as the history below: Deferred
+ * renders its children only once the prop has landed.
+ */
+function Assessment(
+    props: Omit<
+        React.ComponentProps<typeof ProductAssessmentPanel>,
+        'assessment'
+    >,
+) {
+    const { assessment } = usePage<{
+        assessment?: ProductAssessmentState | null;
+    }>().props;
+
+    if (!assessment) {
+        return null;
+    }
+
+    return <ProductAssessmentPanel {...props} assessment={assessment} />;
 }
 
 /**

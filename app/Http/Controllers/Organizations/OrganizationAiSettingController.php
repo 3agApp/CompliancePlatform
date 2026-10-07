@@ -30,6 +30,7 @@ class OrganizationAiSettingController extends Controller
         $attributes = [
             'provider' => $request->validated('provider'),
             'model' => $request->validated('model'),
+            'allow_document_analysis' => $request->allowsDocumentAnalysis(),
         ];
 
         /**

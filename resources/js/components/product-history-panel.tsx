@@ -12,6 +12,7 @@ import {
     RotateCcw,
     Send,
     ShieldCheck,
+    Sparkles,
     Undo2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -41,6 +42,8 @@ const ICONS: Record<ProductEventType, LucideIcon> = {
     labels_revoked: Ban,
     document_published: Globe,
     document_unpublished: Lock,
+    assessment_requested: Sparkles,
+    assessment_completed: Sparkles,
 };
 
 /**

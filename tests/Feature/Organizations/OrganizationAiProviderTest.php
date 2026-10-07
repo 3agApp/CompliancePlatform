@@ -44,6 +44,23 @@ test('an owner connects a provider, a key and a model', function () {
         ->and($setting->api_key)->toBe(A_KEY);
 });
 
+test('sending documents to the provider stays off until an owner turns it on', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $this->actingAs($user);
+
+    connectAiProvider($organization)->assertRedirect();
+
+    expect($organization->fresh()->aiSetting->allow_document_analysis)->toBeFalse();
+
+    connectAiProvider($organization, ['api_key' => '', 'allow_document_analysis' => '1'])->assertRedirect();
+
+    expect($organization->fresh()->aiSetting->allow_document_analysis)->toBeTrue();
+
+    $this->get(route('organizations.edit', $organization))
+        ->assertInertia(fn (Assert $page) => $page->where('aiProvider.allow_document_analysis', true));
+});
+
 test('an admin may connect a provider too', function () {
     [$user, $organization] = newOrganizationMember(OrganizationRole::Admin);
 

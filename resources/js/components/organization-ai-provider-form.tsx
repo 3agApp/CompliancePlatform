@@ -3,6 +3,7 @@ import { Sparkles, Unplug } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -45,6 +46,9 @@ export default function OrganizationAiProviderForm({
     );
     const [model, setModel] = useState(
         setting?.model ?? fallback.default_model,
+    );
+    const [allowDocumentAnalysis, setAllowDocumentAnalysis] = useState(
+        setting?.allow_document_analysis ?? false,
     );
 
     const provider =
@@ -167,6 +171,43 @@ export default function OrganizationAiProviderForm({
                             )}
                         </p>
                         <InputError message={errors.api_key} />
+                    </div>
+
+                    {/*
+                     * Its own choice rather than part of having a key:
+                     * naming a file's kind sends only its name, while the
+                     * AI check sends the file itself.
+                     */}
+                    <div className="flex items-start gap-3">
+                        <Checkbox
+                            id="ai-allow-document-analysis"
+                            data-test="ai-allow-document-analysis"
+                            checked={allowDocumentAnalysis}
+                            onCheckedChange={(value) =>
+                                setAllowDocumentAnalysis(value === true)
+                            }
+                            className="mt-0.5"
+                        />
+                        <input
+                            type="hidden"
+                            name="allow_document_analysis"
+                            value={allowDocumentAnalysis ? '1' : '0'}
+                        />
+                        <div className="grid gap-1">
+                            <Label
+                                htmlFor="ai-allow-document-analysis"
+                                className="font-normal"
+                            >
+                                {t(
+                                    'Allow the AI check to read product documents',
+                                )}
+                            </Label>
+                            <p className="text-muted-foreground text-sm">
+                                {t(
+                                    'Test reports, declarations, certificates and images are sent to your AI provider to be read. Leave this off if your agreements with suppliers do not allow that.',
+                                )}
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">

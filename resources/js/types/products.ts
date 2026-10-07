@@ -167,7 +167,9 @@ export type ProductEventType =
     | 'labels_issued'
     | 'labels_revoked'
     | 'document_published'
-    | 'document_unpublished';
+    | 'document_unpublished'
+    | 'assessment_requested'
+    | 'assessment_completed';
 
 /**
  * One field that changed, as the history kept it: both sides are the text
@@ -434,3 +436,89 @@ export type ProductDetail = Product &
     ProductComplianceDetails & {
         documents: ProductDocument[];
     };
+
+/**
+ * Where one AI reading of a product's papers has got to. Mirrors
+ * AssessmentStatus.
+ */
+export type ProductAssessmentStatus =
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed';
+
+/**
+ * What a reading concluded. Mirrors AssessmentOverall -- there is no
+ * "compliant": a person decides that.
+ */
+export type ProductAssessmentOverall =
+    | 'no_gaps_found'
+    | 'gaps_found'
+    | 'insufficient_documents';
+
+export type ProductFindingSeverity = 'critical' | 'major' | 'minor' | 'info';
+
+/**
+ * One run as a list of runs shows it.
+ */
+export type ProductAssessmentSummary = {
+    id: number;
+    status: ProductAssessmentStatus;
+    status_label: string;
+    is_pending: boolean;
+    overall: ProductAssessmentOverall | null;
+    overall_label: string | null;
+    findings_count: number;
+    created_at: string | null;
+    completed_at: string | null;
+};
+
+/**
+ * One gap a reading found, with why and what to ask for.
+ */
+export type ProductAssessmentFinding = {
+    id: number;
+    severity: ProductFindingSeverity;
+    severity_label: string;
+    category: string;
+    category_label: string;
+    requirement: string;
+    rationale: string;
+    evidence: string | null;
+    ask_manufacturer: string | null;
+    /** Null when the finding is about the product as a whole, or the paper has since been removed. */
+    document_id: number | null;
+    document_name: string | null;
+};
+
+/**
+ * One run in full.
+ */
+export type ProductAssessmentDetail = ProductAssessmentSummary & {
+    summary: string | null;
+    factory_request: string | null;
+    failure_reason: string | null;
+    provider_label: string;
+    model_label: string;
+    prompt_version: string;
+    requested_by: string | null;
+    documents: { id: number; name: string }[];
+    skipped_documents: { id: number; name: string; reason: string }[];
+    findings: ProductAssessmentFinding[];
+};
+
+/**
+ * The AI reading of a product's papers, as the edit page receives it.
+ */
+export type ProductAssessmentState = {
+    latest: ProductAssessmentDetail | null;
+    runs: ProductAssessmentSummary[];
+};
+
+/**
+ * Why a run cannot be started. Mirrors the constants on
+ * AssessProductDocuments.
+ */
+export type ProductAssessmentUnavailableReason =
+    | 'not_configured'
+    | 'analysis_disabled';

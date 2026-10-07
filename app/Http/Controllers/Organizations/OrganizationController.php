@@ -119,7 +119,7 @@ class OrganizationController extends Controller
      * Null for anyone who may not manage the provider, so a member is not
      * told what the organization is spending on either.
      *
-     * @return array{provider: string, provider_label: string, model: string, model_label: string, key_hint: string, updated_at: string|null}|null
+     * @return array{provider: string, provider_label: string, model: string, model_label: string, key_hint: string, allow_document_analysis: bool, updated_at: string|null}|null
      */
     private function toAiProviderArray(User $user, Organization $organization): ?array
     {
@@ -151,6 +151,7 @@ class OrganizationController extends Controller
             'model' => $setting->model,
             'model_label' => $setting->provider->modelLabel($setting->model),
             'key_hint' => $hint,
+            'allow_document_analysis' => $setting->allow_document_analysis,
             'updated_at' => $setting->updated_at?->toISOString(),
         ];
     }
