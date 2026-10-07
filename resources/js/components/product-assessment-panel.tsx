@@ -2,6 +2,7 @@ import { Form, useHttp, usePoll } from '@inertiajs/react';
 import {
     AlertOctagon,
     AlertTriangle,
+    CheckCircle2,
     Copy,
     Download,
     FileText,
@@ -412,6 +413,37 @@ function AssessmentRun({
                 </Button>
             </div>
 
+            {run.comparison ? (
+                <div
+                    className="bg-muted/40 space-y-1 rounded-md p-3 text-sm"
+                    data-test="assessment-comparison"
+                >
+                    <p>
+                        <span className="font-medium">
+                            {t('Since the check on :date:', {
+                                date: when(
+                                    run.comparison.previous_completed_at,
+                                ),
+                            })}
+                        </span>{' '}
+                        {tc(
+                            '1 fixed|:count fixed',
+                            run.comparison.resolved_count,
+                        )}{' '}
+                        · {tc('1 new|:count new', run.comparison.new_count)} ·{' '}
+                        {tc(
+                            '1 still open|:count still open',
+                            run.comparison.still_open_count,
+                        )}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                        {t(
+                            'The AI matches gaps between checks. A gap it words differently can show as one fixed and one new.',
+                        )}
+                    </p>
+                </div>
+            ) : null}
+
             {run.findings.length > 0 ? (
                 <ol className="space-y-3" data-test="assessment-findings">
                     {run.findings.map((finding) => (
@@ -430,6 +462,36 @@ function AssessmentRun({
                         />
                     ))}
                 </ol>
+            ) : null}
+
+            {run.comparison && run.comparison.resolved.length > 0 ? (
+                <div className="space-y-2" data-test="assessment-resolved">
+                    <p className="text-sm font-medium">
+                        {t('Fixed since the last check')}
+                    </p>
+                    <ul className="space-y-1.5">
+                        {run.comparison.resolved.map((finding) => (
+                            <li
+                                key={finding.id}
+                                className="text-muted-foreground flex gap-2 text-sm"
+                            >
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <span>
+                                    <span className="text-foreground font-medium">
+                                        {finding.requirement}
+                                    </span>{' '}
+                                    ·{' '}
+                                    {t('was :severity', {
+                                        severity: finding.severity_label,
+                                    })}
+                                    {finding.document_name
+                                        ? ` · ${finding.document_name}`
+                                        : ''}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             ) : null}
 
             {run.skipped_documents.length > 0 ? (
@@ -497,6 +559,26 @@ function FindingRow({
                 <span className="text-muted-foreground text-xs">
                     {finding.category_label}
                 </span>
+                {finding.change === 'new' ? (
+                    <span
+                        className="rounded-md border px-1.5 py-0.5 text-xs font-medium"
+                        data-test="assessment-finding-new"
+                    >
+                        {t('New')}
+                    </span>
+                ) : null}
+                {finding.change === 'still_open' ? (
+                    <span
+                        className="text-muted-foreground rounded-md border border-dashed px-1.5 py-0.5 text-xs"
+                        data-test="assessment-finding-still-open"
+                    >
+                        {finding.previous_severity_label
+                            ? t('Still open, was :severity', {
+                                  severity: finding.previous_severity_label,
+                              })
+                            : t('Still open')}
+                    </span>
+                ) : null}
             </div>
 
             <p className="text-sm leading-relaxed">{finding.rationale}</p>

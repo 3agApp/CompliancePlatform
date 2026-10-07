@@ -66,3 +66,60 @@ test('a reviewer sends the product back with the AI check draft as the note', fu
     expect($product->review_status)->toBe(ProductReviewStatus::ChangesRequested)
         ->and($product->latestReviewNote())->toBe('Please send an EN 71-3 test report for this article.');
 });
+
+/**
+ * After the factory sends fixes and the check is run again, the reviewer
+ * sees what was fixed and what is still open, not just a fresh list.
+ */
+test('a second run shows what was fixed and what is still open since the first', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Magnetic Building Set',
+        'supplier_connection_id' => newSupplierConnection($organization)->id,
+        'review_status' => ProductReviewStatus::InReview,
+    ]);
+
+    $earlier = ProductAssessment::factory()->for($product)->for($organization)->completed()->create();
+
+    $stillOpen = $earlier->findings()->create([
+        'severity' => FindingSeverity::Critical,
+        'category' => 'incomplete',
+        'requirement' => 'DoC: harmonised standards applied',
+        'rationale' => 'No EN 71 parts are named.',
+        'position' => 0,
+    ]);
+
+    $earlier->findings()->create([
+        'severity' => FindingSeverity::Major,
+        'category' => 'missing_document',
+        'requirement' => 'EN 71-3 test report',
+        'rationale' => 'No migration test report was filed.',
+        'position' => 1,
+    ]);
+
+    $latest = ProductAssessment::factory()->for($product)->for($organization)->completed()->create([
+        'previous_assessment_id' => $earlier->id,
+    ]);
+
+    $latest->findings()->create([
+        'previous_finding_id' => $stillOpen->id,
+        'severity' => FindingSeverity::Major,
+        'category' => 'incomplete',
+        'requirement' => 'DoC: harmonised standards applied',
+        'rationale' => 'Only EN 71-1 is named now.',
+        'position' => 0,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertVisible('@assessment-comparison')
+        ->assertSee('1 fixed')
+        ->assertSee('1 still open')
+        ->assertVisible('@assessment-finding-still-open')
+        ->assertSee('Still open, was Critical')
+        ->assertVisible('@assessment-resolved')
+        ->assertSee('EN 71-3 test report')
+        ->assertNoJavaScriptErrors();
+});

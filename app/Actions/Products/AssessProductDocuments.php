@@ -14,6 +14,7 @@ use App\Jobs\RunProductAssessment;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductAssessment;
+use App\Models\ProductAssessmentFinding;
 use App\Models\ProductDocument;
 use App\Models\User;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -125,9 +126,18 @@ class AssessProductDocuments
                 return null;
             }
 
+            /**
+             * The run this one is read against: the last one that finished.
+             * A failed run found nothing, so there is nothing to compare.
+             */
+            $previous = $product->assessments()
+                ->where('status', AssessmentStatus::Completed)
+                ->value('id');
+
             $assessment = $product->assessments()->create([
                 'organization_id' => $organization->id,
                 'requested_by' => $actor->id,
+                'previous_assessment_id' => $previous,
                 'status' => AssessmentStatus::Queued,
                 'provider' => $setting->provider,
                 'model' => $setting->model,
@@ -183,6 +193,8 @@ class AssessProductDocuments
 
         [$sent, $attachments, $skipped] = $this->attachmentsFor($product);
 
+        $previous = $assessment->previousAssessment?->findings()->get()->values()->all() ?? [];
+
         $assessment->forceFill([
             'documents' => $sent,
             'skipped_documents' => $skipped,
@@ -192,7 +204,7 @@ class AssessProductDocuments
             $response = $this->provider->using(
                 $setting,
                 fn (string $provider): mixed => (new DocumentAssessmentAgent($this->languageFor($organization)))->prompt(
-                    $this->promptFor($product, $sent, $skipped),
+                    $this->promptFor($product, $sent, $skipped, $assessment->previousAssessment, $previous),
                     attachments: $attachments,
                     provider: $provider,
                     model: $setting->model,
@@ -211,7 +223,7 @@ class AssessProductDocuments
             return;
         }
 
-        $this->complete($assessment, $product, $sent, $response);
+        $this->complete($assessment, $product, $sent, $previous, $response);
     }
 
     /**
@@ -230,17 +242,18 @@ class AssessProductDocuments
      * Write the answer down, lined up against the papers it was about.
      *
      * @param  array<int, array{id: int, name: string, type: string, mime_type: string, size: int}>  $sent
+     * @param  array<int, ProductAssessmentFinding>  $previous
      */
-    private function complete(ProductAssessment $assessment, Product $product, array $sent, mixed $response): void
+    private function complete(ProductAssessment $assessment, Product $product, array $sent, array $previous, mixed $response): void
     {
         $overall = AssessmentOverall::tryFrom((string) ($response['overall'] ?? ''));
         $rows = $response['findings'] ?? [];
 
-        DB::transaction(function () use ($assessment, $product, $sent, $overall, $rows, $response) {
+        DB::transaction(function () use ($assessment, $product, $sent, $previous, $overall, $rows, $response) {
             $position = 0;
 
             foreach (is_array($rows) ? $rows : [] as $row) {
-                $finding = $this->toFinding($row, $sent);
+                $finding = $this->toFinding($row, $sent, $previous);
 
                 if ($finding === null) {
                     continue;
@@ -277,10 +290,15 @@ class AssessProductDocuments
      * document number that is not on the list is read as "the product as a
      * whole" rather than pinned to whichever paper happens to have it.
      *
+     * The same goes for the earlier finding it says it carries on: a number
+     * that is not on the earlier list makes it a new finding, never a link to
+     * some other gap.
+     *
      * @param  array<int, array{id: int, name: string, type: string, mime_type: string, size: int}>  $sent
+     * @param  array<int, ProductAssessmentFinding>  $previous
      * @return array<string, mixed>|null
      */
-    private function toFinding(mixed $row, array $sent): ?array
+    private function toFinding(mixed $row, array $sent, array $previous): ?array
     {
         if (! is_array($row)) {
             return null;
@@ -298,8 +316,12 @@ class AssessProductDocuments
         $index = filter_var($row['document_index'] ?? null, FILTER_VALIDATE_INT);
         $document = $index !== false ? ($sent[$index] ?? null) : null;
 
+        $previousIndex = filter_var($row['previous_finding'] ?? null, FILTER_VALIDATE_INT);
+        $previousFinding = $previousIndex !== false ? ($previous[$previousIndex] ?? null) : null;
+
         return [
             'product_document_id' => $document['id'] ?? null,
+            'previous_finding_id' => $previousFinding?->id,
             'document_name' => $document['name'] ?? null,
             'severity' => $severity,
             'category' => $category,
@@ -378,8 +400,9 @@ class AssessProductDocuments
      *
      * @param  array<int, array{id: int, name: string, type: string, mime_type: string, size: int}>  $sent
      * @param  array<int, array{id: int, name: string, reason: string}>  $skipped
+     * @param  array<int, ProductAssessmentFinding>  $previous
      */
-    private function promptFor(Product $product, array $sent, array $skipped): string
+    private function promptFor(Product $product, array $sent, array $skipped, ?ProductAssessment $previousAssessment, array $previous): string
     {
         $details = collect([
             'Name' => $product->name,
@@ -415,6 +438,20 @@ class AssessProductDocuments
         if ($skipped !== []) {
             $prompt .= "\n\nAlso filed but not attached, so not readable by you:\n\n"
                 .collect($skipped)->map(fn (array $document): string => "- {$document['name']}")->implode("\n");
+        }
+
+        if ($previousAssessment !== null) {
+            $prompt .= "\n\nFindings from the earlier check on {$previousAssessment->completed_at?->toDateString()}:\n\n"
+                .($previous === [] ? '(none -- it found nothing to flag)' : collect($previous)
+                    ->map(fn (ProductAssessmentFinding $finding, int $index): string => sprintf(
+                        '%d. [%s] %s -- %s%s',
+                        $index,
+                        $finding->severity->value,
+                        $finding->requirement,
+                        $finding->rationale,
+                        $finding->document_name !== null ? " (document: {$finding->document_name})" : '',
+                    ))
+                    ->implode("\n"));
         }
 
         return $prompt."\n\nAssess these documents.";

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $product_assessment_id
  * @property int|null $product_document_id
+ * @property int|null $previous_finding_id
  * @property string|null $document_name
  * @property FindingSeverity $severity
  * @property FindingCategory $category
@@ -30,9 +31,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $updated_at
  * @property-read ProductAssessment $assessment
  * @property-read ProductDocument|null $document
+ * @property-read ProductAssessmentFinding|null $previousFinding
  */
 #[Fillable([
     'product_document_id',
+    'previous_finding_id',
     'document_name',
     'severity',
     'category',
@@ -65,6 +68,16 @@ class ProductAssessmentFinding extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(ProductDocument::class, 'product_document_id');
+    }
+
+    /**
+     * The finding in the previous run that this one carries on, if any.
+     *
+     * @return BelongsTo<ProductAssessmentFinding, $this>
+     */
+    public function previousFinding(): BelongsTo
+    {
+        return $this->belongsTo(ProductAssessmentFinding::class, 'previous_finding_id');
     }
 
     /**

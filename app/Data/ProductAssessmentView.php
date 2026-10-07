@@ -3,6 +3,7 @@
 namespace App\Data;
 
 use App\Actions\Products\AssessProductDocuments;
+use App\Enums\AssessmentStatus;
 use App\Enums\FindingSeverity;
 use App\Enums\ProductDocumentType;
 use App\Models\Product;
@@ -29,7 +30,9 @@ class ProductAssessmentView
      */
     public static function detail(ProductAssessment $assessment): array
     {
-        $assessment->loadMissing(['findings', 'requester']);
+        $assessment->loadMissing(['findings.previousFinding', 'requester', 'previousAssessment.findings']);
+
+        $compared = self::isCompared($assessment);
 
         return [
             ...self::summary($assessment),
@@ -63,9 +66,71 @@ class ProductAssessmentView
                     'ask_manufacturer' => $finding->ask_manufacturer,
                     'document_id' => $finding->product_document_id,
                     'document_name' => $finding->document_name,
+                    'change' => $compared ? ($finding->previous_finding_id !== null ? 'still_open' : 'new') : null,
+                    /**
+                     * Only when it moved: "was critical" is worth a glance,
+                     * "was major" on a gap still rated major is noise.
+                     */
+                    'previous_severity_label' => $finding->previousFinding !== null && $finding->previousFinding->severity !== $finding->severity
+                        ? $finding->previousFinding->severity->label()
+                        : null,
                 ])
                 ->values()
                 ->all(),
+            'comparison' => $compared ? self::comparison($assessment) : null,
+        ];
+    }
+
+    /**
+     * Determine whether the run has an earlier one to be read against.
+     *
+     * Only a finished run: one still going has nothing to compare yet.
+     */
+    private static function isCompared(ProductAssessment $assessment): bool
+    {
+        return $assessment->status === AssessmentStatus::Completed
+            && $assessment->previousAssessment !== null;
+    }
+
+    /**
+     * Say what changed since the run before: what the factory fixed, what is
+     * new, and what is still open.
+     *
+     * A gap from the earlier run counts as resolved when no finding in this
+     * run says it carries it on. The model makes that link, so a reworded gap
+     * it failed to recognise shows as one resolved and one new -- which the
+     * page says, rather than presenting the list as certain.
+     *
+     * @return array{previous_id: int, previous_completed_at: string|null, new_count: int, still_open_count: int, resolved_count: int, resolved: array<int, array<string, mixed>>}
+     */
+    private static function comparison(ProductAssessment $assessment): array
+    {
+        $previous = $assessment->previousAssessment;
+        $carried = $assessment->findings->pluck('previous_finding_id')->filter()->unique();
+
+        $resolved = $previous->findings
+            ->reject(fn (ProductAssessmentFinding $finding): bool => $carried->contains($finding->id))
+            ->sortBy(fn (ProductAssessmentFinding $finding): array => [$finding->severity->rank(), $finding->position])
+            ->map(fn (ProductAssessmentFinding $finding): array => [
+                'id' => $finding->id,
+                'severity' => $finding->severity->value,
+                'severity_label' => $finding->severity->label(),
+                'requirement' => $finding->requirement,
+                'rationale' => $finding->rationale,
+                'document_name' => $finding->document_name,
+            ])
+            ->values()
+            ->all();
+
+        $stillOpen = $assessment->findings->whereNotNull('previous_finding_id')->count();
+
+        return [
+            'previous_id' => $previous->id,
+            'previous_completed_at' => $previous->completed_at?->toISOString(),
+            'new_count' => $assessment->findings->count() - $stillOpen,
+            'still_open_count' => $stillOpen,
+            'resolved_count' => count($resolved),
+            'resolved' => $resolved,
         ];
     }
 
