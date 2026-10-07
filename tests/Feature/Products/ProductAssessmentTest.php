@@ -2,6 +2,7 @@
 
 use App\Actions\Products\AssessProductDocuments;
 use App\Ai\Agents\DocumentAssessmentAgent;
+use App\Data\ProductAssessmentView;
 use App\Enums\AiProvider;
 use App\Enums\AssessmentOverall;
 use App\Enums\AssessmentStatus;
@@ -382,6 +383,98 @@ test('the queue does not hand a run to a second worker while the first is still 
     $job = new RunProductAssessment(ProductAssessment::factory()->make());
 
     expect(config('queue.connections.database.retry_after'))->toBeGreaterThan($job->timeout);
+});
+
+/**
+ * Download the report for a run.
+ */
+function downloadReport(Organization $organization, Product $product, ProductAssessment $assessment): TestResponse
+{
+    return test()->get(route('products.assessments.report', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'assessment' => $assessment->id,
+    ]));
+}
+
+test('a reviewer downloads a finished run as a PDF report', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $assessment = ProductAssessment::factory()->for($product)->for($organization)->completed()->hasFindings(2)->create();
+
+    $this->actingAs($user);
+
+    $response = downloadReport($organization, $product, $assessment)
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertDownload("magnetic-building-set-ai-check-{$assessment->id}.pdf");
+
+    expect($response->getContent())->toStartWith('%PDF-');
+});
+
+test('the report names the product, says a person decides, and carries every finding and the factory request', function () {
+    [, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $declaration = fileAssessedDocument($product, 'DoC.pdf', 'application/pdf', ProductDocumentType::DeclarationOfConformity);
+
+    $assessment = ProductAssessment::factory()->for($product)->for($organization)->completed()
+        ->hasFindings(1, [
+            'severity' => FindingSeverity::Critical,
+            'requirement' => 'EN 71-3 migration of elements',
+            'rationale' => 'No test report covers EN 71-3.',
+            'product_document_id' => $declaration->id,
+            'document_name' => 'DoC.pdf',
+        ])
+        ->create([
+            'documents' => [['id' => $declaration->id, 'name' => 'DoC.pdf', 'type' => 'declaration_of_conformity', 'mime_type' => 'application/pdf', 'size' => 2048]],
+            'skipped_documents' => [['id' => 99, 'name' => 'materials.xlsx', 'reason' => 'unsupported_type']],
+        ]);
+
+    $html = view('products.assessment-report', ProductAssessmentView::report($assessment))->render();
+
+    expect($html)
+        ->toContain('Magnetic Building Set')
+        ->toContain($organization->name)
+        ->toContain('It is not an approval')
+        ->toContain('EN 71-3 migration of elements')
+        ->toContain('No test report covers EN 71-3.')
+        ->toContain('Declaration of conformity')
+        ->toContain('materials.xlsx')
+        ->toContain('Only PDFs and images can be read')
+        ->toContain(e($assessment->factory_request));
+});
+
+test('a run that has not finished has no report', function (AssessmentStatus $status) {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $assessment = ProductAssessment::factory()->for($product)->for($organization)->create(['status' => $status]);
+
+    $this->actingAs($user);
+
+    downloadReport($organization, $product, $assessment)->assertNotFound();
+})->with([AssessmentStatus::Queued, AssessmentStatus::Running, AssessmentStatus::Failed]);
+
+test('a member may not download the report', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis(OrganizationRole::Member);
+
+    $assessment = ProductAssessment::factory()->for($product)->for($organization)->completed()->create();
+
+    $this->actingAs($user);
+
+    downloadReport($organization, $product, $assessment)->assertForbidden();
+});
+
+test('the supplier may not download the report', function () {
+    [, $distributor, $product] = reviewerWithDocumentAnalysis();
+
+    [$supplierUser, $supplier] = newSupplierMember();
+    $product->update(['supplier_connection_id' => newSupplierConnection($distributor, $supplier)->id]);
+
+    $assessment = ProductAssessment::factory()->for($product)->for($distributor)->completed()->create();
+
+    $this->actingAs($supplierUser);
+
+    downloadReport($supplier, $product, $assessment)->assertForbidden();
 });
 
 test('a run lost by the queue does not block the next one forever', function () {
