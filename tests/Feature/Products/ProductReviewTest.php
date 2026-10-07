@@ -557,6 +557,26 @@ test('the history is deferred and reads back who did what', function () {
         ->assertJsonPath('props.history.1.actor_organization', $supplier->name);
 });
 
+/**
+ * The column is called changes, which Eloquent also uses for its own
+ * bookkeeping -- read back from the database, the event must still say
+ * what it changed.
+ */
+test('an edit read back from the history names the fields it changed', function () {
+    [, , $supplierUser, $supplier, $product] = tradeWithProduct();
+
+    $product->recordEvent(ProductEventType::Updated, $supplierUser, $supplier, changes: [
+        'warning_text' => ['from' => null, 'to' => 'Not suitable for children under 3 years.'],
+    ]);
+
+    expect($product->events()->sole()->changedFields())->toBe([[
+        'field' => 'warning_text',
+        'label' => 'Warning text',
+        'from' => null,
+        'to' => 'Not suitable for children under 3 years.',
+    ]]);
+});
+
 test('a product keeps what a closed account did to it', function () {
     [, , $supplierUser, $supplier, $product] = tradeWithProduct();
 

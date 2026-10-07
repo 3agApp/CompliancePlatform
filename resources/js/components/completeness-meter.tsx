@@ -6,6 +6,8 @@ type Props = {
     className?: string;
     /** Show the bar without the reading, for a table cell that is short on room. */
     hideLabel?: boolean;
+    /** Stretch the bar across the space it is given, for a panel rather than a cell. */
+    fill?: boolean;
 };
 
 /**
@@ -33,6 +35,7 @@ export default function CompletenessMeter({
     score,
     className,
     hideLabel = false,
+    fill = false,
 }: Props) {
     return (
         <div
@@ -43,7 +46,10 @@ export default function CompletenessMeter({
             })}
         >
             <div
-                className="bg-muted h-1.5 w-16 shrink-0 overflow-hidden rounded-full"
+                className={cn(
+                    'bg-muted h-1.5 shrink-0 overflow-hidden rounded-full',
+                    fill ? 'flex-1' : 'w-16',
+                )}
                 role="progressbar"
                 aria-valuenow={score}
                 aria-valuemin={0}

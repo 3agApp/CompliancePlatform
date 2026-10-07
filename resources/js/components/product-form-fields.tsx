@@ -20,6 +20,7 @@ import type {
     ProductRequirementKey,
 } from '@/types';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
 type FieldName =
     | 'name'
@@ -47,6 +48,11 @@ type Props = {
     canCreateBrand?: boolean;
     /** What the product's template asks for, which is what marks the labels. */
     requirements?: ProductRequirementKey[];
+    /**
+     * What the template asks for and the saved product does not have yet,
+     * which turns the marker on those fields into a call to fill them in.
+     */
+    outstanding?: ProductRequirementKey[];
     product?: Product;
     disabled?: boolean;
     idPrefix?: string;
@@ -72,8 +78,8 @@ export function Optional() {
  * colour. A template is homework, not a gate: the product saves with the
  * field empty, and the marker says the template asks for it whether or not
  * it has been answered yet. Amber here would read as a fault on a field
- * that is already filled in. Which ones are still outstanding is the
- * checklist's job, not the label's.
+ * that is already filled in -- so amber is kept for the fields that are
+ * not, below.
  */
 export function RequiredByTemplate() {
     return (
@@ -82,10 +88,48 @@ export function RequiredByTemplate() {
 }
 
 /**
- * The marker on one label, given what the template asks for.
+ * A field the template asks for that the saved product leaves empty.
+ *
+ * Read from the saved product, like the checklist, so a field typed into
+ * but not yet saved still says so -- which is the truth until it is.
  */
-export function FieldMarker({ required }: { required: boolean }) {
+export function NeededByTemplate() {
+    return (
+        <span
+            className="ml-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-px text-[11px] font-semibold text-amber-700 dark:text-amber-400"
+            data-test="field-needed"
+        >
+            {t('Needed')}
+        </span>
+    );
+}
+
+/**
+ * The marker on one label, given what the template asks for and whether
+ * the saved product answers it.
+ */
+export function FieldMarker({
+    required,
+    missing = false,
+}: {
+    required: boolean;
+    missing?: boolean;
+}) {
+    if (required && missing) {
+        return <NeededByTemplate />;
+    }
+
     return required ? <RequiredByTemplate /> : <Optional />;
+}
+
+/**
+ * The outline on a control the template is still waiting for, matching
+ * its label's marker.
+ */
+export function neededControlClass(missing: boolean): string | undefined {
+    return missing
+        ? 'border-amber-500/60 bg-amber-500/5 dark:bg-amber-500/5'
+        : undefined;
 }
 
 export default function ProductFormFields({
@@ -97,6 +141,7 @@ export default function ProductFormFields({
     organizationSlug,
     canCreateBrand = false,
     requirements = [],
+    outstanding = [],
     product,
     disabled = false,
     idPrefix = 'product',
@@ -113,6 +158,10 @@ export default function ProductFormFields({
 
     const needs = (requirement: ProductRequirementKey) =>
         requirements.includes(requirement);
+
+    /** Asked for by the template on screen and still empty when saved. */
+    const owes = (requirement: ProductRequirementKey) =>
+        needs(requirement) && outstanding.includes(requirement);
 
     const brands = availableBrands.filter(
         (brand) => brand.supplier_connection_id === supplierConnectionId,
@@ -148,7 +197,10 @@ export default function ProductFormFields({
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-brand`}>
                         {t('Brand')}{' '}
-                        <FieldMarker required={needs('requires_brand')} />
+                        <FieldMarker
+                            required={needs('requires_brand')}
+                            missing={owes('requires_brand')}
+                        />
                     </Label>
                     <div className="flex gap-2">
                         <Select
@@ -159,7 +211,10 @@ export default function ProductFormFields({
                             <SelectTrigger
                                 id={`${idPrefix}-brand`}
                                 data-test="product-brand"
-                                className="w-full"
+                                className={cn(
+                                    'w-full',
+                                    neededControlClass(owes('requires_brand')),
+                                )}
                             >
                                 <SelectValue
                                     placeholder={t('Select a brand')}
@@ -219,12 +274,16 @@ export default function ProductFormFields({
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-ean`}>
                         {t('EAN / barcode')}{' '}
-                        <FieldMarker required={needs('requires_ean')} />
+                        <FieldMarker
+                            required={needs('requires_ean')}
+                            missing={owes('requires_ean')}
+                        />
                     </Label>
                     <Input
                         id={`${idPrefix}-ean`}
                         name="ean"
                         data-test="product-ean"
+                        className={neededControlClass(owes('requires_ean'))}
                         defaultValue={product?.ean ?? ''}
                         placeholder="4006381333931"
                         inputMode="numeric"
@@ -241,12 +300,16 @@ export default function ProductFormFields({
                         {t('Internal article number')}{' '}
                         <FieldMarker
                             required={needs('requires_internal_article_number')}
+                            missing={owes('requires_internal_article_number')}
                         />
                     </Label>
                     <Input
                         id={`${idPrefix}-internal-article-number`}
                         name="internal_article_number"
                         data-test="product-internal-article-number"
+                        className={neededControlClass(
+                            owes('requires_internal_article_number'),
+                        )}
                         defaultValue={product?.internal_article_number ?? ''}
                         placeholder="ART-10294"
                         autoComplete="off"
@@ -263,12 +326,16 @@ export default function ProductFormFields({
                         {t('Supplier article number')}{' '}
                         <FieldMarker
                             required={needs('requires_supplier_article_number')}
+                            missing={owes('requires_supplier_article_number')}
                         />
                     </Label>
                     <Input
                         id={`${idPrefix}-supplier-article-number`}
                         name="supplier_article_number"
                         data-test="product-supplier-article-number"
+                        className={neededControlClass(
+                            owes('requires_supplier_article_number'),
+                        )}
                         defaultValue={product?.supplier_article_number ?? ''}
                         placeholder="MT-BLUE-32"
                         autoComplete="off"
@@ -287,12 +354,16 @@ export default function ProductFormFields({
                         {t('Order number')}{' '}
                         <FieldMarker
                             required={needs('requires_order_number')}
+                            missing={owes('requires_order_number')}
                         />
                     </Label>
                     <Input
                         id={`${idPrefix}-order-number`}
                         name="order_number"
                         data-test="product-order-number"
+                        className={neededControlClass(
+                            owes('requires_order_number'),
+                        )}
                         defaultValue={product?.order_number ?? ''}
                         placeholder="PO-2026-0148"
                         autoComplete="off"
@@ -306,12 +377,16 @@ export default function ProductFormFields({
                         {t('Customs tariff number')}{' '}
                         <FieldMarker
                             required={needs('requires_customs_tariff_number')}
+                            missing={owes('requires_customs_tariff_number')}
                         />
                     </Label>
                     <Input
                         id={`${idPrefix}-customs-tariff-number`}
                         name="customs_tariff_number"
                         data-test="product-customs-tariff-number"
+                        className={neededControlClass(
+                            owes('requires_customs_tariff_number'),
+                        )}
                         defaultValue={product?.customs_tariff_number ?? ''}
                         placeholder="9503.00.75"
                         inputMode="numeric"
@@ -330,6 +405,7 @@ export default function ProductFormFields({
                     {t('Country of origin')}{' '}
                     <FieldMarker
                         required={needs('requires_country_of_origin')}
+                        missing={owes('requires_country_of_origin')}
                     />
                 </Label>
                 <Select
@@ -342,7 +418,12 @@ export default function ProductFormFields({
                     <SelectTrigger
                         id={`${idPrefix}-country-of-origin`}
                         data-test="product-country-of-origin"
-                        className="w-full"
+                        className={cn(
+                            'w-full',
+                            neededControlClass(
+                                owes('requires_country_of_origin'),
+                            ),
+                        )}
                     >
                         <SelectValue placeholder={t('Select a country')} />
                     </SelectTrigger>

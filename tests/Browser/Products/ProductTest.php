@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\ProductDocumentType;
 use App\Enums\ProductRequirement;
 use App\Models\Brand;
 use App\Models\Product;
+use App\Models\ProductDocument;
 use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use Illuminate\Support\Facades\Notification;
@@ -147,13 +149,17 @@ test('the identification details of a product are edited on its own page', funct
  * tab, so one save carries the lot however far down the page the person is
  * working. The links beside them only move the view.
  */
-test('the edit page stacks every group of fields, with links that jump to them', function () {
+test('the edit page keeps the fields on one tab and the rest of the product on its own tabs', function () {
     [$user, $organization] = newOrganizationMember();
     $connection = newSupplierConnection($organization);
 
     $product = Product::factory()->for($organization)->create([
         'name' => 'Organic Oat Milk',
         'supplier_connection_id' => $connection->id,
+    ]);
+
+    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
+        'name' => 'en71-part-1.pdf',
     ]);
 
     $this->actingAs($user);
@@ -165,24 +171,93 @@ test('the edit page stacks every group of fields, with links that jump to them',
         ->assertSee('Classification')
         ->assertSee('Product details')
         ->assertSee('Compliance details')
-        ->assertSee('Documents')
         /**
          * A field from each group, without a thing having been opened
-         * first: the classification, the details and the compliance
-         * answers are all on the page together.
+         * first: the whole form is on the details tab together.
          */
         ->assertVisible('@product-supplier')
         ->assertVisible('@product-name')
-        ->assertVisible('@product-warning-text')
-        /** The first section is the one marked until the page is scrolled. */
+        ->assertVisible('@product-age-grading')
+        ->assertAriaAttribute('@product-tab-details', 'selected', 'true')
+        ->assertDontSee('en71-part-1.pdf')
+        /** The jump links move within the tab. */
         ->assertAriaAttribute('@edit-product-jump-product-classification', 'current', 'true')
-        /**
-         * The jump moves the view and puts the section under the cursor,
-         * and leaves everything else exactly where it was.
-         */
-        ->click('@edit-product-jump-product-documents')
-        ->assertScript('document.activeElement.id', 'product-documents')
-        ->assertVisible('@product-name')
+        ->click('@edit-product-jump-product-compliance')
+        ->assertScript('document.activeElement.id', 'product-compliance')
+        /** The documents have a tab of their own, kept in the address. */
+        ->click('@product-tab-documents')
+        ->assertSee('en71-part-1.pdf')
+        ->assertMissing('@product-name')
+        ->assertQueryStringHas('tab', 'documents')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * An edit is still unsaved after a look at another tab, and the way to
+ * save it goes along.
+ */
+test('an edit survives a change of tab and is saved from the bar on another tab', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'name' => 'Oat Milk',
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->fill('@product-name', 'Oat Milk Barista')
+        ->click('@product-tab-history')
+        ->assertSee('Unsaved changes')
+        ->click('@product-tab-details')
+        ->assertValue('@product-name', 'Oat Milk Barista')
+        ->click('@product-tab-history')
+        ->click('@product-unsaved-bar-submit')
+        ->assertSee('Product updated.')
+        ->assertMissing('@product-unsaved-bar')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->name)->toBe('Oat Milk Barista');
+});
+
+/**
+ * What the template still waits for is listed above the tabs, and each
+ * item leads to where it is answered.
+ */
+test('an outstanding paper in the status strip opens the documents tab', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $template = ProductTemplate::factory()
+        ->requiring(ProductRequirement::TestReport)
+        ->create([
+            'product_category_id' => legalFamily($organization)->id,
+            'name' => 'EU toy safety',
+        ]);
+
+    $product = Product::factory()
+        ->for($organization)
+        ->usingTemplate($template)
+        ->create([
+            'name' => 'Organic Oat Milk',
+            'supplier_connection_id' => $connection->id,
+        ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        ->assertSeeIn('@product-requirements-summary', 'Test report')
+        ->click('@product-outstanding-item')
+        ->assertAriaAttribute('@product-tab-documents', 'selected', 'true')
+        ->assertVisible('@product-tabpanel-documents')
         ->assertNoJavaScriptErrors();
 });
 
@@ -231,6 +306,48 @@ test('the section links carry what each section still owes its template', functi
 });
 
 /**
+ * A field the template asks for and the product leaves empty says so on
+ * its label, and stops saying so once it is answered.
+ */
+test('a field the template still waits for is marked as needed until it is saved', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $template = ProductTemplate::factory()
+        ->requiring(ProductRequirement::Ean, ProductRequirement::WarningText)
+        ->create([
+            'product_category_id' => legalFamily($organization)->id,
+            'name' => 'EU toy safety',
+        ]);
+
+    $product = Product::factory()
+        ->for($organization)
+        ->usingTemplate($template)
+        ->withoutOptionalDetails()
+        ->create([
+            'name' => 'Organic Oat Milk',
+            'ean' => '4006381333931',
+            'supplier_connection_id' => $connection->id,
+        ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+    ]))
+        /** The barcode is in, so only the warning is still owed. */
+        ->assertCount('@field-needed', 1)
+        ->assertSeeIn('label[for="edit-product-warning-text"]', 'Needed')
+        ->assertDontSeeIn('label[for="edit-product-ean"]', 'Needed')
+        ->fill('@product-warning-text', 'Not suitable for children under 3 years.')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertMissing('@field-needed')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
  * The form runs the height of four panels, so the way to save it follows
  * the person down the page instead of waiting at the foot of it.
  */
@@ -251,6 +368,7 @@ test('a change raises a save bar that saves the whole form', function () {
     ]))
         /** Nothing has changed yet, so there is nothing to say. */
         ->assertMissing('@product-unsaved-bar')
+        ->click('@product-add-warning-text')
         ->fill('@product-warning-text', 'Not suitable for children under 3 years.')
         /**
          * Back at the top of the page, where the form's own save button is

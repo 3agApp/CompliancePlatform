@@ -2,7 +2,7 @@ import { Form } from '@inertiajs/react';
 import { Check, RotateCcw, Send, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import ApproveProductModal from '@/components/approve-product-modal';
-import ProductReviewStatusBadge from '@/components/product-review-status-badge';
+import CompletenessMeter from '@/components/completeness-meter';
 import ReopenProductReviewModal from '@/components/reopen-product-review-modal';
 import RequestProductChangesModal from '@/components/request-product-changes-modal';
 import { Button } from '@/components/ui/button';
@@ -10,17 +10,27 @@ import { formatLocale, t, tc } from '@/lib/i18n';
 import { approve, submit } from '@/routes/products';
 import type {
     ProductCompleteness,
+    ProductCompletenessItem,
     ProductDetail,
     ProductPermissions,
 } from '@/types';
 
-type Props = {
+type ActionProps = {
     organizationSlug: string;
+    product: ProductDetail;
+    permissions: ProductPermissions;
+    completeness: ProductCompleteness;
+};
+
+type StatusProps = {
     product: ProductDetail;
     permissions: ProductPermissions;
     /** What the distributor wrote when they last sent the product back. */
     reviewNote: string | null;
     completeness: ProductCompleteness;
+    templateLabel: string;
+    /** Take the person to wherever an outstanding item is answered. */
+    onOpenItem: (item: ProductCompletenessItem) => void;
 };
 
 /**
@@ -39,101 +49,179 @@ function on(timestamp: string | null): string {
 }
 
 /**
- * Whose move it is, and the move itself.
+ * Who may make which move, worked out once for both halves of the review.
+ */
+function reviewMoves(product: ProductDetail, permissions: ProductPermissions) {
+    return {
+        canSubmit:
+            permissions.canUpdateProduct &&
+            (product.review_status === 'draft' ||
+                product.review_status === 'changes_requested'),
+        canRule:
+            permissions.canReviewProduct &&
+            product.review_status === 'in_review',
+        canReopen:
+            permissions.canReviewProduct &&
+            product.review_status === 'approved',
+    };
+}
+
+/**
+ * Where the review stands and what is still owed, across the top of the
+ * product.
  *
- * The panel says one thing at a time: a supplier with work outstanding is
- * offered the button that hands it over, and a distributor holding somebody
- * else's homework is offered the two that hand it back. Nobody is shown a
- * button for a move that is not theirs to make -- the server refuses those
- * anyway, and offering one is a way of asking somebody to find that out the
- * hard way.
+ * The note is the instruction for everything the supplier is about to do
+ * on the page, and the outstanding items are where that work is, so the
+ * two sit together above the tabs rather than down a side rail. Each
+ * outstanding item is a way to its own answer.
  */
 export default function ProductReviewPanel({
-    organizationSlug,
     product,
     permissions,
     reviewNote,
     completeness,
-}: Props) {
+    templateLabel,
+    onOpenItem,
+}: StatusProps) {
+    const { canSubmit, canRule } = reviewMoves(product, permissions);
+
+    const outstanding = completeness.items.filter((item) => !item.satisfied);
+
+    return (
+        <section
+            aria-label={t('Review')}
+            className="workspace-panel grid gap-6 p-5 md:grid-cols-2"
+            data-test="product-review-panel"
+        >
+            <div className="grid content-start gap-2">
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                    {product.review_status_description}
+                </p>
+
+                {reviewNote ? (
+                    <blockquote
+                        data-test="product-review-note"
+                        className="border-l-2 border-amber-500 pl-3 text-sm leading-relaxed whitespace-pre-line dark:border-amber-400"
+                    >
+                        {reviewNote}
+                    </blockquote>
+                ) : null}
+
+                {product.submitted_at ? (
+                    <p className="text-muted-foreground text-xs">
+                        {t('Submitted :date', {
+                            date: on(product.submitted_at),
+                        })}
+                        {product.reviewed_at
+                            ? ` · ${t('Reviewed :date', { date: on(product.reviewed_at) })}`
+                            : null}
+                    </p>
+                ) : null}
+
+                {/*
+                 * Nothing here blocks the move -- the status says whose turn
+                 * it is, not whether the product is done -- but whoever is
+                 * about to make it should know what is still open first.
+                 */}
+                {(canSubmit || canRule) && outstanding.length > 0 ? (
+                    <p
+                        className="text-sm leading-relaxed text-amber-700 dark:text-amber-400"
+                        data-test="product-review-outstanding"
+                    >
+                        {tc(
+                            '1 requirement is still open.|:count requirements are still open.',
+                            outstanding.length,
+                        )}{' '}
+                        {canSubmit
+                            ? t(
+                                  'You can submit anyway, but the distributor may send it back.',
+                              )
+                            : t('Check the list before approving.')}
+                    </p>
+                ) : null}
+            </div>
+
+            <div
+                className="grid content-start gap-3"
+                data-test="product-requirements-summary"
+            >
+                <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                        {t(':template · :score% complete', {
+                            template: templateLabel,
+                            score: completeness.score,
+                        })}
+                    </p>
+                    {outstanding.length > 0 ? (
+                        <span className="text-sm whitespace-nowrap text-amber-700 dark:text-amber-400">
+                            {tc(
+                                '1 still needed|:count still needed',
+                                outstanding.length,
+                            )}
+                        </span>
+                    ) : null}
+                </div>
+
+                <CompletenessMeter
+                    score={completeness.score}
+                    className="w-full"
+                    hideLabel
+                    fill
+                />
+
+                {outstanding.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2">
+                        {outstanding.map((item) => (
+                            <li key={item.requirement}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    data-test="product-outstanding-item"
+                                    className="border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10"
+                                    onClick={() => onOpenItem(item)}
+                                >
+                                    {item.label}
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : completeness.items.length > 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                        {t('Everything the template asks for is in.')}
+                    </p>
+                ) : null}
+            </div>
+        </section>
+    );
+}
+
+/**
+ * Whose move it is, and the move itself.
+ *
+ * Says one thing at a time: a supplier with work outstanding is offered
+ * the button that hands it over, and a distributor holding somebody else's
+ * homework is offered the two that hand it back. Nobody is shown a button
+ * for a move that is not theirs to make -- the server refuses those anyway,
+ * and offering one is a way of asking somebody to find that out the hard
+ * way.
+ */
+export function ProductReviewActions({
+    organizationSlug,
+    product,
+    permissions,
+    completeness,
+}: ActionProps) {
     const [changesDialogOpen, setChangesDialogOpen] = useState(false);
     const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
     const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
+    const { canSubmit, canRule, canReopen } = reviewMoves(product, permissions);
+
     const outstanding = completeness.items.filter((item) => !item.satisfied);
 
-    const canSubmit =
-        permissions.canUpdateProduct &&
-        (product.review_status === 'draft' ||
-            product.review_status === 'changes_requested');
-
-    const canRule =
-        permissions.canReviewProduct && product.review_status === 'in_review';
-
-    const canReopen =
-        permissions.canReviewProduct && product.review_status === 'approved';
-
     return (
-        <div
-            className="workspace-panel space-y-4 p-5"
-            data-test="product-review-panel"
-        >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-medium">{t('Review')}</h2>
-                <ProductReviewStatusBadge
-                    status={product.review_status}
-                    label={product.review_status_label}
-                />
-            </div>
-
-            <p className="text-muted-foreground text-sm leading-relaxed">
-                {product.review_status_description}
-            </p>
-
-            {/*
-             * The note is the instruction for everything the supplier is
-             * about to do on this page, so it sits above the button rather
-             * than down in the history with the rest of the record.
-             */}
-            {reviewNote ? (
-                <blockquote
-                    data-test="product-review-note"
-                    className="border-l-2 border-amber-500 pl-3 text-sm leading-relaxed whitespace-pre-line dark:border-amber-400"
-                >
-                    {reviewNote}
-                </blockquote>
-            ) : null}
-
-            {product.submitted_at ? (
-                <p className="text-muted-foreground text-xs">
-                    {t('Submitted :date', { date: on(product.submitted_at) })}
-                    {product.reviewed_at
-                        ? ` · ${t('Reviewed :date', { date: on(product.reviewed_at) })}`
-                        : null}
-                </p>
-            ) : null}
-
-            {/*
-             * Nothing here blocks the move -- the status says whose turn it
-             * is, not whether the product is done -- but whoever is about to
-             * make it should know what is still open before they do.
-             */}
-            {(canSubmit || canRule) && outstanding.length > 0 ? (
-                <p
-                    className="text-sm leading-relaxed text-amber-700 dark:text-amber-400"
-                    data-test="product-review-outstanding"
-                >
-                    {tc(
-                        '1 requirement is still open.|:count requirements are still open.',
-                        outstanding.length,
-                    )}{' '}
-                    {canSubmit
-                        ? t(
-                              'You can submit anyway, but the distributor may send it back.',
-                          )
-                        : t('Check the list below before approving.')}
-                </p>
-            ) : null}
-
+        <>
             {canSubmit ? (
                 <Form
                     {...submit.form([organizationSlug, product.id])}
@@ -142,7 +230,6 @@ export default function ProductReviewPanel({
                     {({ processing }) => (
                         <Button
                             type="submit"
-                            className="w-full"
                             data-test="product-submit-review"
                             disabled={processing}
                         >
@@ -154,10 +241,17 @@ export default function ProductReviewPanel({
             ) : null}
 
             {canRule ? (
-                <div className="grid gap-2">
+                <>
+                    <Button
+                        variant="outline"
+                        data-test="product-request-changes"
+                        onClick={() => setChangesDialogOpen(true)}
+                    >
+                        <Undo2 className="h-4 w-4" /> {t('Request changes')}
+                    </Button>
+
                     {outstanding.length > 0 ? (
                         <Button
-                            className="w-full"
                             data-test="product-approve"
                             onClick={() => setApproveDialogOpen(true)}
                         >
@@ -171,7 +265,6 @@ export default function ProductReviewPanel({
                             {({ processing }) => (
                                 <Button
                                     type="submit"
-                                    className="w-full"
                                     data-test="product-approve"
                                     disabled={processing}
                                 >
@@ -180,16 +273,7 @@ export default function ProductReviewPanel({
                             )}
                         </Form>
                     )}
-
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        data-test="product-request-changes"
-                        onClick={() => setChangesDialogOpen(true)}
-                    >
-                        <Undo2 className="h-4 w-4" /> {t('Request changes')}
-                    </Button>
-                </div>
+                </>
             ) : null}
 
             {/*
@@ -199,7 +283,6 @@ export default function ProductReviewPanel({
             {canReopen ? (
                 <Button
                     variant="outline"
-                    className="w-full"
                     data-test="product-reopen-review"
                     onClick={() => setReopenDialogOpen(true)}
                 >
@@ -213,7 +296,7 @@ export default function ProductReviewPanel({
              * rather than left looking for the button.
              */}
             {!canSubmit && !canRule && product.review_status === 'in_review' ? (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-muted-foreground text-sm">
                     {t('Waiting on the distributor.')}
                 </p>
             ) : null}
@@ -243,6 +326,6 @@ export default function ProductReviewPanel({
                 open={reopenDialogOpen}
                 onOpenChange={setReopenDialogOpen}
             />
-        </div>
+        </>
     );
 }

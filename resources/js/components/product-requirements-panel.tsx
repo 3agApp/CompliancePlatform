@@ -47,7 +47,12 @@ export default function ProductRequirementsPanel({
                     </span>
                 </div>
 
-                <CompletenessMeter score={score} className="w-full" hideLabel />
+                <CompletenessMeter
+                    score={score}
+                    className="w-full"
+                    hideLabel
+                    fill
+                />
 
                 <p className="text-muted-foreground text-xs">
                     {t(

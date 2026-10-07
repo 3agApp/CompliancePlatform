@@ -1,6 +1,7 @@
-import { Deferred, Form, Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { Deferred, Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, ExternalLink, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import DeleteProductModal from '@/components/delete-product-modal';
 import Heading from '@/components/heading';
 import ProductAssessmentPanel, {
@@ -15,7 +16,9 @@ import ProductHistoryPanel, {
 } from '@/components/product-history-panel';
 import ProductPublicPanel from '@/components/product-public-panel';
 import ProductRequirementsPanel from '@/components/product-requirements-panel';
-import ProductReviewPanel from '@/components/product-review-panel';
+import ProductReviewPanel, {
+    ProductReviewActions,
+} from '@/components/product-review-panel';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import SerialLabelsPanel from '@/components/serial-labels-panel';
 import { Button } from '@/components/ui/button';
@@ -33,6 +36,7 @@ import type {
     ProductAssessmentUnavailableReason,
     ProductCategoryOption,
     ProductCompleteness,
+    ProductCompletenessItem,
     ProductDetail,
     ProductDocumentTypeOption,
     ProductEvent,
@@ -61,6 +65,19 @@ const COMPLIANCE_REQUIREMENTS: ProductRequirementKey[] = [
     'requires_safety_instructions',
     'requires_additional_notes',
 ];
+
+const TABS = [
+    'details',
+    'documents',
+    'assessment',
+    'history',
+    'public',
+] as const;
+
+type Tab = (typeof TABS)[number];
+
+/** The id the product form carries, so a button outside it can submit it. */
+const FORM_ID = 'edit-product-form';
 
 type Props = {
     product: ProductDetail;
@@ -96,6 +113,30 @@ type Props = {
     viewerType: OrganizationType;
 };
 
+/**
+ * The section of the details tab an outstanding requirement is answered
+ * in, or the documents tab for a paper.
+ */
+function sectionFor(item: ProductCompletenessItem): string {
+    if (item.group === 'document') {
+        return 'product-documents';
+    }
+
+    return COMPLIANCE_REQUIREMENTS.includes(item.requirement)
+        ? 'product-compliance'
+        : 'product-identification';
+}
+
+/**
+ * The tab named in the address, so a reload or a shared link opens the
+ * same one. Anything unknown falls back to the details.
+ */
+function tabFromUrl(url: string): Tab {
+    const requested = new URL(url, 'http://localhost').searchParams.get('tab');
+
+    return TABS.find((tab) => tab === requested) ?? 'details';
+}
+
 export default function ProductEdit({
     product,
     permissions,
@@ -120,14 +161,24 @@ export default function ProductEdit({
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
+    const pageUrl = usePage().url;
     const organizationSlug = currentOrganization?.slug ?? '';
 
     const [dirty, setDirty] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+    const [tab, setTab] = useState<Tab>(() => {
+        const requested = tabFromUrl(pageUrl);
+
+        return requested === 'assessment' && assessment === null
+            ? 'details'
+            : requested;
+    });
+
     /**
      * Whether the form's own save button is on screen. While it is, it is
-     * the only one the page needs.
+     * the only one the page needs. On any other tab it is not, so the
+     * floating bar carries an unsaved edit along wherever the person goes.
      */
     const [saveRowOnScreen, setSaveRowOnScreen] = useState(true);
 
@@ -190,17 +241,21 @@ export default function ProductEdit({
                 return counts;
             }
 
-            const section =
-                item.group === 'document'
-                    ? 'product-documents'
-                    : COMPLIANCE_REQUIREMENTS.includes(item.requirement)
-                      ? 'product-compliance'
-                      : 'product-identification';
+            const section = sectionFor(item);
 
             return { ...counts, [section]: (counts[section] ?? 0) + 1 };
         },
         {},
     );
+
+    /** The requirements the saved product still owes, for the field markers. */
+    const outstandingRequirements = completeness.items
+        .filter((item) => !item.satisfied)
+        .map((item) => item.requirement);
+
+    const outstandingDetails =
+        (outstanding['product-identification'] ?? 0) +
+        (outstanding['product-compliance'] ?? 0);
 
     /**
      * The kinds of paper the template asks for and has not been given, in
@@ -218,11 +273,56 @@ export default function ProductEdit({
     });
 
     /**
-     * Four sets of questions -- who supplies it, what it is, what it
-     * claims, and the papers behind it -- stacked down one page in the
-     * order a product is usually filled in. The links beside them move the
-     * viewport; nothing is hidden, so everything typed anywhere on the
-     * page is submitted together and find-in-page still finds it all.
+     * Kept in the address without a request, so the tab survives a reload
+     * and a redirect back to the page after one of its own forms posts.
+     */
+    const openTab = (next: Tab) => {
+        setTab(next);
+
+        const url = new URL(window.location.href);
+
+        if (next === 'details') {
+            url.searchParams.delete('tab');
+        } else {
+            url.searchParams.set('tab', next);
+        }
+
+        router.replace({
+            url: url.pathname + url.search,
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
+
+    /**
+     * Where an outstanding item from the status strip is answered: the
+     * documents tab for a paper, else the section of the details holding
+     * the field -- scrolled to once the tab it sits on is showing.
+     */
+    const openItem = (item: ProductCompletenessItem) => {
+        const section = sectionFor(item);
+
+        if (section === 'product-documents') {
+            openTab('documents');
+
+            return;
+        }
+
+        openTab('details');
+
+        requestAnimationFrame(() => {
+            const target = document.getElementById(section);
+
+            target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target?.focus({ preventScroll: true });
+        });
+    };
+
+    /**
+     * The three sets of questions on the details tab -- who supplies it,
+     * what it is, and what it claims -- stacked in the order a product is
+     * usually filled in. They stay one form on one tab, so everything typed
+     * is submitted together.
      */
     const sections = [
         { id: 'product-classification', label: t('Classification') },
@@ -246,22 +346,44 @@ export default function ProductEdit({
                 />
             ),
         },
+    ];
+
+    const tabs: Array<{ key: Tab; label: string; badge?: React.ReactNode }> = [
         {
-            id: 'product-documents',
-            label: t('Documents'),
-            badge: outstanding['product-documents'] ? (
+            key: 'details',
+            label: t('Details'),
+            badge: (
                 <OutstandingBadge
-                    section="product-documents"
-                    count={outstanding['product-documents']}
+                    section="details"
+                    count={outstandingDetails}
                 />
-            ) : product.documents.length > 0 ? (
-                <SectionBadge>{product.documents.length}</SectionBadge>
-            ) : undefined,
+            ),
+        },
+        {
+            key: 'documents',
+            label: t('Documents'),
+            badge: (
+                <>
+                    {product.documents.length > 0 ? (
+                        <SectionBadge>{product.documents.length}</SectionBadge>
+                    ) : null}
+                    <OutstandingBadge
+                        section="product-documents"
+                        count={outstanding['product-documents']}
+                    />
+                </>
+            ),
         },
         ...(assessment !== null
-            ? [{ id: 'product-assessment', label: t('AI check') }]
+            ? [{ key: 'assessment' as const, label: t('AI check') }]
             : []),
-        { id: 'product-history', label: t('History') },
+        { key: 'history', label: t('Activity') },
+        {
+            key: 'public',
+            label: permissions.canManageSerialLabels
+                ? t('Public page & labels')
+                : t('Public page'),
+        },
     ];
 
     return (
@@ -286,46 +408,100 @@ export default function ProductEdit({
                                 {t('Products')}
                             </Link>
                         </Button>
-                        <h1 className="page-title break-words">
-                            {product.name}
-                        </h1>
-                        <ProductReviewStatusBadge
-                            status={product.review_status}
-                            label={product.review_status_label}
-                        />
-                        {product.counterparty ? (
-                            <p className="text-muted-foreground text-sm">
-                                {tn(
-                                    viewerType === 'supplier'
-                                        ? 'Assigned by :name'
-                                        : 'Supplied by :name',
-                                    {
-                                        name: (
-                                            <span className="text-foreground font-medium">
-                                                {product.counterparty}
-                                            </span>
-                                        ),
-                                    },
-                                )}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h1 className="page-title break-words">
+                                {product.name}
+                            </h1>
+                            <ProductReviewStatusBadge
+                                status={product.review_status}
+                                label={product.review_status_label}
+                            />
+                        </div>
+                        <div className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                            {product.counterparty ? (
+                                <p>
+                                    {tn(
+                                        viewerType === 'supplier'
+                                            ? 'Assigned by :name'
+                                            : 'Supplied by :name',
+                                        {
+                                            name: (
+                                                <span className="text-foreground font-medium">
+                                                    {product.counterparty}
+                                                </span>
+                                            ),
+                                        },
+                                    )}
+                                </p>
+                            ) : null}
+                            <p>
+                                {tn('Template :name', {
+                                    name: (
+                                        <span className="text-foreground font-medium">
+                                            {savedTemplateLabel}
+                                        </span>
+                                    ),
+                                })}
                             </p>
-                        ) : null}
+                        </div>
                     </div>
 
-                    {permissions.canDeleteProduct ? (
-                        <Button
-                            variant="outline"
-                            data-test="product-delete-button"
-                            onClick={() => setDeleteDialogOpen(true)}
-                        >
-                            <Trash2 className="h-4 w-4" /> {t('Delete product')}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="ghost" asChild>
+                            <a
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                data-test="product-public-page-link"
+                            >
+                                <ExternalLink className="h-4 w-4" />{' '}
+                                {t('Public page')}
+                            </a>
                         </Button>
-                    ) : null}
+
+                        {permissions.canDeleteProduct ? (
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                aria-label={t('Delete product')}
+                                title={t('Delete product')}
+                                data-test="product-delete-button"
+                                onClick={() => setDeleteDialogOpen(true)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        ) : null}
+
+                        <ProductReviewActions
+                            organizationSlug={organizationSlug}
+                            product={product}
+                            permissions={permissions}
+                            completeness={completeness}
+                        />
+                    </div>
                 </div>
 
-                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                    <div className="grid min-w-0 gap-6">
+                <ProductReviewPanel
+                    product={product}
+                    permissions={permissions}
+                    reviewNote={reviewNote}
+                    completeness={completeness}
+                    templateLabel={savedTemplateLabel}
+                    onOpenItem={openItem}
+                />
+
+                <ProductTabs tabs={tabs} active={tab} onChange={openTab} />
+
+                {/*
+                 * Every tab stays mounted and is only hidden, so an edit
+                 * typed on the details is still there after a look at the
+                 * documents, and the deferred panels load once.
+                 */}
+                <TabPanel tab="details" active={tab}>
+                    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
                         <Form
                             {...update.form([organizationSlug, product.id])}
+                            id={FORM_ID}
                             /**
                              * The component is kept across the save, so the
                              * place the person had scrolled to is still the
@@ -337,7 +513,7 @@ export default function ProductEdit({
                                 preserveScroll: true,
                                 preserveState: true,
                             }}
-                            className="space-y-6"
+                            className="min-w-0 space-y-6"
                             /**
                              * Typing raises input; the selects raise only
                              * change. Both are needed, or picking a supplier
@@ -347,6 +523,11 @@ export default function ProductEdit({
                             onInput={() => setDirty(true)}
                             onChange={() => setDirty(true)}
                             onSuccess={() => setDirty(false)}
+                            /**
+                             * Saved from the bar on another tab, a refused
+                             * field would otherwise complain out of sight.
+                             */
+                            onError={() => setTab('details')}
                         >
                             {({ errors, processing }) => (
                                 <>
@@ -439,6 +620,9 @@ export default function ProductEdit({
                                             requirements={
                                                 template?.requirements ?? []
                                             }
+                                            outstanding={
+                                                outstandingRequirements
+                                            }
                                             product={product}
                                             disabled={
                                                 !permissions.canUpdateProduct
@@ -465,6 +649,9 @@ export default function ProductEdit({
                                             requirements={
                                                 template?.requirements ?? []
                                             }
+                                            outstanding={
+                                                outstandingRequirements
+                                            }
                                             product={product}
                                             disabled={
                                                 !permissions.canUpdateProduct
@@ -473,14 +660,10 @@ export default function ProductEdit({
                                         />
                                     </section>
 
-                                    {/*
-                                     * One button for the three sections
-                                     * above, which are one form however far
-                                     * down the page the person happens to be.
-                                     */}
                                     {permissions.canUpdateProduct ? (
                                         <SaveRow
                                             processing={processing}
+                                            visible={tab === 'details'}
                                             onScreenChange={setSaveRowOnScreen}
                                         />
                                     ) : (
@@ -495,95 +678,97 @@ export default function ProductEdit({
                         </Form>
 
                         {/*
-                         * The documents panel posts its own multipart form,
-                         * so it sits below the one above rather than inside
-                         * it -- uploading a file never touches the fields.
+                         * Taller than a laptop screen once the checklist is
+                         * long, so the rail is held to the viewport and
+                         * scrolls on its own. The padding keeps focus rings
+                         * from being clipped by the scroll box.
                          */}
-                        <section
-                            id="product-documents"
-                            tabIndex={-1}
-                            className="scroll-mt-6 outline-none"
-                        >
-                            <ProductDocumentsPanel
-                                organizationSlug={organizationSlug}
-                                productId={product.id}
-                                documents={product.documents}
-                                availableDocumentTypes={availableDocumentTypes}
-                                outstandingTypes={outstandingDocumentTypes}
-                                canUpload={permissions.canUpdateProduct}
-                                canPublish={permissions.canPublishDocuments}
-                                canGuessKinds={canGuessDocumentKinds}
+                        <div className="grid gap-4 lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto lg:p-1">
+                            {/*
+                             * Hidden on small screens, where the rail sits
+                             * below the form: a link that scrolls backwards
+                             * past everything it names is worse than a plain
+                             * scroll.
+                             */}
+                            <SectionNav
+                                sections={sections}
+                                idPrefix="edit-product"
+                                className="hidden lg:block"
                             />
-                        </section>
 
-                        {assessment !== null ? (
-                            <section
-                                id="product-assessment"
-                                tabIndex={-1}
-                                className="scroll-mt-6 outline-none"
-                            >
-                                <Deferred
-                                    data="assessment"
-                                    fallback={<ProductAssessmentSkeleton />}
-                                >
-                                    <Assessment
-                                        organizationSlug={organizationSlug}
-                                        product={product}
-                                        unavailableReason={
-                                            assessmentUnavailableReason
-                                        }
-                                        canReview={permissions.canReviewProduct}
-                                    />
-                                </Deferred>
-                            </section>
-                        ) : null}
+                            <ProductRequirementsPanel
+                                completeness={completeness}
+                                templateLabel={savedTemplateLabel}
+                            />
+                        </div>
+                    </div>
+                </TabPanel>
 
+                {/*
+                 * The documents panel posts its own multipart form, so it
+                 * sits outside the one above -- uploading a file never
+                 * touches the fields.
+                 */}
+                <TabPanel tab="documents" active={tab}>
+                    <section
+                        id="product-documents"
+                        tabIndex={-1}
+                        className="outline-none"
+                    >
+                        <ProductDocumentsPanel
+                            organizationSlug={organizationSlug}
+                            productId={product.id}
+                            documents={product.documents}
+                            availableDocumentTypes={availableDocumentTypes}
+                            outstandingTypes={outstandingDocumentTypes}
+                            canUpload={permissions.canUpdateProduct}
+                            canPublish={permissions.canPublishDocuments}
+                            canGuessKinds={canGuessDocumentKinds}
+                        />
+                    </section>
+                </TabPanel>
+
+                {assessment !== null ? (
+                    <TabPanel tab="assessment" active={tab}>
                         <section
-                            id="product-history"
+                            id="product-assessment"
                             tabIndex={-1}
-                            className="scroll-mt-6 outline-none"
+                            className="outline-none"
                         >
                             <Deferred
-                                data="history"
-                                fallback={<ProductHistorySkeleton />}
+                                data="assessment"
+                                fallback={<ProductAssessmentSkeleton />}
                             >
-                                <History />
+                                <Assessment
+                                    organizationSlug={organizationSlug}
+                                    product={product}
+                                    unavailableReason={
+                                        assessmentUnavailableReason
+                                    }
+                                    canReview={permissions.canReviewProduct}
+                                />
                             </Deferred>
                         </section>
-                    </div>
+                    </TabPanel>
+                ) : null}
 
-                    {/*
-                     * Taller than a laptop screen once every panel is in it,
-                     * so the rail is held to the viewport and scrolls on its
-                     * own. Pinned whole, its lower panels would be out of
-                     * reach until the form beside it ran out. The padding
-                     * keeps focus rings from being clipped by the scroll box.
-                     */}
-                    <div className="grid gap-4 lg:sticky lg:top-6 lg:-m-1 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto lg:p-1">
-                        {/*
-                         * Hidden on small screens, where the rail sits below
-                         * the form: a link that scrolls backwards past
-                         * everything it names is worse than a plain scroll.
-                         */}
-                        <SectionNav
-                            sections={sections}
-                            idPrefix="edit-product"
-                            className="hidden lg:block"
-                        />
+                <TabPanel tab="history" active={tab}>
+                    <section
+                        id="product-history"
+                        tabIndex={-1}
+                        className="outline-none"
+                    >
+                        <Deferred
+                            data="history"
+                            fallback={<ProductHistorySkeleton />}
+                        >
+                            <History />
+                        </Deferred>
+                    </section>
+                </TabPanel>
 
-                        <ProductReviewPanel
-                            organizationSlug={organizationSlug}
-                            product={product}
-                            permissions={permissions}
-                            reviewNote={reviewNote}
-                            completeness={completeness}
-                        />
-
-                        <ProductRequirementsPanel
-                            completeness={completeness}
-                            templateLabel={savedTemplateLabel}
-                        />
-
+                <TabPanel tab="public" active={tab}>
+                    <div className="grid items-start gap-6 lg:grid-cols-2">
                         <ProductPublicPanel
                             organizationSlug={organizationSlug}
                             productId={product.id}
@@ -602,7 +787,7 @@ export default function ProductEdit({
                             />
                         ) : null}
                     </div>
-                </div>
+                </TabPanel>
             </div>
 
             <DeleteProductModal
@@ -612,6 +797,113 @@ export default function ProductEdit({
                 onOpenChange={setDeleteDialogOpen}
             />
         </>
+    );
+}
+
+/**
+ * The row of tabs under the status strip.
+ *
+ * Arrow keys move between them as the tab pattern expects, and only the
+ * open one sits in the Tab order, so the keyboard reaches the panel in
+ * one press rather than five.
+ */
+function ProductTabs({
+    tabs,
+    active,
+    onChange,
+}: {
+    tabs: Array<{ key: Tab; label: string; badge?: React.ReactNode }>;
+    active: Tab;
+    onChange: (tab: Tab) => void;
+}) {
+    const buttons = useRef<Partial<Record<Tab, HTMLButtonElement>>>({});
+
+    const step = (event: React.KeyboardEvent, from: number) => {
+        const offsets: Record<string, number> = {
+            ArrowRight: 1,
+            ArrowLeft: -1,
+        };
+
+        let next: number | undefined;
+
+        if (event.key in offsets) {
+            next = (from + offsets[event.key] + tabs.length) % tabs.length;
+        } else if (event.key === 'Home') {
+            next = 0;
+        } else if (event.key === 'End') {
+            next = tabs.length - 1;
+        }
+
+        if (next === undefined) {
+            return;
+        }
+
+        event.preventDefault();
+        onChange(tabs[next].key);
+        buttons.current[tabs[next].key]?.focus();
+    };
+
+    return (
+        <div
+            role="tablist"
+            aria-label={t('Product sections')}
+            className="-mb-2 flex gap-6 overflow-x-auto shadow-[inset_0_-1px_0_var(--border)]"
+        >
+            {tabs.map((tab, position) => {
+                const isActive = tab.key === active;
+
+                return (
+                    <button
+                        key={tab.key}
+                        ref={(element) => {
+                            if (element !== null) {
+                                buttons.current[tab.key] = element;
+                            }
+                        }}
+                        type="button"
+                        role="tab"
+                        id={`product-tab-${tab.key}`}
+                        aria-selected={isActive}
+                        aria-controls={`product-tabpanel-${tab.key}`}
+                        tabIndex={isActive ? 0 : -1}
+                        data-test={`product-tab-${tab.key}`}
+                        onClick={() => onChange(tab.key)}
+                        onKeyDown={(event) => step(event, position)}
+                        className={cn(
+                            'focus-visible:ring-ring inline-flex shrink-0 items-center gap-2 border-b-2 px-0.5 py-3 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2',
+                            isActive
+                                ? 'border-foreground text-foreground'
+                                : 'text-muted-foreground hover:text-foreground border-transparent',
+                        )}
+                    >
+                        {tab.label}
+                        {tab.badge}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function TabPanel({
+    tab,
+    active,
+    children,
+}: {
+    tab: Tab;
+    active: Tab;
+    children: React.ReactNode;
+}) {
+    return (
+        <div
+            role="tabpanel"
+            id={`product-tabpanel-${tab}`}
+            aria-labelledby={`product-tab-${tab}`}
+            data-test={`product-tabpanel-${tab}`}
+            hidden={tab !== active}
+        >
+            {children}
+        </div>
     );
 }
 
@@ -680,18 +972,21 @@ function OutstandingBadge({
 /**
  * The form's own save button, which says whether it can be seen.
  *
- * The floating bar below is only worth showing when this one has scrolled
- * away: two save buttons on screen at once is a page asking the same
- * question twice.
+ * The floating bar below is only worth showing when this one is out of
+ * sight -- scrolled away, or on a tab that is not open: two save buttons
+ * on screen at once is a page asking the same question twice.
  */
 function SaveRow({
     processing,
+    visible,
     onScreenChange,
 }: {
     processing: boolean;
+    visible: boolean;
     onScreenChange: (onScreen: boolean) => void;
 }) {
     const row = useRef<HTMLDivElement>(null);
+    const [intersecting, setIntersecting] = useState(true);
 
     useEffect(() => {
         const element = row.current;
@@ -701,13 +996,17 @@ function SaveRow({
         }
 
         const observer = new IntersectionObserver(([entry]) =>
-            onScreenChange(entry.isIntersecting),
+            setIntersecting(entry.isIntersecting),
         );
 
         observer.observe(element);
 
         return () => observer.disconnect();
-    }, [onScreenChange]);
+    }, []);
+
+    useEffect(() => {
+        onScreenChange(visible && intersecting);
+    }, [visible, intersecting, onScreenChange]);
 
     return (
         <div ref={row} className="flex items-center gap-3">
@@ -723,13 +1022,13 @@ function SaveRow({
 }
 
 /**
- * The save button, brought to wherever the person is on the page.
+ * The save button, brought to wherever the person is.
  *
- * The form runs the height of four panels, so the button at its foot can
- * be a long way from the field just edited -- and an edit nobody can see
- * a way to save is an edit that gets lost on the way out. It appears only
- * once something has actually changed, which also makes it the page's
- * answer to "is any of this unsaved?".
+ * The form runs the height of three panels and sits on one tab of five,
+ * so the button at its foot can be a long way from where the person is --
+ * and an edit nobody can see a way to save is an edit that gets lost on
+ * the way out. Drawn outside the form, so it still shows while the tab
+ * holding the form is hidden, and tied back to it by the form's id.
  */
 function UnsavedChangesBar({
     dirty,
@@ -742,17 +1041,19 @@ function UnsavedChangesBar({
         return null;
     }
 
-    return (
+    return createPortal(
         <div
             data-test="product-unsaved-bar"
             className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4"
         >
             <div className="bg-card pointer-events-auto flex items-center gap-3 rounded-full border py-2 pr-2 pl-5 shadow-lg">
+                <span className="size-2 rounded-full bg-amber-500" />
                 <span className="text-muted-foreground text-sm whitespace-nowrap">
                     {t('Unsaved changes')}
                 </span>
                 <Button
                     type="submit"
+                    form={FORM_ID}
                     size="sm"
                     className="rounded-full"
                     data-test="product-unsaved-bar-submit"
@@ -761,7 +1062,8 @@ function UnsavedChangesBar({
                     {processing ? t('Saving…') : t('Save changes')}
                 </Button>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
 

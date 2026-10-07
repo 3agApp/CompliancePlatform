@@ -55,6 +55,7 @@ test('a pdf opens in the viewer when its name is clicked', function () {
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('en71-part-1.pdf')
         ->click('@product-document-preview')
@@ -89,6 +90,7 @@ test('an image opens as a picture rather than in a frame', function () {
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->click('@product-document-preview')
         ->assertPresent('@document-preview-image')
@@ -117,6 +119,7 @@ test('a file the browser cannot show is a download rather than a preview', funct
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('manual.docx')
         /* No viewer is offered for it, because there is nothing to view it with. */

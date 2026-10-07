@@ -42,6 +42,14 @@ test('the compliance details of a product are filled in on its own page', functi
     ]))
         ->assertSee('Compliance details')
         ->fill('@product-age-grading', '3+')
+        /** Unanswered and not asked for, the long answers wait behind a button each. */
+        ->assertMissing('@product-warning-text')
+        ->click('@product-add-safety-notice')
+        ->click('@product-add-warning-text')
+        ->click('@product-add-material-information')
+        ->click('@product-add-usage-restrictions')
+        ->click('@product-add-safety-instructions')
+        ->click('@product-add-additional-notes')
         ->fill('@product-safety-notice', 'Keep the packaging until the product has been checked.')
         ->fill('@product-warning-text', 'Not suitable for children under 3 years. Small parts.')
         ->fill('@product-material-information', 'ABS plastic, neodymium magnets, water based paint.')
@@ -91,6 +99,7 @@ test('a document is taken off a product through the confirmation dialog', functi
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('Test report')
         ->assertSee('en71-part-1.pdf')
@@ -136,6 +145,7 @@ test('documents of the same kind are listed together under their heading', funct
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('magnets.pdf')
         ->assertSee('paint.pdf')
@@ -179,6 +189,7 @@ test('the documents panel offers the kinds the template is still waiting for', f
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('Still needed')
         /** The report has been filed, so only the certificate is offered. */
@@ -186,15 +197,21 @@ test('the documents panel offers the kinds the template is still waiting for', f
         ->assertPresent('@document-kind-certificate')
         /** And the warning text is typed into the form, not filed here. */
         ->assertMissing('@document-kind-warning_text')
-        /** Filing is a dialog now, so the page itself offers no drop zone. */
         ->assertMissing('@upload-documents-modal')
-        /** A chip is a way into it. */
+        /** The slot is a way into the dialog. */
         ->click('@document-kind-certificate')
         ->assertPresent('@upload-documents-modal')
         ->assertSee('Drag files here')
         /** Nothing is chosen yet, so there is nothing to upload. */
         ->assertButtonDisabled('@upload-document-submit')
         ->assertMissing('@document-review-table')
+        /**
+         * A file chosen from the certificate's slot is filed as a
+         * certificate without being asked, so it is ready to go.
+         */
+        ->attach('@document-file', aPdfNamed('en71-certificate.pdf'))
+        ->assertSeeIn('@pending-document-type-0', 'Certificate')
+        ->assertButtonEnabled('@upload-document-submit')
         /** And it closes again without filing anything. */
         ->click('@upload-documents-cancel')
         ->assertMissing('@upload-documents-modal')
@@ -219,6 +236,7 @@ test('a member sees the documents without the upload and delete controls', funct
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('ce-marking.pdf')
         ->assertMissing('@upload-documents-button')
@@ -259,6 +277,7 @@ test('the kind of a chosen file is proposed for the person to confirm', function
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->click('@upload-documents-button')
         ->assertButtonDisabled('@upload-document-submit')
@@ -304,6 +323,7 @@ test('a file the AI cannot place is left for the person to name', function () {
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->click('@upload-documents-button')
         ->attach('@document-file', aPdfNamed('scan_0012.pdf'))
@@ -330,6 +350,7 @@ test('an organization with no AI provider is not offered the guess at all', func
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->click('@upload-documents-button')
         ->attach('@document-file', aPdfNamed('DoC-2026.pdf'))

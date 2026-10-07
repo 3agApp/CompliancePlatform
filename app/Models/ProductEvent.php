@@ -114,11 +114,14 @@ class ProductEvent extends Model
      * recorded against and labels move. They are turned into labels here, at
      * the one point the history is read.
      *
+     * Read through getAttribute(), because $this->changes is Eloquent's own
+     * record of unsaved edits and is always empty on a model just loaded.
+     *
      * @return array<array{field: string, label: string, from: string|null, to: string|null}>
      */
     public function changedFields(): array
     {
-        return collect($this->changes ?? [])
+        return collect($this->getAttribute('changes') ?? [])
             ->map(fn (array $change, string $field) => [
                 'field' => $field,
                 'label' => self::labelForField($field),

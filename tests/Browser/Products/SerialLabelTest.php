@@ -98,7 +98,7 @@ test('a distributor issues a run of labels and withdraws it', function () {
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'public']))
         ->assertSee('Serialised labels')
         ->assertMissing('@product-qr-panel')
         ->fill('@label-quantity', '12')
@@ -137,7 +137,7 @@ test('the run overview shows unusual serials first and filters between them', fu
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'public']))
         ->assertSee('1 unusual')
         ->click('@label-batch-overview')
         ->assertSee('Labels for Spielwaren Muster AG')

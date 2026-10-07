@@ -142,6 +142,7 @@ test('a distributor sets the public seal by hand from the product page', functio
     $page = visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'public',
     ]));
 
     $page->assertSee('Public page')
@@ -181,9 +182,10 @@ test('a distributor releases a test report and the public page offers it for dow
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'documents']))
         ->click('@product-document-visibility-button')
         ->assertPresent('@product-document-public-badge')
+        ->click('@product-tab-history')
         ->assertSee('Document released to the public page')
         ->assertNoJavaScriptErrors();
 
