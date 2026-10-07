@@ -1,5 +1,6 @@
 import { FileText, ListChecks } from 'lucide-react';
 import type { ProductRequirementKey, ProductRequirementOption } from '@/types';
+import { t, tc } from '@/lib/i18n';
 
 type Props = {
     requirements: ProductRequirementKey[];
@@ -28,7 +29,7 @@ export default function TemplateRequirementSummary({
     if (asked.length === 0) {
         return (
             <span className="text-muted-foreground text-xs">
-                Asks for nothing yet
+                {t('Asks for nothing yet')}
             </span>
         );
     }
@@ -43,10 +44,10 @@ export default function TemplateRequirementSummary({
             <span className="text-muted-foreground text-xs">
                 {[
                     documents.length > 0
-                        ? `${documents.length} ${documents.length === 1 ? 'document' : 'documents'}`
+                        ? tc('1 document|:count documents', documents.length)
                         : null,
                     fields.length > 0
-                        ? `${fields.length} ${fields.length === 1 ? 'field' : 'fields'}`
+                        ? tc('1 field|:count fields', fields.length)
                         : null,
                 ]
                     .filter(Boolean)
@@ -59,12 +60,12 @@ export default function TemplateRequirementSummary({
         <div className="grid gap-3 sm:grid-cols-2">
             <Group
                 icon={<FileText className="size-3.5" />}
-                title="Documents"
+                title={t('Documents')}
                 items={documents}
             />
             <Group
                 icon={<ListChecks className="size-3.5" />}
-                title="Product data"
+                title={t('Product data')}
                 items={fields}
             />
         </div>

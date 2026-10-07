@@ -36,6 +36,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { t, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as categoriesIndex } from '@/routes/categories';
 import { create, edit, index as productsIndex } from '@/routes/products';
@@ -95,7 +96,7 @@ export default function ProductsIndex({
     const organizationSlug = currentOrganization?.slug ?? '';
 
     const isSupplier = viewerType === 'supplier';
-    const counterpartyLabel = isSupplier ? 'Distributor' : 'Supplier';
+    const counterpartyLabel = isSupplier ? t('Distributor') : t('Supplier');
 
     const isFiltered =
         filters.connection !== null ||
@@ -158,16 +159,28 @@ export default function ProductsIndex({
 
     return (
         <>
-            <Head title="Products" />
+            <Head title={t('Products')} />
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <h1 className="page-title">Products</h1>
+                        <h1 className="page-title">{t('Products')}</h1>
                         <p className="text-muted-foreground text-sm">
                             {isSupplier
-                                ? `Products distributors have assigned to ${currentOrganization?.name}.`
-                                : `The products ${currentOrganization?.name} is responsible for.`}
+                                ? t(
+                                      'Products distributors have assigned to :organization.',
+                                      {
+                                          organization:
+                                              currentOrganization?.name,
+                                      },
+                                  )
+                                : t(
+                                      'The products :organization is responsible for.',
+                                      {
+                                          organization:
+                                              currentOrganization?.name,
+                                      },
+                                  )}
                         </p>
                     </div>
 
@@ -177,7 +190,7 @@ export default function ProductsIndex({
                                 href={create(organizationSlug)}
                                 data-test="products-new-product-button"
                             >
-                                <Plus /> New product
+                                <Plus /> {t('New product')}
                             </Link>
                         </Button>
                     ) : needsSupplier ? (
@@ -186,7 +199,7 @@ export default function ProductsIndex({
                                 href={suppliersIndex(organizationSlug)}
                                 data-test="products-invite-supplier-button"
                             >
-                                <Plus /> Invite a supplier
+                                <Plus /> {t('Invite a supplier')}
                             </Link>
                         </Button>
                     ) : needsTemplate ? (
@@ -195,7 +208,7 @@ export default function ProductsIndex({
                                 href={categoriesIndex(organizationSlug)}
                                 data-test="products-add-template-button"
                             >
-                                <Plus /> Add a template
+                                <Plus /> {t('Add a template')}
                             </Link>
                         </Button>
                     ) : null}
@@ -206,7 +219,9 @@ export default function ProductsIndex({
                         organizationSlug={organizationSlug}
                         filters={filters}
                         counterparties={counterparties}
-                        counterpartyLabel={counterpartyLabel}
+                        counterpartyKind={
+                            isSupplier ? 'distributor' : 'supplier'
+                        }
                         filterableCategories={filterableCategories}
                         filterableBrands={filterableBrands}
                         availableStatuses={availableStatuses}
@@ -219,31 +234,33 @@ export default function ProductsIndex({
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead className="px-4 md:pl-6">
-                                        Name
+                                        {t('Name')}
                                     </TableHead>
                                     <TableHead className="w-px px-4">
-                                        Status
+                                        {t('Status')}
                                     </TableHead>
                                     <TableHead className="w-px px-4">
-                                        Complete
+                                        {t('Complete')}
                                     </TableHead>
                                     <TableHead className="px-4">
                                         {counterpartyLabel}
                                     </TableHead>
                                     <TableHead className="px-4">
-                                        Brand
+                                        {t('Brand')}
                                     </TableHead>
                                     <TableHead className="px-4">
-                                        Category
+                                        {t('Category')}
                                     </TableHead>
                                     <TableHead className={SECONDARY_COLUMN}>
-                                        EAN / barcode
+                                        {t('EAN / barcode')}
                                     </TableHead>
                                     <TableHead className={SECONDARY_COLUMN}>
-                                        Country of origin
+                                        {t('Country of origin')}
                                     </TableHead>
                                     <TableHead className="w-px px-4 md:pr-6">
-                                        <span className="sr-only">Actions</span>
+                                        <span className="sr-only">
+                                            {t('Actions')}
+                                        </span>
                                     </TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -277,7 +294,7 @@ export default function ProductsIndex({
                                         </TableCell>
                                         <TableCell
                                             className="px-4"
-                                            data-label="Status"
+                                            data-label={t('Status')}
                                         >
                                             <ProductReviewStatusBadge
                                                 status={product.review_status}
@@ -288,7 +305,7 @@ export default function ProductsIndex({
                                         </TableCell>
                                         <TableCell
                                             className="px-4"
-                                            data-label="Complete"
+                                            data-label={t('Complete')}
                                         >
                                             <CompletenessMeter
                                                 score={
@@ -315,22 +332,22 @@ export default function ProductsIndex({
                                                     {product.connection_status ===
                                                     'pending'
                                                         ? product.connection_is_invited
-                                                            ? 'Pending'
-                                                            : 'Not invited'
-                                                        : 'Revoked'}
+                                                            ? t('Pending')
+                                                            : t('Not invited')
+                                                        : t('Revoked')}
                                                 </Badge>
                                             ) : null}
                                         </TableCell>
                                         <TableCell
                                             className="text-muted-foreground px-4 whitespace-normal"
-                                            data-label="Brand"
+                                            data-label={t('Brand')}
                                         >
                                             {product.brand_label ?? '—'}
                                         </TableCell>
                                         <TableCell
                                             className="text-muted-foreground px-4 whitespace-normal"
                                             data-test="product-list-category"
-                                            data-label="Category"
+                                            data-label={t('Category')}
                                         >
                                             {product.category_label}
                                         </TableCell>
@@ -339,7 +356,7 @@ export default function ProductsIndex({
                                                 SECONDARY_COLUMN,
                                                 'text-muted-foreground font-mono text-xs',
                                             )}
-                                            data-label="EAN / barcode"
+                                            data-label={t('EAN / barcode')}
                                         >
                                             {product.ean ?? '—'}
                                         </TableCell>
@@ -348,7 +365,7 @@ export default function ProductsIndex({
                                                 SECONDARY_COLUMN,
                                                 'text-muted-foreground',
                                             )}
-                                            data-label="Country of origin"
+                                            data-label={t('Country of origin')}
                                         >
                                             {product.country_of_origin_label ??
                                                 '—'}
@@ -372,8 +389,12 @@ export default function ProductsIndex({
                                                                 <Pencil className="h-4 w-4" />
                                                                 <span className="sr-only">
                                                                     {permissions.canUpdateProduct
-                                                                        ? 'Edit product'
-                                                                        : 'View product'}
+                                                                        ? t(
+                                                                              'Edit product',
+                                                                          )
+                                                                        : t(
+                                                                              'View product',
+                                                                          )}
                                                                 </span>
                                                             </Link>
                                                         </Button>
@@ -381,8 +402,12 @@ export default function ProductsIndex({
                                                     <TooltipContent>
                                                         <p>
                                                             {permissions.canUpdateProduct
-                                                                ? 'Edit product'
-                                                                : 'View product'}
+                                                                ? t(
+                                                                      'Edit product',
+                                                                  )
+                                                                : t(
+                                                                      'View product',
+                                                                  )}
                                                         </p>
                                                     </TooltipContent>
                                                 </Tooltip>
@@ -402,14 +427,17 @@ export default function ProductsIndex({
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                                 <span className="sr-only">
-                                                                    Delete
-                                                                    product
+                                                                    {t(
+                                                                        'Delete product',
+                                                                    )}
                                                                 </span>
                                                             </Button>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
                                                             <p>
-                                                                Delete product
+                                                                {t(
+                                                                    'Delete product',
+                                                                )}
                                                             </p>
                                                         </TooltipContent>
                                                     </Tooltip>
@@ -424,15 +452,18 @@ export default function ProductsIndex({
                         <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
                             <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3">
                                 <p data-test="product-count">
-                                    Showing{' '}
-                                    <span className="text-foreground font-medium">
-                                        {products.from}–{products.to}
-                                    </span>{' '}
-                                    of{' '}
-                                    <span className="text-foreground font-medium">
-                                        {products.total}
-                                    </span>{' '}
-                                    products
+                                    {tn('Showing :range of :total products', {
+                                        range: (
+                                            <span className="text-foreground font-medium">
+                                                {products.from}–{products.to}
+                                            </span>
+                                        ),
+                                        total: (
+                                            <span className="text-foreground font-medium">
+                                                {products.total}
+                                            </span>
+                                        ),
+                                    })}
                                 </p>
 
                                 <Select
@@ -444,7 +475,7 @@ export default function ProductsIndex({
                                     <SelectTrigger
                                         size="sm"
                                         className="w-28"
-                                        aria-label="Products per page"
+                                        aria-label={t('Products per page')}
                                         data-test="per-page"
                                     >
                                         <SelectValue />
@@ -455,7 +486,7 @@ export default function ProductsIndex({
                                                 key={size}
                                                 value={String(size)}
                                             >
-                                                {size} / page
+                                                {t(':size / page', { size })}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -465,11 +496,11 @@ export default function ProductsIndex({
                             {products.last_page > 1 ? (
                                 <nav
                                     className="flex flex-wrap items-center justify-center gap-1"
-                                    aria-label="Pagination"
+                                    aria-label={t('Pagination')}
                                 >
                                     <PaginationArrow
                                         href={products.prev_page_url}
-                                        label="Previous page"
+                                        label={t('Previous page')}
                                         icon={ChevronLeft}
                                         test="pagination-previous"
                                     />
@@ -512,7 +543,7 @@ export default function ProductsIndex({
                                         )}
                                     <PaginationArrow
                                         href={products.next_page_url}
-                                        label="Next page"
+                                        label={t('Next page')}
                                         icon={ChevronRight}
                                         test="pagination-next"
                                     />
@@ -530,12 +561,16 @@ export default function ProductsIndex({
                         </div>
                         <div className="space-y-1">
                             <h2 className="font-medium">
-                                No products match these filters
+                                {t('No products match these filters')}
                             </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                 {filters.search !== null
-                                    ? 'Try a different name, barcode or article number, or clear the filters.'
-                                    : 'Nothing matches the filters you have set. Try clearing one.'}
+                                    ? t(
+                                          'Try a different name, barcode or article number, or clear the filters.',
+                                      )
+                                    : t(
+                                          'Nothing matches the filters you have set. Try clearing one.',
+                                      )}
                             </p>
                         </div>
                     </div>
@@ -545,17 +580,29 @@ export default function ProductsIndex({
                             <Package className="text-muted-foreground size-6" />
                         </div>
                         <div className="space-y-1">
-                            <h2 className="font-medium">No products yet</h2>
+                            <h2 className="font-medium">
+                                {t('No products yet')}
+                            </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                 {isSupplier
-                                    ? 'Products a distributor assigns to you will show up here.'
+                                    ? t(
+                                          'Products a distributor assigns to you will show up here.',
+                                      )
                                     : canAddProducts
-                                      ? 'Add your first product to start tracking it.'
+                                      ? t(
+                                            'Add your first product to start tracking it.',
+                                        )
                                       : needsSupplier
-                                        ? 'Invite a supplier first — every product is assigned to one.'
+                                        ? t(
+                                              'Invite a supplier first — every product is assigned to one.',
+                                          )
                                         : needsTemplate
-                                          ? 'Add a template to one of your categories first — every product is held to one.'
-                                          : 'Products added to this organization will show up here.'}
+                                          ? t(
+                                                'Add a template to one of your categories first — every product is held to one.',
+                                            )
+                                          : t(
+                                                'Products added to this organization will show up here.',
+                                            )}
                             </p>
                         </div>
                     </div>

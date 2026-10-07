@@ -1,29 +1,40 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Building2, ClipboardCheck, Users } from 'lucide-react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { LanguageToggle } from '@/components/language-menu';
+import { t } from '@/lib/i18n';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 
-const benefits = [
-    {
-        icon: Building2,
-        title: 'Organization workspaces',
-        description:
-            'Keep each organization’s people, roles and settings in one place.',
-    },
-    {
-        icon: ClipboardCheck,
-        title: 'Compliance-ready foundation',
-        description:
-            'Start from a secure workspace built for audits, access and accountability.',
-    },
-    {
-        icon: Users,
-        title: 'Invite the right people',
-        description:
-            'Owners, admins and members with permissions that match how you work.',
-    },
-];
+/**
+ * A function rather than a constant, so the strings are looked up after
+ * the translations load.
+ */
+function benefits() {
+    return [
+        {
+            icon: Building2,
+            title: t('Organization workspaces'),
+            description: t(
+                'Keep each organization’s people, roles and settings in one place.',
+            ),
+        },
+        {
+            icon: ClipboardCheck,
+            title: t('Compliance-ready foundation'),
+            description: t(
+                'Start from a secure workspace built for audits, access and accountability.',
+            ),
+        },
+        {
+            icon: Users,
+            title: t('Invite the right people'),
+            description: t(
+                'Owners, admins and members with permissions that match how you work.',
+            ),
+        },
+    ];
+}
 
 export default function AuthSimpleLayout({
     children,
@@ -54,19 +65,20 @@ export default function AuthSimpleLayout({
                 </Link>
                 <div className="relative my-16 max-w-md">
                     <p className="mb-5 text-xs font-medium tracking-[0.18em] text-emerald-400 uppercase">
-                        Compliance, organized.
+                        {t('Compliance, organized.')}
                     </p>
                     <h2 className="text-4xl leading-tight font-semibold tracking-tight xl:text-5xl">
-                        Clear ownership.
+                        {t('Clear ownership.')}
                         <br />
-                        Confident control.
+                        {t('Confident control.')}
                     </h2>
                     <p className="mt-6 text-base leading-relaxed text-neutral-400">
-                        One workspace for your organizations, members and the
-                        compliance work that follows.
+                        {t(
+                            'One workspace for your organizations, members and the compliance work that follows.',
+                        )}
                     </p>
                     <div className="mt-12 space-y-7">
-                        {benefits.map(
+                        {benefits().map(
                             ({
                                 icon: Icon,
                                 title: benefitTitle,
@@ -93,27 +105,31 @@ export default function AuthSimpleLayout({
                     </div>
                 </div>
                 <p className="text-xs text-neutral-500">
-                    Multi-organization compliance management, together.
+                    {t('Multi-organization compliance management, together.')}
                 </p>
             </aside>
             <main className="flex min-w-0 flex-col justify-center p-5 sm:p-10">
                 <div className="mx-auto w-full max-w-md">
-                    <Link
-                        href={home()}
-                        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring mb-8 inline-flex items-center gap-2 rounded text-sm focus-visible:ring-2 focus-visible:outline-none"
-                    >
-                        <ArrowLeft className="size-4" /> Back to {name}
-                    </Link>
+                    <div className="mb-8 flex items-center justify-between gap-4">
+                        <Link
+                            href={home()}
+                            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-2 rounded text-sm focus-visible:ring-2 focus-visible:outline-none"
+                        >
+                            <ArrowLeft className="size-4" />{' '}
+                            {t('Back to :name', { name })}
+                        </Link>
+                        <LanguageToggle />
+                    </div>
                     <div className="workspace-panel p-6 sm:p-8">
                         <div className="mb-8 space-y-3">
                             <div className="bg-primary text-primary-foreground mb-6 flex size-10 items-center justify-center rounded-xl lg:hidden">
                                 <AppLogoIcon className="size-6" />
                             </div>
                             <h1 className="text-2xl font-semibold tracking-tight">
-                                {title}
+                                {title ? t(title) : null}
                             </h1>
                             <p className="text-muted-foreground text-sm leading-relaxed">
-                                {description}
+                                {description ? t(description) : null}
                             </p>
                         </div>
                         {children}

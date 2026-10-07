@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { store } from '@/routes/suppliers';
 import type { SupplierConnectionOption } from '@/types';
 
@@ -123,17 +124,17 @@ export default function InviteSupplierModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Add a supplier</DialogTitle>
+                                <DialogTitle>{t('Add a supplier')}</DialogTitle>
                                 <DialogDescription>
-                                    You can assign products to them straight
-                                    away, whether or not they have been invited
-                                    yet.
+                                    {t(
+                                        'You can assign products to them straight away, whether or not they have been invited yet.',
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="supplier-company-name">
-                                    Company name
+                                    {t('Company name')}
                                 </Label>
                                 <Input
                                     id="supplier-company-name"
@@ -151,7 +152,7 @@ export default function InviteSupplierModal({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="supplier-contact-email">
-                                    Contact email address
+                                    {t('Contact email address')}
                                 </Label>
                                 <Input
                                     id="supplier-contact-email"
@@ -184,19 +185,25 @@ export default function InviteSupplierModal({
                                         htmlFor="supplier-send-invitation"
                                         className="font-normal"
                                     >
-                                        Send the invitation now
+                                        {t('Send the invitation now')}
                                     </Label>
                                     <p className="text-muted-foreground text-sm">
                                         {sendInvitation
-                                            ? 'We will email them a link to set up their company.'
-                                            : 'Nothing is sent. Invite them from the suppliers page whenever you are ready.'}
+                                            ? t(
+                                                  'We will email them a link to set up their company.',
+                                              )
+                                            : t(
+                                                  'Nothing is sent. Invite them from the suppliers page whenever you are ready.',
+                                              )}
                                     </p>
                                 </div>
                             </div>
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -205,8 +212,8 @@ export default function InviteSupplierModal({
                                     disabled={processing}
                                 >
                                     {sendInvitation
-                                        ? 'Add and invite'
-                                        : 'Add supplier'}
+                                        ? t('Add and invite')
+                                        : t('Add supplier')}
                                 </Button>
                             </DialogFooter>
                         </>

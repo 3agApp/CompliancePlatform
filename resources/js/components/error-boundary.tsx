@@ -1,6 +1,7 @@
 import { RefreshCw, TriangleAlert } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -42,21 +43,21 @@ export default class ErrorBoundary extends Component<Props, State> {
 
                 <div className="space-y-1">
                     <h1 className="text-lg font-semibold">
-                        Something went wrong on this page
+                        {t('Something went wrong on this page')}
                     </h1>
                     <p className="text-muted-foreground text-sm">
-                        The page could not finish loading. Reloading usually
-                        clears it; if it keeps happening, the details below are
-                        worth reporting.
+                        {t(
+                            'The page could not finish loading. Reloading usually clears it; if it keeps happening, the details below are worth reporting.',
+                        )}
                     </p>
                 </div>
 
                 <div className="flex gap-2">
                     <Button onClick={() => window.location.reload()}>
-                        <RefreshCw /> Reload the page
+                        <RefreshCw /> {t('Reload the page')}
                     </Button>
                     <Button variant="secondary" asChild>
-                        <a href="/">Go back home</a>
+                        <a href="/">{t('Go back home')}</a>
                     </Button>
                 </div>
 

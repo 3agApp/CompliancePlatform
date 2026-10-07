@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Organizations;
 
+use App\Enums\Locale;
 use App\Enums\OrganizationType;
 use App\Rules\OrganizationName;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -27,6 +28,7 @@ class SaveOrganizationRequest extends FormRequest
             'type' => $this->isMethod('post')
                 ? ['required', Rule::enum(OrganizationType::class)]
                 : ['prohibited'],
+            'locale' => ['sometimes', Rule::enum(Locale::class)],
         ];
     }
 

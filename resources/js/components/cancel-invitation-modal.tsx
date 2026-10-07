@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tn } from '@/lib/i18n';
 import { destroy as destroyInvitation } from '@/routes/organizations/invitations';
 import type { Organization, OrganizationInvitation } from '@/types';
 
@@ -44,16 +45,20 @@ export default function CancelInvitationModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Cancel invitation</DialogTitle>
+                    <DialogTitle>{t('Cancel invitation')}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to cancel the invitation for{' '}
-                        <strong>{invitation?.email}</strong>?
+                        {tn(
+                            'Are you sure you want to cancel the invitation for :email?',
+                            { email: <strong>{invitation?.email}</strong> },
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Keep invitation</Button>
+                        <Button variant="secondary">
+                            {t('Keep invitation')}
+                        </Button>
                     </DialogClose>
 
                     <Button
@@ -62,7 +67,7 @@ export default function CancelInvitationModal({
                         disabled={processing}
                         onClick={cancelInvitation}
                     >
-                        Cancel invitation
+                        {t('Cancel invitation')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { ProductComplianceDetails, ProductRequirementKey } from '@/types';
+import { t } from '@/lib/i18n';
 
 type FieldName = keyof ProductComplianceDetails;
 
@@ -38,7 +39,7 @@ export default function ProductComplianceFields({
         <div className="grid gap-4">
             <div className="grid gap-2 sm:max-w-3xs">
                 <Label htmlFor={`${idPrefix}-age-grading`}>
-                    Age grading{' '}
+                    {t('Age grading')}{' '}
                     <FieldMarker required={needs('requires_age_grading')} />
                 </Label>
                 <Input
@@ -51,14 +52,14 @@ export default function ProductComplianceFields({
                     disabled={disabled}
                 />
                 <p className="text-muted-foreground text-xs">
-                    Who the product is for.
+                    {t('Who the product is for.')}
                 </p>
                 <InputError message={errors.age_grading} />
             </div>
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-safety-notice`}>
-                    Safety notice{' '}
+                    {t('Safety notice')}{' '}
                     <FieldMarker required={needs('requires_safety_notice')} />
                 </Label>
                 <Textarea
@@ -66,7 +67,9 @@ export default function ProductComplianceFields({
                     name="safety_notice"
                     data-test="product-safety-notice"
                     defaultValue={product?.safety_notice ?? ''}
-                    placeholder="Keep the packaging until the product has been checked."
+                    placeholder={t(
+                        'Keep the packaging until the product has been checked.',
+                    )}
                     rows={3}
                     disabled={disabled}
                 />
@@ -75,7 +78,7 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-warning-text`}>
-                    Warning text{' '}
+                    {t('Warning text')}{' '}
                     <FieldMarker required={needs('requires_warning_text')} />
                 </Label>
                 <Textarea
@@ -83,19 +86,21 @@ export default function ProductComplianceFields({
                     name="warning_text"
                     data-test="product-warning-text"
                     defaultValue={product?.warning_text ?? ''}
-                    placeholder="Not suitable for children under 3 years. Small parts."
+                    placeholder={t(
+                        'Not suitable for children under 3 years. Small parts.',
+                    )}
                     rows={3}
                     disabled={disabled}
                 />
                 <p className="text-muted-foreground text-xs">
-                    Word for word as it appears on the packaging.
+                    {t('Word for word as it appears on the packaging.')}
                 </p>
                 <InputError message={errors.warning_text} />
             </div>
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-material-information`}>
-                    Material information{' '}
+                    {t('Material information')}{' '}
                     <FieldMarker
                         required={needs('requires_material_information')}
                     />
@@ -105,7 +110,9 @@ export default function ProductComplianceFields({
                     name="material_information"
                     data-test="product-material-information"
                     defaultValue={product?.material_information ?? ''}
-                    placeholder="ABS plastic, neodymium magnets, water based paint."
+                    placeholder={t(
+                        'ABS plastic, neodymium magnets, water based paint.',
+                    )}
                     rows={3}
                     disabled={disabled}
                 />
@@ -114,7 +121,7 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-usage-restrictions`}>
-                    Usage restrictions{' '}
+                    {t('Usage restrictions')}{' '}
                     <FieldMarker
                         required={needs('requires_usage_restrictions')}
                     />
@@ -124,7 +131,7 @@ export default function ProductComplianceFields({
                     name="usage_restrictions"
                     data-test="product-usage-restrictions"
                     defaultValue={product?.usage_restrictions ?? ''}
-                    placeholder="Indoor use only. Not for use in water."
+                    placeholder={t('Indoor use only. Not for use in water.')}
                     rows={3}
                     disabled={disabled}
                 />
@@ -133,7 +140,7 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-safety-instructions`}>
-                    Safety instructions{' '}
+                    {t('Safety instructions')}{' '}
                     <FieldMarker
                         required={needs('requires_safety_instructions')}
                     />
@@ -143,7 +150,9 @@ export default function ProductComplianceFields({
                     name="safety_instructions"
                     data-test="product-safety-instructions"
                     defaultValue={product?.safety_instructions ?? ''}
-                    placeholder="Inspect for damage before each use and replace broken parts."
+                    placeholder={t(
+                        'Inspect for damage before each use and replace broken parts.',
+                    )}
                     rows={3}
                     disabled={disabled}
                 />
@@ -152,7 +161,7 @@ export default function ProductComplianceFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-additional-notes`}>
-                    Additional notes{' '}
+                    {t('Additional notes')}{' '}
                     <FieldMarker
                         required={needs('requires_additional_notes')}
                     />
@@ -162,7 +171,9 @@ export default function ProductComplianceFields({
                     name="additional_notes"
                     data-test="product-additional-notes"
                     defaultValue={product?.additional_notes ?? ''}
-                    placeholder="Anything else the other side of the trade should know."
+                    placeholder={t(
+                        'Anything else the other side of the trade should know.',
+                    )}
                     rows={3}
                     disabled={disabled}
                 />

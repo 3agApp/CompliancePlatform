@@ -8,6 +8,7 @@ import type {
     ProductSealOption,
     ProductSealOverride,
 } from '@/types';
+import { t } from '@/lib/i18n';
 
 type Props = {
     organizationSlug: string;
@@ -60,11 +61,11 @@ export default function ProductPublicPanel({
             data-test="product-public-panel"
         >
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-medium">Public page</h2>
+                <h2 className="text-sm font-medium">{t('Public page')}</h2>
 
                 <Button variant="ghost" size="sm" asChild>
                     <a href={publicUrl} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-4 w-4" /> Open
+                        <ExternalLink className="h-4 w-4" /> {t('Open')}
                     </a>
                 </Button>
             </div>
@@ -76,7 +77,10 @@ export default function ProductPublicPanel({
                     className="text-muted-foreground text-xs"
                     data-test="product-seal-set-by"
                 >
-                    Set to {override.label} by {override.setBy}
+                    {t('Set to :seal by :name', {
+                        seal: override.label,
+                        name: override.setBy,
+                    })}
                     {override.reason ? ` — ${override.reason}` : null}
                 </p>
             ) : null}
@@ -85,7 +89,7 @@ export default function ProductPublicPanel({
                 <input
                     readOnly
                     value={publicUrl}
-                    aria-label="Public page address"
+                    aria-label={t('Public page address')}
                     data-test="product-public-url"
                     className="border-input bg-muted text-muted-foreground min-w-0 flex-1 truncate rounded-md border px-2 py-1 text-xs"
                     onFocus={(event) => event.currentTarget.select()}
@@ -102,7 +106,9 @@ export default function ProductPublicPanel({
                     ) : (
                         <Copy className="h-4 w-4" />
                     )}
-                    <span className="sr-only">Copy the public address</span>
+                    <span className="sr-only">
+                        {t('Copy the public address')}
+                    </span>
                 </Button>
             </div>
 
@@ -115,7 +121,8 @@ export default function ProductPublicPanel({
                         data-test="product-override-seal"
                         onClick={() => setSealDialogOpen(true)}
                     >
-                        <PenLine className="h-4 w-4" /> Set the seal by hand
+                        <PenLine className="h-4 w-4" />{' '}
+                        {t('Set the seal by hand')}
                     </Button>
 
                     <OverrideProductSealModal

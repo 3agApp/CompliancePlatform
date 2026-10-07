@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tn } from '@/lib/i18n';
 import { destroy } from '@/routes/products/documents';
 import type { ProductDocument } from '@/types';
 
@@ -48,17 +49,18 @@ export default function DeleteProductDocumentModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Delete document</DialogTitle>
+                    <DialogTitle>{t('Delete document')}</DialogTitle>
                     <DialogDescription>
-                        This action cannot be undone. This will permanently
-                        delete <strong>{document?.name}</strong> and the file
-                        behind it.
+                        {tn(
+                            'This action cannot be undone. This will permanently delete :name and the file behind it.',
+                            { name: <strong>{document?.name}</strong> },
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
+                        <Button variant="secondary">{t('Cancel')}</Button>
                     </DialogClose>
 
                     <Button
@@ -67,7 +69,7 @@ export default function DeleteProductDocumentModal({
                         disabled={processing}
                         onClick={deleteDocument}
                     >
-                        Delete document
+                        {t('Delete document')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

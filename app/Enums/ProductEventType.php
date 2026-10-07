@@ -35,21 +35,21 @@ enum ProductEventType: string
     public function label(): string
     {
         return match ($this) {
-            self::Created => 'Product created',
-            self::Updated => 'Details updated',
-            self::DocumentUploaded => 'Document uploaded',
-            self::DocumentRemoved => 'Document removed',
-            self::Submitted => 'Submitted for review',
-            self::Approved => 'Approved',
-            self::ChangesRequested => 'Changes requested',
-            self::ApprovalRevoked => 'Approval taken back',
-            self::ReturnedToDraft => 'Returned to draft',
-            self::SealOverridden => 'Public seal set by hand',
-            self::SealOverrideCleared => 'Public seal handed back to the review',
-            self::LabelsIssued => 'Serialised labels issued',
-            self::LabelsRevoked => 'Serialised labels withdrawn',
-            self::DocumentPublished => 'Document released to the public page',
-            self::DocumentUnpublished => 'Document taken off the public page',
+            self::Created => __('Product created'),
+            self::Updated => __('Details updated'),
+            self::DocumentUploaded => __('Document uploaded'),
+            self::DocumentRemoved => __('Document removed'),
+            self::Submitted => __('Submitted for review'),
+            self::Approved => __('Approved'),
+            self::ChangesRequested => __('Changes requested'),
+            self::ApprovalRevoked => __('Approval taken back'),
+            self::ReturnedToDraft => __('Returned to draft'),
+            self::SealOverridden => __('Public seal set by hand'),
+            self::SealOverrideCleared => __('Public seal handed back to the review'),
+            self::LabelsIssued => __('Serialised labels issued'),
+            self::LabelsRevoked => __('Serialised labels withdrawn'),
+            self::DocumentPublished => __('Document released to the public page'),
+            self::DocumentUnpublished => __('Document taken off the public page'),
         };
     }
 

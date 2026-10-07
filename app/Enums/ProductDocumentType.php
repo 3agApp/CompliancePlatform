@@ -19,14 +19,14 @@ enum ProductDocumentType: string
     public function label(): string
     {
         return match ($this) {
-            self::TestReport => 'Test report',
-            self::DeclarationOfConformity => 'Declaration of conformity',
-            self::ManualOrInstructions => 'Manual or instructions',
-            self::Certificate => 'Certificate',
-            self::ProductImage => 'Product image',
-            self::SafetyImage => 'Safety image',
-            self::RegulatoryDocument => 'Regulatory document',
-            self::Other => 'Other',
+            self::TestReport => __('Test report'),
+            self::DeclarationOfConformity => __('Declaration of conformity'),
+            self::ManualOrInstructions => __('Manual or instructions'),
+            self::Certificate => __('Certificate'),
+            self::ProductImage => __('Product image'),
+            self::SafetyImage => __('Safety image'),
+            self::RegulatoryDocument => __('Regulatory document'),
+            self::Other => __('Other'),
         };
     }
 

@@ -5,6 +5,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { destroy, store } from '@/routes/connections';
 import type {
     BindableOrganization,
@@ -36,7 +37,11 @@ export default function ConnectionShow({
 
     return (
         <>
-            <Head title={`Invitation from ${connection.distributorName}`} />
+            <Head
+                title={t('Invitation from :name', {
+                    name: connection.distributorName,
+                })}
+            />
 
             <div className="workspace-page">
                 <div className="mx-auto w-full max-w-xl space-y-6">
@@ -45,13 +50,18 @@ export default function ConnectionShow({
                             <Handshake className="text-muted-foreground size-6" />
                         </div>
                         <h1 className="page-title">
-                            {connection.distributorName} wants to work with you
+                            {t(':name wants to work with you', {
+                                name: connection.distributorName,
+                            })}
                         </h1>
                         <p className="text-muted-foreground text-sm">
-                            {connection.inviterName} invited{' '}
-                            {connection.companyName} to supply them. Accepting
-                            gives your company access to the products they
-                            assign to you.
+                            {t(
+                                ':inviter invited :company to supply them. Accepting gives your company access to the products they assign to you.',
+                                {
+                                    inviter: connection.inviterName,
+                                    company: connection.companyName,
+                                },
+                            )}
                         </p>
                     </div>
 
@@ -66,7 +76,7 @@ export default function ConnectionShow({
                                 {hasExisting ? (
                                     <fieldset className="grid gap-3">
                                         <legend className="mb-2 text-sm font-medium">
-                                            Connect as
+                                            {t('Connect as')}
                                         </legend>
 
                                         <label
@@ -85,11 +95,12 @@ export default function ConnectionShow({
                                                 className="sr-only"
                                             />
                                             <span className="block text-sm font-medium">
-                                                A company I already run
+                                                {t('A company I already run')}
                                             </span>
                                             <span className="text-muted-foreground mt-1 block text-xs">
-                                                Use this if you already supply
-                                                another distributor here.
+                                                {t(
+                                                    'Use this if you already supply another distributor here.',
+                                                )}
                                             </span>
 
                                             {mode === 'existing' ? (
@@ -142,11 +153,12 @@ export default function ConnectionShow({
                                                 className="sr-only"
                                             />
                                             <span className="block text-sm font-medium">
-                                                A new company
+                                                {t('A new company')}
                                             </span>
                                             <span className="text-muted-foreground mt-1 block text-xs">
-                                                Sets up a new supplier company
-                                                with you as its owner.
+                                                {t(
+                                                    'Sets up a new supplier company with you as its owner.',
+                                                )}
                                             </span>
                                         </label>
 
@@ -159,7 +171,7 @@ export default function ConnectionShow({
                                 {mode === 'create' ? (
                                     <div className="grid gap-2">
                                         <Label htmlFor="claim-connection-name">
-                                            Company name
+                                            {t('Company name')}
                                         </Label>
                                         <Input
                                             id="claim-connection-name"
@@ -181,7 +193,7 @@ export default function ConnectionShow({
                                     data-test="claim-connection-submit"
                                     disabled={processing}
                                 >
-                                    Accept invitation
+                                    {t('Accept invitation')}
                                 </Button>
                             </>
                         )}
@@ -196,7 +208,7 @@ export default function ConnectionShow({
                                 data-test="claim-connection-decline"
                                 disabled={processing}
                             >
-                                Decline invitation
+                                {t('Decline invitation')}
                             </Button>
                         )}
                     </Form>

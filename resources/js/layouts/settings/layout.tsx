@@ -4,6 +4,7 @@ import type { PropsWithChildren } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { t } from '@/lib/i18n';
 import { cn, toUrl } from '@/lib/utils';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
@@ -21,55 +22,68 @@ type NavGroup = {
  * Personal settings first, then the ones shared with everyone in the organization,
  * so it is clear which changes affect only you.
  */
-const navGroups: NavGroup[] = [
-    {
-        title: 'Account',
-        description: 'Manage your profile, sign-in and appearance',
-        items: [
-            {
-                title: 'Profile',
-                href: edit(),
-                icon: UserRound,
-            },
-            {
-                title: 'Security',
-                href: editSecurity(),
-                icon: ShieldCheck,
-            },
-        ],
-    },
-    {
-        title: 'Workspace',
-        description: 'Manage your organizations and their members',
-        items: [
-            {
-                title: 'Organizations',
-                href: organizations(),
-                icon: Building2,
-            },
-        ],
-    },
-];
+/**
+ * A function rather than a constant, so the strings are looked up after
+ * the translations load.
+ */
+function navGroups(): NavGroup[] {
+    return [
+        {
+            title: t('Account'),
+            description: t(
+                'Manage your profile, sign-in, language and appearance',
+            ),
+            items: [
+                {
+                    title: t('Profile'),
+                    href: edit(),
+                    icon: UserRound,
+                },
+                {
+                    title: t('Security'),
+                    href: editSecurity(),
+                    icon: ShieldCheck,
+                },
+            ],
+        },
+        {
+            title: t('Workspace'),
+            description: t('Manage your organizations and their members'),
+            items: [
+                {
+                    title: t('Organizations'),
+                    href: organizations(),
+                    icon: Building2,
+                },
+            ],
+        },
+    ];
+}
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
 
+    const groups = navGroups();
+
     const activeGroup =
-        navGroups.find((group) =>
+        groups.find((group) =>
             group.items.some((item) => isCurrentOrParentUrl(item.href)),
-        ) ?? navGroups[0];
+        ) ?? groups[0];
 
     return (
         <div className="workspace-page [&>header]:mb-0">
-            <Heading title="Settings" description={activeGroup.description} />
+            <Heading
+                title={t('Settings')}
+                description={activeGroup.description}
+            />
 
             <div className="grid min-w-0 gap-6 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
                 <aside className="min-w-0">
                     <nav
                         className="workspace-panel flex flex-col gap-3 p-2 lg:sticky lg:top-6"
-                        aria-label="Settings"
+                        aria-label={t('Settings')}
                     >
-                        {navGroups.map((group) => (
+                        {groups.map((group) => (
                             <div key={group.title} className="grid gap-1">
                                 <p className="text-muted-foreground px-3 pt-1 text-xs font-medium tracking-[0.16em] uppercase">
                                     {group.title}

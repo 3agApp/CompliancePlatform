@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tc } from '@/lib/i18n';
 import { approve } from '@/routes/products';
 import type { ProductCompletenessItem, ProductDetail } from '@/types';
 
@@ -54,16 +55,17 @@ export default function ApproveProductModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Approve {product.name} with{' '}
-                                    {outstanding.length === 1
-                                        ? 'a requirement'
-                                        : `${outstanding.length} requirements`}{' '}
-                                    still open?
+                                    {tc(
+                                        'Approve :name with a requirement still open?|Approve :name with :count requirements still open?',
+                                        outstanding.length,
+                                        { name: product.name },
+                                    )}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    Its {product.template_label} template still
-                                    asks for the following. Once approved, the
-                                    public page shows the product as verified.
+                                    {t(
+                                        'Its :template template still asks for the following. Once approved, the public page shows the product as verified.',
+                                        { template: product.template_label },
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -87,7 +89,9 @@ export default function ApproveProductModal({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="ghost">Cancel</Button>
+                                    <Button variant="ghost">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -96,7 +100,7 @@ export default function ApproveProductModal({
                                     data-test="approve-request-changes-instead"
                                     onClick={onRequestChanges}
                                 >
-                                    Request changes instead
+                                    {t('Request changes instead')}
                                 </Button>
 
                                 <Button
@@ -104,7 +108,7 @@ export default function ApproveProductModal({
                                     data-test="approve-confirm"
                                     disabled={processing}
                                 >
-                                    Approve anyway
+                                    {t('Approve anyway')}
                                 </Button>
                             </DialogFooter>
                         </>

@@ -5,6 +5,7 @@ import type {
     ProductCompletenessItem,
     ProductRequirementGroup,
 } from '@/types';
+import { t } from '@/lib/i18n';
 
 type Props = {
     completeness: ProductCompleteness;
@@ -35,7 +36,9 @@ export default function ProductRequirementsPanel({
         >
             <div className="grid gap-2">
                 <div className="flex items-baseline justify-between gap-3">
-                    <h2 className="text-base font-semibold">Requirements</h2>
+                    <h2 className="text-base font-semibold">
+                        {t('Requirements')}
+                    </h2>
                     <span
                         className="text-2xl font-semibold tabular-nums"
                         data-test="product-completeness-score"
@@ -47,8 +50,10 @@ export default function ProductRequirementsPanel({
                 <CompletenessMeter score={score} className="w-full" hideLabel />
 
                 <p className="text-muted-foreground text-xs">
-                    What the {templateLabel} template expects. Nothing here
-                    blocks saving.
+                    {t(
+                        'What the :template template expects. Nothing here blocks saving.',
+                        { template: templateLabel },
+                    )}
                 </p>
             </div>
 
@@ -57,17 +62,21 @@ export default function ProductRequirementsPanel({
                     className="text-muted-foreground text-sm"
                     data-test="product-requirements-empty"
                 >
-                    This template asks for nothing. Add requirements to it under
-                    Categories to turn it into a checklist.
+                    {t(
+                        'This template asks for nothing. Add requirements to it under Categories to turn it into a checklist.',
+                    )}
                 </p>
             ) : null}
 
             {outstanding.length > 0 ? (
-                <RequirementList title="Still needed" items={outstanding} />
+                <RequirementList
+                    title={t('Still needed')}
+                    items={outstanding}
+                />
             ) : null}
 
             {done.length > 0 ? (
-                <RequirementList title="Done" items={done} />
+                <RequirementList title={t('Done')} items={done} />
             ) : null}
         </section>
     );
@@ -87,12 +96,12 @@ function RequirementList({
     }> = [
         {
             group: 'document',
-            label: 'Documents',
+            label: t('Documents'),
             icon: <FileText className="size-3.5" />,
         },
         {
             group: 'data',
-            label: 'Product data',
+            label: t('Product data'),
             icon: <ListChecks className="size-3.5" />,
         },
     ];
@@ -140,7 +149,9 @@ function RequirementList({
                                         {item.label}
                                         {item.weight === 0 ? (
                                             <span className="text-muted-foreground ml-1 text-xs">
-                                                (does not affect the score)
+                                                {t(
+                                                    '(does not affect the score)',
+                                                )}
                                             </span>
                                         ) : null}
                                     </span>

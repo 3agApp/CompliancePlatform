@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { update } from '@/routes/brands';
 import type { Brand } from '@/types';
 
@@ -61,16 +62,18 @@ export default function RenameBrandModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Rename brand</DialogTitle>
+                                <DialogTitle>{t('Rename brand')}</DialogTitle>
                                 <DialogDescription>
-                                    The maker behind a product, such as
-                                    Magna-Tiles or tigerbox. It stays with the
-                                    supplier it is filed under.
+                                    {t(
+                                        'The maker behind a product, such as Magna-Tiles or tigerbox. It stays with the supplier it is filed under.',
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="brand-name">Brand name</Label>
+                                <Label htmlFor="brand-name">
+                                    {t('Brand name')}
+                                </Label>
                                 <Input
                                     id="brand-name"
                                     name="name"
@@ -85,7 +88,9 @@ export default function RenameBrandModal({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -93,7 +98,7 @@ export default function RenameBrandModal({
                                     data-test="save-brand-submit"
                                     disabled={processing}
                                 >
-                                    Save changes
+                                    {t('Save changes')}
                                 </Button>
                             </DialogFooter>
                         </>

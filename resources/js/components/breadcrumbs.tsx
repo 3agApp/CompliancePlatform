@@ -9,6 +9,7 @@ import {
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
+import { t } from '@/lib/i18n';
 
 export function Breadcrumbs({
     breadcrumbs,
@@ -28,12 +29,12 @@ export function Breadcrumbs({
                                     <BreadcrumbItem>
                                         {isLast ? (
                                             <BreadcrumbPage>
-                                                {item.title}
+                                                {t(item.title)}
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink asChild>
                                                 <Link href={item.href}>
-                                                    {item.title}
+                                                    {t(item.title)}
                                                 </Link>
                                             </BreadcrumbLink>
                                         )}

@@ -25,12 +25,20 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useInitials } from '@/hooks/use-initials';
+import { t, tk } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { edit, index, update } from '@/routes/organizations';
 import { resend as resendInvitation } from '@/routes/organizations/invitations';
@@ -67,7 +75,11 @@ export default function OrganizationEdit({
     availableAiProviders,
 }: Props) {
     const getInitials = useInitials();
-    const { auth } = usePage().props;
+    const { auth, availableLocales } = usePage().props;
+    const [locale, setLocale] = useState(organization.locale);
+    const localeLabel = availableLocales.find(
+        (option) => option.value === organization.locale,
+    )?.label;
 
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -88,8 +100,8 @@ export default function OrganizationEdit({
     const pageTitle = useMemo(
         () =>
             permissions.canUpdateOrganization
-                ? `Edit ${organization.name}`
-                : `View ${organization.name}`,
+                ? t('Edit :name', { name: organization.name })
+                : t('View :name', { name: organization.name }),
         [permissions.canUpdateOrganization, organization.name],
     );
 
@@ -143,8 +155,10 @@ export default function OrganizationEdit({
                         <>
                             <Heading
                                 variant="small"
-                                title="Organization settings"
-                                description="Update your organization name and settings"
+                                title={t('Organization settings')}
+                                description={t(
+                                    'Update your organization name and settings',
+                                )}
                             />
 
                             <Form
@@ -161,7 +175,7 @@ export default function OrganizationEdit({
                                     <>
                                         <div className="grid gap-2">
                                             <Label htmlFor="name">
-                                                Organization name
+                                                {t('Organization name')}
                                             </Label>
                                             <Input
                                                 id="name"
@@ -171,6 +185,61 @@ export default function OrganizationEdit({
                                                 required
                                             />
                                             <InputError message={errors.name} />
+                                        </div>
+
+                                        <div className="grid gap-2 sm:max-w-xs">
+                                            <Label htmlFor="organization-locale">
+                                                {t('Default language')}
+                                            </Label>
+                                            {/*
+                                             * Named on the select itself, so it
+                                             * raises a change event the form
+                                             * hears: a hidden input set from
+                                             * state would leave Save disabled.
+                                             */}
+                                            <Select
+                                                name="locale"
+                                                value={locale}
+                                                onValueChange={(value) =>
+                                                    setLocale(
+                                                        value as typeof locale,
+                                                    )
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    id="organization-locale"
+                                                    data-test="organization-locale"
+                                                >
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {availableLocales.map(
+                                                        (option) => (
+                                                            <SelectItem
+                                                                key={
+                                                                    option.value
+                                                                }
+                                                                value={
+                                                                    option.value
+                                                                }
+                                                                lang={
+                                                                    option.value
+                                                                }
+                                                            >
+                                                                {option.label}
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-muted-foreground text-xs">
+                                                {t(
+                                                    "Members who haven't chosen a language of their own see the app in this one, and invitations go out in it.",
+                                                )}
+                                            </p>
+                                            <InputError
+                                                message={errors.locale}
+                                            />
                                         </div>
 
                                         <SaveButton
@@ -190,7 +259,9 @@ export default function OrganizationEdit({
                             <Heading
                                 variant="small"
                                 title={organization.name}
-                                description="Only an owner or admin can change these settings."
+                                description={t(
+                                    'Only an owner or admin can change these settings.',
+                                )}
                             />
                             <dl
                                 className="grid gap-4 text-sm sm:grid-cols-2"
@@ -198,7 +269,7 @@ export default function OrganizationEdit({
                             >
                                 <div>
                                     <dt className="text-muted-foreground">
-                                        Organization type
+                                        {t('Organization type')}
                                     </dt>
                                     <dd className="font-medium">
                                         {organization.typeLabel}
@@ -206,10 +277,18 @@ export default function OrganizationEdit({
                                 </div>
                                 <div>
                                     <dt className="text-muted-foreground">
-                                        Your role
+                                        {t('Your role')}
                                     </dt>
                                     <dd className="font-medium">
                                         {currentMember?.role_label ?? '—'}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        {t('Default language')}
+                                    </dt>
+                                    <dd className="font-medium">
+                                        {localeLabel ?? '—'}
                                     </dd>
                                 </div>
                             </dl>
@@ -225,8 +304,10 @@ export default function OrganizationEdit({
                     >
                         <Heading
                             variant="small"
-                            title="AI provider"
-                            description="Connect a provider to have document kinds guessed for you when files are uploaded. Only file names, types and sizes are sent — never the contents of a document."
+                            title={t('AI provider')}
+                            description={t(
+                                'Connect a provider to have document kinds guessed for you when files are uploaded. Only file names, types and sizes are sent — never the contents of a document.',
+                            )}
                         />
 
                         <OrganizationAiProviderForm
@@ -241,11 +322,13 @@ export default function OrganizationEdit({
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <Heading
                             variant="small"
-                            title="Organization members"
+                            title={t('Organization members')}
                             description={
                                 permissions.canCreateInvitation
-                                    ? 'Manage who belongs to this organization'
-                                    : 'Who belongs to this organization'
+                                    ? t(
+                                          'Manage who belongs to this organization',
+                                      )
+                                    : t('Who belongs to this organization')
                             }
                         />
 
@@ -255,7 +338,7 @@ export default function OrganizationEdit({
                                 data-test="invite-member-button"
                                 onClick={() => setInviteDialogOpen(true)}
                             >
-                                <UserPlus /> Invite member
+                                <UserPlus /> {t('Invite member')}
                             </Button>
                         ) : null}
                     </div>
@@ -289,7 +372,7 @@ export default function OrganizationEdit({
                                                     variant="outline"
                                                     data-test="member-you"
                                                 >
-                                                    You
+                                                    {t('You')}
                                                 </Badge>
                                             ) : null}
                                         </div>
@@ -353,7 +436,12 @@ export default function OrganizationEdit({
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        aria-label={`Remove ${member.name}`}
+                                                        aria-label={t(
+                                                            'Remove :name',
+                                                            {
+                                                                name: member.name,
+                                                            },
+                                                        )}
                                                         data-test="member-remove-button"
                                                         onClick={() =>
                                                             confirmRemoveMember(
@@ -365,7 +453,7 @@ export default function OrganizationEdit({
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>Remove member</p>
+                                                    <p>{t('Remove member')}</p>
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
@@ -383,8 +471,10 @@ export default function OrganizationEdit({
                     >
                         <Heading
                             variant="small"
-                            title="Pending invitations"
-                            description="Invitations that haven't been accepted yet"
+                            title={t('Pending invitations')}
+                            description={t(
+                                "Invitations that haven't been accepted yet",
+                            )}
                         />
 
                         <ul className="divide-y overflow-hidden rounded-lg border">
@@ -403,8 +493,10 @@ export default function OrganizationEdit({
                                                 {invitation.email}
                                             </div>
                                             <div className="text-muted-foreground text-sm">
-                                                {invitation.role_label} · Sent{' '}
-                                                {invitation.sent_at_diff}
+                                                {invitation.role_label} ·{' '}
+                                                {t('Sent :when', {
+                                                    when: invitation.sent_at_diff,
+                                                })}
                                                 {invitation.expires_at_diff ? (
                                                     <span
                                                         data-test={
@@ -419,8 +511,18 @@ export default function OrganizationEdit({
                                                     >
                                                         {' · '}
                                                         {invitation.is_expired
-                                                            ? `Expired ${invitation.expires_at_diff} ago`
-                                                            : `Expires in ${invitation.expires_at_diff}`}
+                                                            ? t(
+                                                                  'Expired :when',
+                                                                  {
+                                                                      when: invitation.expires_at_diff,
+                                                                  },
+                                                              )
+                                                            : t(
+                                                                  'Expires :when',
+                                                                  {
+                                                                      when: invitation.expires_at_diff,
+                                                                  },
+                                                              )}
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -446,7 +548,7 @@ export default function OrganizationEdit({
                                                 }
                                             >
                                                 <Send className="h-4 w-4" />
-                                                Resend
+                                                {t('Resend')}
                                             </Button>
                                         ) : null}
 
@@ -457,7 +559,12 @@ export default function OrganizationEdit({
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            aria-label={`Cancel invitation for ${invitation.email}`}
+                                                            aria-label={t(
+                                                                'Cancel invitation for :email',
+                                                                {
+                                                                    email: invitation.email,
+                                                                },
+                                                            )}
                                                             data-test="invitation-cancel-button"
                                                             onClick={() =>
                                                                 confirmCancelInvitation(
@@ -469,7 +576,11 @@ export default function OrganizationEdit({
                                                         </Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent>
-                                                        <p>Cancel invitation</p>
+                                                        <p>
+                                                            {t(
+                                                                'Cancel invitation',
+                                                            )}
+                                                        </p>
                                                     </TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
@@ -484,16 +595,20 @@ export default function OrganizationEdit({
                 {permissions.canDeleteOrganization ? (
                     <div className="border-t pt-8 first:border-0 first:pt-0">
                         <DangerZone
-                            title="Delete organization"
-                            description="Permanently delete your organization"
-                            warning="Everything in the organization goes with it. This cannot be undone."
+                            title={t('Delete organization')}
+                            description={t(
+                                'Permanently delete your organization',
+                            )}
+                            warning={t(
+                                'Everything in the organization goes with it. This cannot be undone.',
+                            )}
                         >
                             <Button
                                 variant="destructive"
                                 data-test="delete-organization-button"
                                 onClick={() => setDeleteDialogOpen(true)}
                             >
-                                Delete organization
+                                {t('Delete organization')}
                             </Button>
                         </DangerZone>
                     </div>
@@ -547,7 +662,7 @@ OrganizationEdit.layout = (props: {
 }) => ({
     breadcrumbs: [
         {
-            title: 'Organizations',
+            title: tk('Organizations'),
             href: index(),
         },
         {

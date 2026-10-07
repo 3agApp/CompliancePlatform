@@ -3,6 +3,7 @@ import { MailOpen } from 'lucide-react';
 import { useState } from 'react';
 import OrganizationInvitationController from '@/actions/App/Http/Controllers/Organizations/OrganizationInvitationController';
 import { Button } from '@/components/ui/button';
+import { formatLocale, t, tk } from '@/lib/i18n';
 import { show as showConnection } from '@/routes/connections';
 import { index } from '@/routes/invitations';
 import type { PendingInvitation, PendingSupplierConnection } from '@/types';
@@ -27,14 +28,15 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
 
     return (
         <>
-            <Head title="Invitations" />
+            <Head title={t('Invitations')} />
 
             <div className="workspace-page">
                 <div className="page-heading">
-                    <h1 className="page-title">Invitations</h1>
+                    <h1 className="page-title">{t('Invitations')}</h1>
                     <p className="text-muted-foreground text-sm">
-                        Accept or decline the organizations and distributors
-                        that have invited you.
+                        {t(
+                            'Accept or decline the organizations and distributors that have invited you.',
+                        )}
                     </p>
                 </div>
 
@@ -51,10 +53,21 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                                         {connection.distributorName}
                                     </p>
                                     <p className="text-muted-foreground text-sm">
-                                        {connection.inviterName} invited{' '}
-                                        {connection.companyName} to supply them.
+                                        {t(
+                                            ':inviter invited :company to supply them.',
+                                            {
+                                                inviter: connection.inviterName,
+                                                company: connection.companyName,
+                                            },
+                                        )}
                                         {connection.expiresAt
-                                            ? ` Expires ${new Date(connection.expiresAt).toLocaleDateString()}.`
+                                            ? ` ${t('Expires :date.', {
+                                                  date: new Date(
+                                                      connection.expiresAt,
+                                                  ).toLocaleDateString(
+                                                      formatLocale(),
+                                                  ),
+                                              })}`
                                             : null}
                                     </p>
                                 </div>
@@ -66,7 +79,7 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                                     <Link
                                         href={showConnection(connection.code)}
                                     >
-                                        Review
+                                        {t('Review')}
                                     </Link>
                                 </Button>
                             </li>
@@ -87,10 +100,21 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                                         {invitation.organization.name}
                                     </p>
                                     <p className="text-muted-foreground text-sm">
-                                        {invitation.inviterName} invited you to
-                                        join as {invitation.roleLabel}.
+                                        {t(
+                                            ':inviter invited you to join as :role.',
+                                            {
+                                                inviter: invitation.inviterName,
+                                                role: invitation.roleLabel,
+                                            },
+                                        )}
                                         {invitation.expiresAt
-                                            ? ` Expires ${new Date(invitation.expiresAt).toLocaleDateString()}.`
+                                            ? ` ${t('Expires :date.', {
+                                                  date: new Date(
+                                                      invitation.expiresAt,
+                                                  ).toLocaleDateString(
+                                                      formatLocale(),
+                                                  ),
+                                              })}`
                                             : null}
                                     </p>
                                 </div>
@@ -106,7 +130,7 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                                             respond(invitation, 'decline')
                                         }
                                     >
-                                        Decline
+                                        {t('Decline')}
                                     </Button>
                                     <Button
                                         data-test="pending-invitation-accept"
@@ -117,7 +141,7 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                                             respond(invitation, 'accept')
                                         }
                                     >
-                                        Accept
+                                        {t('Accept')}
                                     </Button>
                                 </div>
                             </li>
@@ -130,11 +154,12 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                         </div>
                         <div className="space-y-1">
                             <h2 className="font-medium">
-                                No pending invitations
+                                {t('No pending invitations')}
                             </h2>
                             <p className="text-muted-foreground text-sm">
-                                Invitations to join an organization, or to
-                                supply a distributor, will show up here.
+                                {t(
+                                    'Invitations to join an organization, or to supply a distributor, will show up here.',
+                                )}
                             </p>
                         </div>
                     </div>
@@ -147,7 +172,7 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
 InvitationsIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Invitations',
+            title: tk('Invitations'),
             href: index(),
         },
     ],

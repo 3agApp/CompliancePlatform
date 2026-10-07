@@ -1,6 +1,7 @@
 import { InfoIcon } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { OrganizationInvitationContext } from '@/types';
+import { t } from '@/lib/i18n';
 
 type Props = {
     invitation: OrganizationInvitationContext;
@@ -19,8 +20,23 @@ export default function OrganizationInvitationAlert({
             <InfoIcon />
             <AlertDescription className="text-blue-900 dark:text-blue-100">
                 {invitation.kind === 'supplier_connection'
-                    ? `${action} to connect with "${invitation.organizationName}" as their supplier.`
-                    : `${action} to join the "${invitation.organizationName}" organization.`}
+                    ? action === 'Log in'
+                        ? t(
+                              'Log in to connect with ":organization" as their supplier.',
+                              { organization: invitation.organizationName },
+                          )
+                        : t(
+                              'Register to connect with ":organization" as their supplier.',
+                              { organization: invitation.organizationName },
+                          )
+                    : action === 'Log in'
+                      ? t('Log in to join the ":organization" organization.', {
+                            organization: invitation.organizationName,
+                        })
+                      : t(
+                            'Register to join the ":organization" organization.',
+                            { organization: invitation.organizationName },
+                        )}
             </AlertDescription>
         </Alert>
     );

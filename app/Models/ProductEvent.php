@@ -140,12 +140,12 @@ class ProductEvent extends Model
     public static function labelForField(string $field): string
     {
         return match ($field) {
-            'name' => 'Name',
-            'document' => 'Document',
-            'seal_override' => 'Public seal',
-            'supplier_connection_id' => 'Supplier',
-            'product_category_id' => 'Category',
-            'product_template_id' => 'Template',
+            'name' => __('Name'),
+            'document' => __('Document'),
+            'seal_override' => __('Public seal'),
+            'supplier_connection_id' => __('Supplier'),
+            'product_category_id' => __('Category'),
+            'product_template_id' => __('Template'),
             default => ProductRequirement::labelForAttribute($field) ?? $field,
         };
     }

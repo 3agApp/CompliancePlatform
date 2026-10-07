@@ -24,9 +24,9 @@ enum ProductSealStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Verified => 'Verified',
-            self::InProgress => 'In progress',
-            self::NotVerified => 'Not verified',
+            self::Verified => __('Verified'),
+            self::InProgress => __('In progress'),
+            self::NotVerified => __('Not verified'),
         };
     }
 
@@ -36,9 +36,9 @@ enum ProductSealStatus: string
     public function message(): string
     {
         return match ($this) {
-            self::Verified => 'This product meets Swiss compliance requirements.',
-            self::InProgress => 'The compliance check has not finished yet.',
-            self::NotVerified => 'No completed compliance check yet.',
+            self::Verified => __('This product meets Swiss compliance requirements.'),
+            self::InProgress => __('The compliance check has not finished yet.'),
+            self::NotVerified => __('No completed compliance check yet.'),
         };
     }
 

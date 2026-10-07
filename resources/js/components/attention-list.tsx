@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { AlertTriangle, ChevronRight, CircleAlert } from 'lucide-react';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export type AttentionItem = {
@@ -33,7 +34,7 @@ export default function AttentionList({ items }: { items: AttentionItem[] }) {
                 id="needs-attention-heading"
                 className="text-base font-semibold"
             >
-                Needs attention
+                {t('Needs attention')}
             </h2>
             <ul className="divide-y overflow-hidden rounded-lg border border-amber-500/30">
                 {items.map((item) => {

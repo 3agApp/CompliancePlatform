@@ -20,6 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { t } from '@/lib/i18n';
 import { store as storeInvitation } from '@/routes/organizations/invitations';
 import type { RoleOption, Organization } from '@/types';
 
@@ -59,17 +60,20 @@ export default function InviteMemberModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Invite an organization member
+                                    {t('Invite an organization member')}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    Send an invitation to join this
-                                    organization.
+                                    {t(
+                                        'Send an invitation to join this organization.',
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
+                                    <Label htmlFor="email">
+                                        {t('Email address')}
+                                    </Label>
                                     <Input
                                         id="email"
                                         name="email"
@@ -82,7 +86,7 @@ export default function InviteMemberModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="role">Role</Label>
+                                    <Label htmlFor="role">{t('Role')}</Label>
                                     <Select
                                         name="role"
                                         value={inviteRole}
@@ -103,7 +107,9 @@ export default function InviteMemberModal({
                                             data-test="invite-role"
                                             className="w-full"
                                         >
-                                            <SelectValue placeholder="Select a role" />
+                                            <SelectValue
+                                                placeholder={t('Select a role')}
+                                            />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {availableRoles.map((role) => (
@@ -122,7 +128,9 @@ export default function InviteMemberModal({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -130,7 +138,7 @@ export default function InviteMemberModal({
                                     data-test="invite-submit"
                                     disabled={processing}
                                 >
-                                    Send invitation
+                                    {t('Send invitation')}
                                 </Button>
                             </DialogFooter>
                         </>

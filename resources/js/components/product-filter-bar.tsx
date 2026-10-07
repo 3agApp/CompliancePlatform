@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { t } from '@/lib/i18n';
 import { index as productsIndex } from '@/routes/products';
 import type {
     BrandOption,
@@ -46,7 +47,8 @@ type Props = {
     organizationSlug: string;
     filters: ProductFilters;
     counterparties: ProductCounterparty[];
-    counterpartyLabel: string;
+    /** Which side of the trade the counterparties are on. */
+    counterpartyKind: 'supplier' | 'distributor';
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
     availableStatuses: ProductReviewStatusOption[];
@@ -56,7 +58,7 @@ export default function ProductFilterBar({
     organizationSlug,
     filters,
     counterparties,
-    counterpartyLabel,
+    counterpartyKind,
     filterableCategories,
     filterableBrands,
     availableStatuses,
@@ -114,7 +116,7 @@ export default function ProductFilterBar({
         });
     };
 
-    const lowerLabel = counterpartyLabel.toLowerCase();
+    const isSupplierFilter = counterpartyKind === 'supplier';
 
     return (
         <div className="flex flex-wrap items-center gap-3">
@@ -125,8 +127,10 @@ export default function ProductFilterBar({
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     data-test="product-filter-search"
-                    aria-label="Search products by name, barcode or article number"
-                    placeholder="Search name, barcode or article no."
+                    aria-label={t(
+                        'Search products by name, barcode or article number',
+                    )}
+                    placeholder={t('Search name, barcode or article no.')}
                     className="pl-9"
                 />
             </div>
@@ -146,14 +150,20 @@ export default function ProductFilterBar({
                 >
                     <SelectTrigger
                         data-test="product-filter-connection"
-                        aria-label={`Filter by ${lowerLabel}`}
+                        aria-label={
+                            isSupplierFilter
+                                ? t('Filter by supplier')
+                                : t('Filter by distributor')
+                        }
                         className="w-full sm:w-56"
                     >
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value={NO_FILTER}>
-                            All {lowerLabel}s
+                            {isSupplierFilter
+                                ? t('All suppliers')
+                                : t('All distributors')}
                         </SelectItem>
                         {counterparties.map((counterparty) => (
                             <SelectItem
@@ -182,14 +192,14 @@ export default function ProductFilterBar({
                 >
                     <SelectTrigger
                         data-test="product-filter-category"
-                        aria-label="Filter by category"
+                        aria-label={t('Filter by category')}
                         className="w-full sm:w-56"
                     >
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value={NO_FILTER}>
-                            All categories
+                            {t('All categories')}
                         </SelectItem>
                         {filterableCategories.map((category) => (
                             <SelectItem
@@ -218,13 +228,15 @@ export default function ProductFilterBar({
                 >
                     <SelectTrigger
                         data-test="product-filter-brand"
-                        aria-label="Filter by brand"
+                        aria-label={t('Filter by brand')}
                         className="w-full sm:w-56"
                     >
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value={NO_FILTER}>All brands</SelectItem>
+                        <SelectItem value={NO_FILTER}>
+                            {t('All brands')}
+                        </SelectItem>
                         {filterableBrands.map((brand) => (
                             <SelectItem key={brand.id} value={String(brand.id)}>
                                 {brand.label}
@@ -247,13 +259,13 @@ export default function ProductFilterBar({
             >
                 <SelectTrigger
                     data-test="product-filter-status"
-                    aria-label="Filter by review status"
+                    aria-label={t('Filter by review status')}
                     className="w-full sm:w-48"
                 >
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value={NO_FILTER}>Any status</SelectItem>
+                    <SelectItem value={NO_FILTER}>{t('Any status')}</SelectItem>
                     {availableStatuses.map((status) => (
                         <SelectItem key={status.value} value={status.value}>
                             {status.label}
@@ -273,7 +285,7 @@ export default function ProductFilterBar({
                     onClick={clear}
                     data-test="product-filter-clear"
                 >
-                    <X className="h-4 w-4" /> Clear
+                    <X className="h-4 w-4" /> {t('Clear')}
                 </Button>
             ) : null}
         </div>

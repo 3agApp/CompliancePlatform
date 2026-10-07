@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t } from '@/lib/i18n';
 import { preview, show } from '@/routes/products/documents';
 import type { ProductDocument } from '@/types';
 
@@ -91,14 +92,17 @@ export default function PreviewDocumentModal({
                         <object
                             data={previewUrl}
                             type="application/pdf"
-                            aria-label={`Preview of ${document.name}`}
+                            aria-label={t('Preview of :name', {
+                                name: document.name,
+                            })}
                             data-test="document-preview-frame"
                             className="h-full w-full"
                         >
                             <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
                                 <p className="text-muted-foreground text-sm">
-                                    This browser cannot show PDFs. Open it in a
-                                    new tab or download it instead.
+                                    {t(
+                                        'This browser cannot show PDFs. Open it in a new tab or download it instead.',
+                                    )}
                                 </p>
 
                                 <Button variant="secondary" asChild>
@@ -108,7 +112,7 @@ export default function PreviewDocumentModal({
                                         rel="noopener noreferrer"
                                         data-test="document-preview-new-tab"
                                     >
-                                        Open in a new tab
+                                        {t('Open in a new tab')}
                                     </a>
                                 </Button>
                             </div>
@@ -118,7 +122,7 @@ export default function PreviewDocumentModal({
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Close</Button>
+                        <Button variant="secondary">{t('Close')}</Button>
                     </DialogClose>
 
                     {/*
@@ -131,7 +135,7 @@ export default function PreviewDocumentModal({
                             data-test="document-preview-download"
                         >
                             <Download className="size-4" />
-                            Download
+                            {t('Download')}
                         </a>
                     </Button>
                 </DialogFooter>

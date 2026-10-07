@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tn } from '@/lib/i18n';
 import { destroy } from '@/routes/products';
 import type { Product } from '@/types';
 
@@ -44,16 +45,18 @@ export default function DeleteProductModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Delete product</DialogTitle>
+                    <DialogTitle>{t('Delete product')}</DialogTitle>
                     <DialogDescription>
-                        This action cannot be undone. This will permanently
-                        delete <strong>{product?.name}</strong>.
+                        {tn(
+                            'This action cannot be undone. This will permanently delete :name.',
+                            { name: <strong>{product?.name}</strong> },
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
+                        <Button variant="secondary">{t('Cancel')}</Button>
                     </DialogClose>
 
                     <Button
@@ -62,7 +65,7 @@ export default function DeleteProductModal({
                         disabled={processing}
                         onClick={deleteProduct}
                     >
-                        Delete product
+                        {t('Delete product')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

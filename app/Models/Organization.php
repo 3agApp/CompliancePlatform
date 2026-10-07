@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\GeneratesUniqueOrganizationSlugs;
+use App\Enums\Locale;
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
 use App\Enums\SupplierConnectionStatus;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $name
  * @property string $slug
  * @property OrganizationType $type
+ * @property Locale $locale
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, OrganizationInvitation> $invitations
@@ -35,11 +37,24 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, SupplierConnection> $distributorConnections
  * @property-read Collection<int, Product> $suppliedProducts
  */
-#[Fillable(['name', 'slug', 'type'])]
+#[Fillable(['name', 'slug', 'type', 'locale'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
     use GeneratesUniqueOrganizationSlugs, HasFactory;
+
+    /**
+     * The model's default values for attributes.
+     *
+     * Mirrors the column's default, so an organization created without a
+     * language already speaks English in memory rather than only once it
+     * is read back from the database.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'locale' => 'en',
+    ];
 
     /**
      * Bootstrap the model and its traits.
@@ -74,6 +89,7 @@ class Organization extends Model
     {
         return [
             'type' => OrganizationType::class,
+            'locale' => Locale::class,
         ];
     }
 
@@ -252,8 +268,13 @@ class Organization extends Model
             return;
         }
 
+        /**
+         * The names are the organization's own data from here on, so they
+         * are written in the language it speaks rather than translated on
+         * the way out: renaming one is then the same for everybody.
+         */
         foreach (ProductCategory::DEFAULT_NAMES as $name) {
-            $this->productCategories()->create(['name' => $name]);
+            $this->productCategories()->create(['name' => __($name, locale: $this->locale->value)]);
         }
     }
 

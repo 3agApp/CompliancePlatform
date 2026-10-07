@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tcn, tn } from '@/lib/i18n';
 import { destroy } from '@/routes/brands';
 import type { Brand } from '@/types';
 
@@ -51,32 +52,25 @@ export default function DeleteBrandModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Delete brand</DialogTitle>
+                    <DialogTitle>{t('Delete brand')}</DialogTitle>
                     <DialogDescription>
-                        {isInUse ? (
-                            <>
-                                <strong>{brand?.name}</strong> is still carried
-                                by{' '}
-                                {productCount === 1
-                                    ? '1 product'
-                                    : `${productCount} products`}
-                                . Move {productCount === 1 ? 'it' : 'them'} to
-                                another brand before deleting it.
-                            </>
-                        ) : (
-                            <>
-                                This action cannot be undone. This will
-                                permanently delete{' '}
-                                <strong>{brand?.name}</strong>.
-                            </>
-                        )}
+                        {isInUse
+                            ? tcn(
+                                  ':name is still carried by 1 product. Move it to another brand before deleting it.|:name is still carried by :count products. Move them to another brand before deleting it.',
+                                  productCount,
+                                  { name: <strong>{brand?.name}</strong> },
+                              )
+                            : tn(
+                                  'This action cannot be undone. This will permanently delete :name.',
+                                  { name: <strong>{brand?.name}</strong> },
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
                         <Button variant="secondary">
-                            {isInUse ? 'Close' : 'Cancel'}
+                            {isInUse ? t('Close') : t('Cancel')}
                         </Button>
                     </DialogClose>
 
@@ -87,7 +81,7 @@ export default function DeleteBrandModal({
                             disabled={processing}
                             onClick={deleteBrand}
                         >
-                            Delete brand
+                            {t('Delete brand')}
                         </Button>
                     )}
                 </DialogFooter>

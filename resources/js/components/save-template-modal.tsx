@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { store, update } from '@/routes/categories/templates';
 import type {
     ProductCategory,
@@ -71,27 +72,28 @@ export default function SaveTemplateModal({
                             <DialogHeader>
                                 <DialogTitle>
                                     {isEditing
-                                        ? 'Edit template'
-                                        : `Add a template to ${category.name}`}
+                                        ? t('Edit template')
+                                        : t('Add a template to :category', {
+                                              category: category.name,
+                                          })}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    A template says which documents and which
-                                    details a product of this kind is expected
-                                    to carry. Nothing here blocks a product from
-                                    being saved — it is a checklist, not a gate.
+                                    {t(
+                                        'A template says which documents and which details a product of this kind is expected to carry. Nothing here blocks a product from being saved — it is a checklist, not a gate.',
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="template-name">
-                                    Template name
+                                    {t('Template name')}
                                 </Label>
                                 <Input
                                     id="template-name"
                                     name="name"
                                     data-test="template-name"
                                     defaultValue={template?.name ?? ''}
-                                    placeholder="EU toy safety"
+                                    placeholder={t('EU toy safety')}
                                     autoComplete="off"
                                     required
                                 />
@@ -100,8 +102,10 @@ export default function SaveTemplateModal({
 
                             <div className="grid max-h-[50vh] gap-6 overflow-y-auto pr-1">
                                 <RequirementGroup
-                                    title="Documents"
-                                    description="Papers that have to be filed against the product."
+                                    title={t('Documents')}
+                                    description={t(
+                                        'Papers that have to be filed against the product.',
+                                    )}
                                     options={availableRequirements.filter(
                                         (requirement) =>
                                             requirement.group === 'document',
@@ -110,8 +114,10 @@ export default function SaveTemplateModal({
                                 />
 
                                 <RequirementGroup
-                                    title="Product data"
-                                    description="Fields on the product that have to be filled in."
+                                    title={t('Product data')}
+                                    description={t(
+                                        'Fields on the product that have to be filled in.',
+                                    )}
                                     options={availableRequirements.filter(
                                         (requirement) =>
                                             requirement.group === 'data',
@@ -126,7 +132,7 @@ export default function SaveTemplateModal({
                                     variant="secondary"
                                     onClick={() => onOpenChange(false)}
                                 >
-                                    Cancel
+                                    {t('Cancel')}
                                 </Button>
 
                                 <Button
@@ -135,8 +141,8 @@ export default function SaveTemplateModal({
                                     disabled={processing}
                                 >
                                     {isEditing
-                                        ? 'Save changes'
-                                        : 'Add template'}
+                                        ? t('Save changes')
+                                        : t('Add template')}
                                 </Button>
                             </DialogFooter>
                         </>

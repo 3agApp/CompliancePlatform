@@ -12,6 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { t } from '@/lib/i18n';
 import { switchMethod } from '@/routes/organizations';
 import type { Organization } from '@/types';
 
@@ -65,7 +66,8 @@ export function OrganizationSwitcher() {
                     <Building2 className="hidden size-4 shrink-0 group-data-[collapsible=icon]:block" />
                     <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                         <span className="truncate font-semibold">
-                            {currentOrganization?.name ?? 'Select organization'}
+                            {currentOrganization?.name ??
+                                t('Select organization')}
                         </span>
                     </div>
                     <ChevronsUpDown className="ml-auto group-data-[collapsible=icon]:hidden" />
@@ -78,7 +80,7 @@ export function OrganizationSwitcher() {
                 sideOffset={4}
             >
                 <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    Organizations
+                    {t('Organizations')}
                 </DropdownMenuLabel>
                 {organizations.map((organization) => (
                     <DropdownMenuItem
@@ -105,7 +107,7 @@ export function OrganizationSwitcher() {
                     >
                         <Plus className="h-4 w-4" />
                         <span className="text-muted-foreground">
-                            New organization
+                            {t('New organization')}
                         </span>
                     </DropdownMenuItem>
                 </CreateOrganizationModal>

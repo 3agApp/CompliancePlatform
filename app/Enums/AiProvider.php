@@ -57,13 +57,13 @@ enum AiProvider: string
     {
         return match ($this) {
             self::Gemini => [
-                ['value' => 'gemini-3.1-flash-lite', 'label' => 'Gemini 3.1 Flash Lite — fast and cheap'],
-                ['value' => 'gemini-3.6-flash', 'label' => 'Gemini 3.6 Flash — recommended'],
+                ['value' => 'gemini-3.1-flash-lite', 'label' => __('Gemini 3.1 Flash Lite — fast and cheap')],
+                ['value' => 'gemini-3.6-flash', 'label' => __('Gemini 3.6 Flash — recommended')],
             ],
             self::OpenAi => [
-                ['value' => 'gpt-5.6-luna', 'label' => 'GPT-5.6 Luna — fast and cheap'],
-                ['value' => 'gpt-5.6-terra', 'label' => 'GPT-5.6 Terra — recommended'],
-                ['value' => 'gpt-5.6-sol', 'label' => 'GPT-5.6 Sol — most capable'],
+                ['value' => 'gpt-5.6-luna', 'label' => __('GPT-5.6 Luna — fast and cheap')],
+                ['value' => 'gpt-5.6-terra', 'label' => __('GPT-5.6 Terra — recommended')],
+                ['value' => 'gpt-5.6-sol', 'label' => __('GPT-5.6 Sol — most capable')],
             ],
         };
     }

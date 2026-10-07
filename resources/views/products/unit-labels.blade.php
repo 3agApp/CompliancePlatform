@@ -10,7 +10,7 @@
     for a 50 x 30 mm label and hold up a few millimetres either side.
 --}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <title>{{ $product->name }}</title>
@@ -81,7 +81,7 @@
                             <p class="brand">{{ $product->brand->name }}</p>
                         @endif
                         <p class="name">{{ Str::limit($product->name, 24) }}</p>
-                        <p class="caption">Scan to check this product is genuine</p>
+                        <p class="caption">{{ __('Scan to check this product is genuine') }}</p>
                         <p class="serial">{{ $unit['serial'] }}</p>
                     </td>
                 </tr>

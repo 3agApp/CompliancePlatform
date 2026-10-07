@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { t, tc, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { store, suggest } from '@/routes/products/documents';
 import type { ProductDocumentType, ProductDocumentTypeOption } from '@/types';
@@ -81,15 +82,23 @@ type Props = {
     onOpenChange: (open: boolean) => void;
 };
 
-/** What to say when the guessing did not happen. */
-const UNAVAILABLE_NOTES: Record<string, string> = {
-    not_configured:
-        'No AI provider is connected for this organization, so the kinds are yours to pick.',
-    rejected:
-        'The AI provider refused this organization’s key. Pick the kinds yourself.',
-    unavailable:
-        'Couldn’t reach the AI provider just now. Pick the kinds yourself.',
-};
+/**
+ * What to say when the guessing did not happen. A function rather than a
+ * constant, so the strings are looked up after the translations load.
+ */
+function unavailableNotes(): Record<string, string> {
+    return {
+        not_configured: t(
+            'No AI provider is connected for this organization, so the kinds are yours to pick.',
+        ),
+        rejected: t(
+            'The AI provider refused this organization’s key. Pick the kinds yourself.',
+        ),
+        unavailable: t(
+            'Couldn’t reach the AI provider just now. Pick the kinds yourself.',
+        ),
+    };
+}
 
 /**
  * Show a file size the way the person who picked the file thinks of it.
@@ -170,7 +179,9 @@ export default function UploadDocumentsModal({
         const room = MAX_FILES - pending.length;
 
         if (room <= 0) {
-            setNotice(`Upload up to ${MAX_FILES} files at a time.`);
+            setNotice(
+                t('Upload up to :count files at a time.', { count: MAX_FILES }),
+            );
 
             return;
         }
@@ -194,10 +205,14 @@ export default function UploadDocumentsModal({
 
         if (tooBig.length > 0) {
             setNotice(
-                `${tooBig.map((file) => file.name).join(', ')} — each file must be no larger than 10 MB.`,
+                t(':files — each file must be no larger than 10 MB.', {
+                    files: tooBig.map((file) => file.name).join(', '),
+                }),
             );
         } else if (accepted.length < chosen.length) {
-            setNotice(`Upload up to ${MAX_FILES} files at a time.`);
+            setNotice(
+                t('Upload up to :count files at a time.', { count: MAX_FILES }),
+            );
         } else {
             setNotice(null);
         }
@@ -245,8 +260,8 @@ export default function UploadDocumentsModal({
             onSuccess: (response: SuggestionResponse) => {
                 if (response.unavailable !== null) {
                     setNotice(
-                        UNAVAILABLE_NOTES[response.unavailable] ??
-                            UNAVAILABLE_NOTES.unavailable,
+                        unavailableNotes()[response.unavailable] ??
+                            unavailableNotes().unavailable,
                     );
                 }
 
@@ -276,7 +291,7 @@ export default function UploadDocumentsModal({
              * A request that never lands is not a reason to block an upload:
              * the rows are already there and the kinds can be picked by hand.
              */
-            onError: () => setNotice(UNAVAILABLE_NOTES.unavailable),
+            onError: () => setNotice(unavailableNotes().unavailable),
         });
     };
 
@@ -334,11 +349,11 @@ export default function UploadDocumentsModal({
                 data-test="upload-documents-modal"
             >
                 <DialogHeader>
-                    <DialogTitle>Upload documents</DialogTitle>
+                    <DialogTitle>{t('Upload documents')}</DialogTitle>
                     <DialogDescription>
-                        Add as many files as you like, then say what each one
-                        is. Only file names, types and sizes are ever sent to
-                        the AI — never the contents of a document.
+                        {t(
+                            'Add as many files as you like, then say what each one is. Only file names, types and sizes are ever sent to the AI — never the contents of a document.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -381,13 +396,16 @@ export default function UploadDocumentsModal({
 
                         <Upload className="text-muted-foreground size-5" />
                         <span className="text-sm font-medium">
-                            Drag files here, or{' '}
-                            <span className="underline underline-offset-4">
-                                browse
-                            </span>
+                            {tn('Drag files here, or :browse', {
+                                browse: (
+                                    <span className="underline underline-offset-4">
+                                        {t('browse')}
+                                    </span>
+                                ),
+                            })}
                         </span>
                         <span className="text-muted-foreground text-xs">
-                            PDF, image, Word or Excel, up to 10 MB each.
+                            {t('PDF, image, Word or Excel, up to 10 MB each.')}
                         </span>
                     </label>
 
@@ -420,15 +438,16 @@ export default function UploadDocumentsModal({
                                             <Sparkles className="size-4" />
                                         )}
                                         {suggestions.processing
-                                            ? 'Working out the kinds…'
+                                            ? t('Working out the kinds…')
                                             : asked
-                                              ? 'Guess the rest'
-                                              : 'Guess the kinds'}
+                                              ? t('Guess the rest')
+                                              : t('Guess the kinds')}
                                     </Button>
                                     <span className="text-muted-foreground text-xs">
-                                        {unnamed === 1
-                                            ? '1 file still needs a kind'
-                                            : `${unnamed} files still need a kind`}
+                                        {tc(
+                                            '1 file still needs a kind|:count files still need a kind',
+                                            unnamed,
+                                        )}
                                     </span>
                                 </div>
                             ) : null}
@@ -488,7 +507,11 @@ export default function UploadDocumentsModal({
                                                     data-test={`pending-document-type-${index}`}
                                                     className="w-full"
                                                 >
-                                                    <SelectValue placeholder="Select a kind" />
+                                                    <SelectValue
+                                                        placeholder={t(
+                                                            'Select a kind',
+                                                        )}
+                                                    />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {availableDocumentTypes.map(
@@ -514,7 +537,7 @@ export default function UploadDocumentsModal({
                                                     data-test={`pending-document-guessed-${index}`}
                                                 >
                                                     <Sparkles className="size-3" />
-                                                    Proposed — check it
+                                                    {t('Proposed — check it')}
                                                 </span>
                                             ) : null}
 
@@ -524,7 +547,9 @@ export default function UploadDocumentsModal({
                                                     className="text-muted-foreground text-xs"
                                                     data-test={`pending-document-unsure-${index}`}
                                                 >
-                                                    Not sure — pick the kind
+                                                    {t(
+                                                        'Not sure — pick the kind',
+                                                    )}
                                                 </span>
                                             ) : null}
 
@@ -550,7 +575,9 @@ export default function UploadDocumentsModal({
                                         >
                                             <X className="size-4" />
                                             <span className="sr-only">
-                                                Remove {row.file.name}
+                                                {t('Remove :name', {
+                                                    name: row.file.name,
+                                                })}
                                             </span>
                                         </Button>
                                     </div>
@@ -567,7 +594,7 @@ export default function UploadDocumentsModal({
                         data-test="upload-documents-cancel"
                         onClick={() => onOpenChange(false)}
                     >
-                        Cancel
+                        {t('Cancel')}
                     </Button>
 
                     {/*
@@ -583,10 +610,12 @@ export default function UploadDocumentsModal({
                     >
                         <Upload className="size-4" />
                         {processing
-                            ? 'Uploading…'
+                            ? t('Uploading…')
                             : pending.length > 1
-                              ? `Upload ${pending.length} documents`
-                              : 'Upload'}
+                              ? t('Upload :count documents', {
+                                    count: pending.length,
+                                })
+                              : t('Upload')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

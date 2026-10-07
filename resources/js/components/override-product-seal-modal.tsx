@@ -20,6 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { update as updateSeal } from '@/routes/products/seal';
 import type {
@@ -78,16 +79,16 @@ export default function OverrideProductSealModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Public seal</DialogTitle>
+                                <DialogTitle>{t('Public seal')}</DialogTitle>
                                 <DialogDescription>
-                                    The seal normally follows this product's
-                                    review. Setting one by hand overrides that
-                                    on the public page, and says so.
+                                    {t(
+                                        "The seal normally follows this product's review. Setting one by hand overrides that on the public page, and says so.",
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="seal-choice">Show</Label>
+                                <Label htmlFor="seal-choice">{t('Show')}</Label>
                                 <Select
                                     value={choice}
                                     onValueChange={(value) =>
@@ -106,7 +107,7 @@ export default function OverrideProductSealModal({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value={FOLLOWS_REVIEW}>
-                                            Whatever the review says
+                                            {t('Whatever the review says')}
                                         </SelectItem>
                                         {availableSeals.map((option) => (
                                             <SelectItem
@@ -141,7 +142,7 @@ export default function OverrideProductSealModal({
                                 )}
                             >
                                 <Label htmlFor="seal-reason">
-                                    Why it is being set by hand
+                                    {t('Why it is being set by hand')}
                                 </Label>
                                 <Textarea
                                     id="seal-reason"
@@ -149,14 +150,18 @@ export default function OverrideProductSealModal({
                                     rows={3}
                                     defaultValue={override?.reason ?? ''}
                                     data-test="seal-reason"
-                                    placeholder="Certified under the previous article number; paperwork is with the test house."
+                                    placeholder={t(
+                                        'Certified under the previous article number; paperwork is with the test house.',
+                                    )}
                                 />
                                 <InputError message={errors.reason} />
                             </div>
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -165,8 +170,8 @@ export default function OverrideProductSealModal({
                                     disabled={processing}
                                 >
                                     {clearing
-                                        ? 'Follow the review'
-                                        : 'Set the seal'}
+                                        ? t('Follow the review')
+                                        : t('Set the seal')}
                                 </Button>
                             </DialogFooter>
                         </>

@@ -9,13 +9,14 @@ import {
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import type { NavItem } from '@/types';
+import { t } from '@/lib/i18n';
 
 export function NavMain({ items }: { items: NavItem[] }) {
     const { isCurrentUrl } = useCurrentUrl();
 
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>Manage</SidebarGroupLabel>
+            <SidebarGroupLabel>{t('Manage')}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => (
                     <SidebarMenuItem key={item.title}>

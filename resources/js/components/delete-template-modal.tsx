@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tcn, tn } from '@/lib/i18n';
 import { destroy } from '@/routes/categories/templates';
 import type { ProductCategory, ProductTemplate } from '@/types';
 
@@ -54,32 +55,25 @@ export default function DeleteTemplateModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Delete template</DialogTitle>
+                    <DialogTitle>{t('Delete template')}</DialogTitle>
                     <DialogDescription>
-                        {isInUse ? (
-                            <>
-                                <strong>{template?.name}</strong> is still used
-                                by{' '}
-                                {productCount === 1
-                                    ? '1 product'
-                                    : `${productCount} products`}
-                                . Move {productCount === 1 ? 'it' : 'them'} to
-                                another template before deleting it.
-                            </>
-                        ) : (
-                            <>
-                                This action cannot be undone. This will
-                                permanently delete{' '}
-                                <strong>{template?.name}</strong>.
-                            </>
-                        )}
+                        {isInUse
+                            ? tcn(
+                                  ':name is still used by 1 product. Move it to another template before deleting it.|:name is still used by :count products. Move them to another template before deleting it.',
+                                  productCount,
+                                  { name: <strong>{template?.name}</strong> },
+                              )
+                            : tn(
+                                  'This action cannot be undone. This will permanently delete :name.',
+                                  { name: <strong>{template?.name}</strong> },
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
                         <Button variant="secondary">
-                            {isInUse ? 'Close' : 'Cancel'}
+                            {isInUse ? t('Close') : t('Cancel')}
                         </Button>
                     </DialogClose>
 
@@ -90,7 +84,7 @@ export default function DeleteTemplateModal({
                             disabled={processing}
                             onClick={deleteTemplate}
                         >
-                            Delete template
+                            {t('Delete template')}
                         </Button>
                     )}
                 </DialogFooter>

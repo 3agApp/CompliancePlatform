@@ -17,6 +17,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { ProductEvent, ProductEventType } from '@/types';
 
@@ -61,7 +62,7 @@ function happenedAt(timestamp: string | null): string {
         return '';
     }
 
-    return new Date(timestamp).toLocaleString(undefined, {
+    return new Date(timestamp).toLocaleString(formatLocale(), {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -80,11 +81,11 @@ function happenedAt(timestamp: string | null): string {
  */
 function describe({ from, to }: { from: string | null; to: string | null }) {
     if (from === null && to !== null) {
-        return <>set to “{to}”</>;
+        return <>{t('set to “:value”', { value: to })}</>;
     }
 
     if (to === null) {
-        return <>cleared</>;
+        return <>{t('cleared')}</>;
     }
 
     return (
@@ -107,13 +108,15 @@ export default function ProductHistoryPanel({ events }: Props) {
         <div className="workspace-panel space-y-6 p-6">
             <Heading
                 variant="small"
-                title="History"
-                description="Everything that has happened to this product, and who did it."
+                title={t('History')}
+                description={t(
+                    'Everything that has happened to this product, and who did it.',
+                )}
             />
 
             {events.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                    Nothing has happened to this product yet.
+                    {t('Nothing has happened to this product yet.')}
                 </p>
             ) : (
                 <ol className="space-y-5" data-test="product-history">
@@ -144,7 +147,7 @@ export default function ProductHistoryPanel({ events }: Props) {
                                         </span>
                                         <span className="text-muted-foreground">
                                             {event.actor
-                                                ? ` by ${event.actor}`
+                                                ? ` ${t('by :name', { name: event.actor })}`
                                                 : ''}
                                             {event.actor_organization
                                                 ? ` (${event.actor_organization})`
@@ -199,8 +202,10 @@ export function ProductHistorySkeleton() {
         <div className="workspace-panel space-y-6 p-6">
             <Heading
                 variant="small"
-                title="History"
-                description="Everything that has happened to this product, and who did it."
+                title={t('History')}
+                description={t(
+                    'Everything that has happened to this product, and who did it.',
+                )}
             />
 
             <div className="space-y-5">

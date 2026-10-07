@@ -12,6 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { t } from '@/lib/i18n';
 import { destroy, update } from '@/routes/organizations/ai-provider';
 import type { AiProviderOption, AiProviderSetting } from '@/types';
 
@@ -81,7 +82,7 @@ export default function OrganizationAiProviderForm({
                 <>
                     <div className="grid gap-6 sm:grid-cols-2">
                         <div className="grid content-start gap-2">
-                            <Label htmlFor="ai-provider">Provider</Label>
+                            <Label htmlFor="ai-provider">{t('Provider')}</Label>
                             <Select
                                 value={providerValue}
                                 onValueChange={chooseProvider}
@@ -117,7 +118,7 @@ export default function OrganizationAiProviderForm({
                         </div>
 
                         <div className="grid content-start gap-2">
-                            <Label htmlFor="ai-model">Model</Label>
+                            <Label htmlFor="ai-model">{t('Model')}</Label>
                             <Select value={model} onValueChange={setModel}>
                                 <SelectTrigger
                                     id="ai-model"
@@ -143,7 +144,7 @@ export default function OrganizationAiProviderForm({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="ai-api-key">API key</Label>
+                        <Label htmlFor="ai-api-key">{t('API key')}</Label>
                         <Input
                             id="ai-api-key"
                             name="api_key"
@@ -153,13 +154,17 @@ export default function OrganizationAiProviderForm({
                             data-test="ai-api-key"
                             placeholder={
                                 setting === null
-                                    ? 'Paste the key from your provider'
-                                    : `•••• ${setting.key_hint} — leave blank to keep this key`
+                                    ? t('Paste the key from your provider')
+                                    : t(
+                                          '•••• :hint — leave blank to keep this key',
+                                          { hint: setting.key_hint },
+                                      )
                             }
                         />
                         <p className="text-muted-foreground text-xs">
-                            Stored encrypted. It is never shown again and never
-                            sent to the browser.
+                            {t(
+                                'Stored encrypted. It is never shown again and never sent to the browser.',
+                            )}
                         </p>
                         <InputError message={errors.api_key} />
                     </div>
@@ -171,7 +176,7 @@ export default function OrganizationAiProviderForm({
                             disabled={processing}
                         >
                             <Sparkles className="h-4 w-4" />
-                            {processing ? 'Saving…' : 'Save provider'}
+                            {processing ? t('Saving…') : t('Save provider')}
                         </Button>
 
                         {setting !== null ? (
@@ -182,7 +187,7 @@ export default function OrganizationAiProviderForm({
                                 onClick={disconnect}
                             >
                                 <Unplug className="h-4 w-4" />
-                                Disconnect
+                                {t('Disconnect')}
                             </Button>
                         ) : null}
                     </div>

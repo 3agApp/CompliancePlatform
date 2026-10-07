@@ -1,3 +1,4 @@
+import type { Locale } from '@/lib/i18n';
 import type { Auth } from '@/types/auth';
 import type {
     Organization,
@@ -21,6 +22,9 @@ declare module '@inertiajs/core' {
             organizations: Organization[];
             organizationTypes: OrganizationTypeOption[];
             pendingInvitationsCount: number;
+            locale: Locale;
+            availableLocales: { value: Locale; label: string }[];
+            translations?: Record<string, string>;
             [key: string]: unknown;
         };
     }

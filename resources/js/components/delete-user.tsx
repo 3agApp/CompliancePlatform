@@ -15,14 +15,15 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 
 export default function DeleteUser() {
     const passwordInput = useRef<HTMLInputElement>(null);
 
     return (
         <DangerZone
-            title="Delete account"
-            description="Delete your account and all of its resources"
+            title={t('Delete account')}
+            description={t('Delete your account and all of its resources')}
         >
             <Dialog>
                 <DialogTrigger asChild>
@@ -30,18 +31,17 @@ export default function DeleteUser() {
                         variant="destructive"
                         data-test="delete-user-button"
                     >
-                        Delete account
+                        {t('Delete account')}
                     </Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogTitle>
-                        Are you sure you want to delete your account?
+                        {t('Are you sure you want to delete your account?')}
                     </DialogTitle>
                     <DialogDescription>
-                        Once your account is deleted, all of its resources and
-                        data will also be permanently deleted. Please enter your
-                        password to confirm you would like to permanently delete
-                        your account.
+                        {t(
+                            'Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.',
+                        )}
                     </DialogDescription>
 
                     <Form
@@ -60,14 +60,14 @@ export default function DeleteUser() {
                                         htmlFor="password"
                                         className="sr-only"
                                     >
-                                        Password
+                                        {t('Password')}
                                     </Label>
 
                                     <PasswordInput
                                         id="password"
                                         name="password"
                                         ref={passwordInput}
-                                        placeholder="Password"
+                                        placeholder={t('Password')}
                                         autoComplete="current-password"
                                     />
 
@@ -82,7 +82,7 @@ export default function DeleteUser() {
                                                 resetAndClearErrors()
                                             }
                                         >
-                                            Cancel
+                                            {t('Cancel')}
                                         </Button>
                                     </DialogClose>
 
@@ -95,7 +95,7 @@ export default function DeleteUser() {
                                             type="submit"
                                             data-test="confirm-delete-user-button"
                                         >
-                                            Delete account
+                                            {t('Delete account')}
                                         </button>
                                     </Button>
                                 </DialogFooter>

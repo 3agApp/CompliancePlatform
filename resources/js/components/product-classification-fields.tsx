@@ -17,6 +17,7 @@ import type {
     ProductTemplateOption,
     SupplierConnectionOption,
 } from '@/types';
+import { t } from '@/lib/i18n';
 
 type FieldName =
     | 'product_category_id'
@@ -86,13 +87,15 @@ export default function ProductClassificationFields({
     const hasCategory = categoryId !== null;
     const categoryLabel =
         availableCategories.find((category) => category.id === categoryId)
-            ?.label ?? 'this category';
+            ?.label ?? t('this category');
 
     return (
         <div className="grid gap-4">
             {canAssignSupplier ? (
                 <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-supplier`}>Supplier</Label>
+                    <Label htmlFor={`${idPrefix}-supplier`}>
+                        {t('Supplier')}
+                    </Label>
                     <div className="flex gap-2">
                         <Select
                             value={
@@ -112,7 +115,9 @@ export default function ProductClassificationFields({
                                 data-test="product-supplier"
                                 className="w-full"
                             >
-                                <SelectValue placeholder="Select a supplier" />
+                                <SelectValue
+                                    placeholder={t('Select a supplier')}
+                                />
                             </SelectTrigger>
                             <SelectContent>
                                 {availableConnections.map((connection) => (
@@ -123,8 +128,8 @@ export default function ProductClassificationFields({
                                         {connection.label}
                                         {connection.isPending
                                             ? connection.isInvited
-                                                ? ' (invitation pending)'
-                                                : ' (not invited yet)'
+                                                ? ` ${t('(invitation pending)')}`
+                                                : ` ${t('(not invited yet)')}`
                                             : ''}
                                     </SelectItem>
                                 ))}
@@ -137,7 +142,7 @@ export default function ProductClassificationFields({
                                 variant="outline"
                                 size="icon"
                                 data-test="product-add-supplier"
-                                aria-label="Add a supplier"
+                                aria-label={t('Add a supplier')}
                                 onClick={() => setSupplierDialogOpen(true)}
                             >
                                 <Plus className="size-4" />
@@ -152,8 +157,12 @@ export default function ProductClassificationFields({
                     {availableConnections.length === 0 ? (
                         <p className="text-muted-foreground text-xs">
                             {addSupplier
-                                ? 'Add a supplier first — every product needs one. You can invite them later.'
-                                : 'Invite a supplier first — every product needs one.'}
+                                ? t(
+                                      'Add a supplier first — every product needs one. You can invite them later.',
+                                  )
+                                : t(
+                                      'Invite a supplier first — every product needs one.',
+                                  )}
                         </p>
                     ) : null}
                     <InputError message={errors.supplier_connection_id} />
@@ -174,7 +183,9 @@ export default function ProductClassificationFields({
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
-                    <Label htmlFor={`${idPrefix}-category`}>Category</Label>
+                    <Label htmlFor={`${idPrefix}-category`}>
+                        {t('Category')}
+                    </Label>
                     <Select
                         value={
                             categoryId === null ? undefined : String(categoryId)
@@ -189,7 +200,7 @@ export default function ProductClassificationFields({
                             data-test="product-category"
                             className="w-full"
                         >
-                            <SelectValue placeholder="Select a category" />
+                            <SelectValue placeholder={t('Select a category')} />
                         </SelectTrigger>
                         <SelectContent>
                             {availableCategories.map((category) => (
@@ -209,14 +220,18 @@ export default function ProductClassificationFields({
                     />
                     <p className="text-muted-foreground text-xs">
                         {availableCategories.length === 0
-                            ? 'No categories yet — add them under Categories.'
-                            : 'Its legal family.'}
+                            ? t(
+                                  'No categories yet — add them under Categories.',
+                              )
+                            : t('Its legal family.')}
                     </p>
                     <InputError message={errors.product_category_id} />
                 </div>
 
                 <div className="grid content-start gap-2">
-                    <Label htmlFor={`${idPrefix}-template`}>Template</Label>
+                    <Label htmlFor={`${idPrefix}-template`}>
+                        {t('Template')}
+                    </Label>
                     <Select
                         value={
                             templateId === null ? undefined : String(templateId)
@@ -234,8 +249,8 @@ export default function ProductClassificationFields({
                             <SelectValue
                                 placeholder={
                                     hasCategory
-                                        ? 'Select a template'
-                                        : 'Pick a category first'
+                                        ? t('Select a template')
+                                        : t('Pick a category first')
                                 }
                             />
                         </SelectTrigger>
@@ -257,8 +272,12 @@ export default function ProductClassificationFields({
                     />
                     <p className="text-muted-foreground text-xs">
                         {hasCategory && templates.length === 0
-                            ? `${categoryLabel} has no templates yet.`
-                            : 'Which documents and data this product is expected to carry.'}
+                            ? t(':category has no templates yet.', {
+                                  category: categoryLabel,
+                              })
+                            : t(
+                                  'Which documents and data this product is expected to carry.',
+                              )}
                     </p>
                     <InputError message={errors.product_template_id} />
                 </div>
