@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
@@ -237,6 +238,26 @@ class Product extends Model
     public function units(): HasMany
     {
         return $this->hasMany(ProductUnit::class);
+    }
+
+    /**
+     * Get every AI reading of the product's papers, newest first.
+     *
+     * @return HasMany<ProductAssessment, $this>
+     */
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(ProductAssessment::class)->latest('id');
+    }
+
+    /**
+     * Get the most recent AI reading of the product's papers.
+     *
+     * @return HasOne<ProductAssessment, $this>
+     */
+    public function latestAssessment(): HasOne
+    {
+        return $this->hasOne(ProductAssessment::class)->latestOfMany();
     }
 
     /**

@@ -47,6 +47,8 @@ class SaveOrganizationAiSettingRequest extends FormRequest
             ],
 
             'model' => ['required', 'string'],
+
+            'allow_document_analysis' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -84,6 +86,18 @@ class SaveOrganizationAiSettingRequest extends FormRequest
         $key = $this->validated('api_key');
 
         return is_string($key) && $key !== '' ? $key : null;
+    }
+
+    /**
+     * Determine whether the organization agrees to its documents being sent
+     * to the provider to be read.
+     *
+     * Off unless it is said, so a form that never showed the choice can
+     * never make it.
+     */
+    public function allowsDocumentAnalysis(): bool
+    {
+        return $this->boolean('allow_document_analysis');
     }
 
     /**

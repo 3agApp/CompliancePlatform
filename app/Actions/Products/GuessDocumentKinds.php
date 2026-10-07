@@ -3,17 +3,15 @@
 namespace App\Actions\Products;
 
 use App\Ai\Agents\DocumentKindAgent;
+use App\Ai\OrganizationProvider;
 use App\Data\DocumentKindGuess;
 use App\Data\DocumentKindGuesses;
 use App\Data\ProductDocumentCandidate;
 use App\Enums\GuessConfidence;
 use App\Enums\ProductDocumentType;
 use App\Models\Organization;
-use App\Models\OrganizationAiSetting;
-use Closure;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Number;
-use Laravel\Ai\AiManager;
 use Throwable;
 
 /**
@@ -35,7 +33,7 @@ class GuessDocumentKinds
      */
     private const int TIMEOUT = 10;
 
-    public function __construct(private AiManager $ai)
+    public function __construct(private OrganizationProvider $provider)
     {
         //
     }
@@ -53,7 +51,7 @@ class GuessDocumentKinds
         }
 
         try {
-            $response = $this->underOrganizationKey(
+            $response = $this->provider->using(
                 $setting,
                 fn (string $provider): mixed => (new DocumentKindAgent)->prompt(
                     $this->promptFor($candidates),
@@ -76,38 +74,6 @@ class GuessDocumentKinds
         }
 
         return new DocumentKindGuesses($this->reconcile($candidates, $response['guesses'] ?? []));
-    }
-
-    /**
-     * Run the callback against a provider configured with this organization's key.
-     *
-     * The SDK reads its credentials from config and caches the instance it
-     * built from them, so a tenant's key is given a provider name of its own
-     * rather than written over the shared one. Nothing else can then resolve
-     * it by accident, and the shared entry is never in a state where one
-     * organization's key is sitting in it.
-     *
-     * The finally is not tidying. A worker outlives the request, and a
-     * provider call that throws would otherwise leave the key in config for
-     * whoever prompts next.
-     *
-     * @param  Closure(string): mixed  $callback
-     */
-    private function underOrganizationKey(OrganizationAiSetting $setting, Closure $callback): mixed
-    {
-        $name = 'organization-'.$setting->organization_id;
-
-        config(["ai.providers.{$name}" => [
-            'driver' => $setting->provider->lab()->value,
-            'key' => $setting->api_key,
-        ]]);
-
-        try {
-            return $callback($name);
-        } finally {
-            config(["ai.providers.{$name}" => null]);
-            $this->ai->forgetInstance($name);
-        }
     }
 
     /**

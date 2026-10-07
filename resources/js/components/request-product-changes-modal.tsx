@@ -21,6 +21,8 @@ type Props = {
     product: ProductDetail;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    /** A note to start from, such as the AI check's draft request to the factory. */
+    defaultNote?: string;
 };
 
 /**
@@ -35,6 +37,7 @@ export default function RequestProductChangesModal({
     product,
     open,
     onOpenChange,
+    defaultNote,
 }: Props) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,7 +79,8 @@ export default function RequestProductChangesModal({
                                 <Textarea
                                     id="review-note"
                                     name="note"
-                                    rows={5}
+                                    rows={defaultNote ? 12 : 5}
+                                    defaultValue={defaultNote}
                                     autoFocus
                                     data-test="review-note"
                                     placeholder={t(

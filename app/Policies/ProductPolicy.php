@@ -76,6 +76,20 @@ class ProductPolicy
     }
 
     /**
+     * Determine whether the user can have the product's papers read by AI,
+     * and see what it found.
+     *
+     * Whoever rules on the product, and nobody else. The reading is a
+     * second opinion for the reviewer: the supplier being checked does not
+     * get to see the checker's notes before the reviewer has, nor to spend
+     * the distributor's AI budget.
+     */
+    public function assess(User $user, Product $product): bool
+    {
+        return $this->review($user, $product);
+    }
+
+    /**
      * Determine whether the user can set the public seal by hand.
      *
      * Only the distributor that owns the product. The seal speaks in their

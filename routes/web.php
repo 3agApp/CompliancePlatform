@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
+use App\Http\Controllers\ProductAssessmentController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
@@ -107,6 +108,15 @@ Route::prefix('{current_organization}')
             Route::get('products/{product}/label-batches/{label_batch}', [SerialLabelController::class, 'show'])->name('products.label-batches.show');
             Route::get('products/{product}/label-batches/{label_batch}/pdf', [SerialLabelController::class, 'pdf'])->name('products.label-batches.pdf');
             Route::delete('products/{product}/label-batches/{label_batch}', [SerialLabelController::class, 'destroy'])->name('products.label-batches.destroy');
+
+            /**
+             * AI readings of the product's papers. Advisory: nothing here
+             * moves the review or the seal.
+             */
+            Route::post('products/{product}/assessments', [ProductAssessmentController::class, 'store'])
+                ->middleware('throttle:ai-assessments')
+                ->name('products.assessments.store');
+            Route::get('products/{product}/assessments/{assessment}', [ProductAssessmentController::class, 'show'])->name('products.assessments.show');
 
             /**
              * The public seal, set by hand. A distributor-only move, and one

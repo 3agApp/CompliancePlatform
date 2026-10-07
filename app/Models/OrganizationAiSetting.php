@@ -21,11 +21,12 @@ use Illuminate\Support\Str;
  * @property AiProvider $provider
  * @property string $model
  * @property string $api_key
+ * @property bool $allow_document_analysis
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
  */
-#[Fillable(['provider', 'model', 'api_key'])]
+#[Fillable(['provider', 'model', 'api_key', 'allow_document_analysis'])]
 class OrganizationAiSetting extends Model
 {
     /**
@@ -67,6 +68,7 @@ class OrganizationAiSetting extends Model
         return [
             'provider' => AiProvider::class,
             'api_key' => 'encrypted',
+            'allow_document_analysis' => 'boolean',
         ];
     }
 }

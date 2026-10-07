@@ -52,6 +52,20 @@ class AppServiceProvider extends ServiceProvider
         });
 
         /**
+         * Reading a product's papers is the most expensive thing an
+         * organization's key is used for, and one run already covers every
+         * document, so a few an hour is plenty.
+         */
+        RateLimiter::for('ai-assessments', function (Request $request): array {
+            $organization = $request->route('current_organization');
+
+            return [
+                Limit::perHour(10)->by('ai-assessments-user:'.$request->user()?->id),
+                Limit::perHour(30)->by('ai-assessments-organization:'.($organization instanceof Organization ? $organization->id : 'none')),
+            ];
+        });
+
+        /**
          * The public product page and its pictures. Generous, because one
          * visit fetches every picture on the page, but capped all the same:
          * the page is open to anyone.

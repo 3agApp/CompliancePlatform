@@ -95,6 +95,7 @@ export type AiProviderSetting = {
     model: string;
     model_label: string;
     key_hint: string;
+    allow_document_analysis: boolean;
     updated_at: string | null;
 };
 

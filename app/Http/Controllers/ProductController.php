@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Products\AssessProductDocuments;
 use App\Actions\Products\ReviewProduct;
+use App\Data\ProductAssessmentView;
 use App\Data\ProductFilters;
 use App\Enums\CountryOfOrigin;
 use App\Enums\ProductDocumentType;
@@ -195,6 +197,21 @@ class ProductController extends Controller
              * says the same thing whatever the page believed.
              */
             'canGuessDocumentKinds' => $currentOrganization->aiSetting()->exists(),
+
+            /**
+             * The AI reading of the papers, for whoever rules on the
+             * product. Deferred alongside the history: it is read after
+             * the product, and the page polls it while a run is going.
+             */
+            'assessment' => $request->user()->can('assess', $product)
+                ? Inertia::defer(fn () => [
+                    'latest' => $product->latestAssessment === null
+                        ? null
+                        : ProductAssessmentView::detail($product->latestAssessment),
+                    'runs' => ProductAssessmentView::history($product),
+                ])
+                : null,
+            'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($product->organization),
         ]);
     }
 

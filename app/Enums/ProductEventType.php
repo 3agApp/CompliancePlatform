@@ -28,6 +28,8 @@ enum ProductEventType: string
     case LabelsRevoked = 'labels_revoked';
     case DocumentPublished = 'document_published';
     case DocumentUnpublished = 'document_unpublished';
+    case AssessmentRequested = 'assessment_requested';
+    case AssessmentCompleted = 'assessment_completed';
 
     /**
      * Get the display label for the event.
@@ -50,6 +52,8 @@ enum ProductEventType: string
             self::LabelsRevoked => __('Serialised labels withdrawn'),
             self::DocumentPublished => __('Document released to the public page'),
             self::DocumentUnpublished => __('Document taken off the public page'),
+            self::AssessmentRequested => __('AI document check started'),
+            self::AssessmentCompleted => __('AI document check finished'),
         };
     }
 
