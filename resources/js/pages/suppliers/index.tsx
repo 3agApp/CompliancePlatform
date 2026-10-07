@@ -54,7 +54,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                             organizationSlug={organizationSlug}
                         >
                             <Button data-test="invite-supplier-button">
-                                <Plus /> Invite supplier
+                                <Plus /> Add supplier
                             </Button>
                         </InviteSupplierModal>
                     ) : null}
@@ -138,8 +138,45 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                             </td>
                                             <td className="px-6">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    {/*
+                                                     * A supplier added but
+                                                     * never invited has one
+                                                     * thing left to do, so
+                                                     * it is spelled out
+                                                     * rather than hidden
+                                                     * behind an icon.
+                                                     */}
                                                     {permissions.canManageConnection &&
-                                                    connection.canResend ? (
+                                                    connection.canResend &&
+                                                    !connection.isInvited ? (
+                                                        <Form
+                                                            {...resend.form([
+                                                                organizationSlug,
+                                                                connection.id,
+                                                            ])}
+                                                        >
+                                                            {({
+                                                                processing,
+                                                            }) => (
+                                                                <Button
+                                                                    type="submit"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    data-test="supplier-invite-button"
+                                                                    disabled={
+                                                                        processing
+                                                                    }
+                                                                >
+                                                                    <Send className="h-4 w-4" />
+                                                                    Invite
+                                                                </Button>
+                                                            )}
+                                                        </Form>
+                                                    ) : null}
+
+                                                    {permissions.canManageConnection &&
+                                                    connection.canResend &&
+                                                    connection.isInvited ? (
                                                         <Form
                                                             {...resend.form([
                                                                 organizationSlug,
@@ -259,7 +296,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                             <h2 className="font-medium">No suppliers yet</h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                 {permissions.canManageConnection
-                                    ? 'Invite your first supplier, then assign products to them.'
+                                    ? 'Add your first supplier, then assign products to them. You can invite them now or later.'
                                     : 'Suppliers invited to this organization will show up here.'}
                             </p>
                         </div>

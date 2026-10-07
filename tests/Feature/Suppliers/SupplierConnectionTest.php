@@ -350,3 +350,110 @@ test('the suppliers list offers to invite a revoked unclaimed connection again',
             ->where('connections.1.canRestore', false),
         );
 });
+
+test('a distributor adds a supplier without sending the invitation', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $this
+        ->actingAs($user)
+        ->post(route('suppliers.store', ['current_organization' => $distributor->slug]), [
+            'company_name' => 'Acme Supplies',
+            'contact_email' => 'compliance@acme.test',
+            'send_invitation' => '0',
+        ])
+        ->assertRedirect(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Supplier added. Invite them whenever you are ready.']);
+
+    expect(SupplierConnection::sole())
+        ->status->toBe(SupplierConnectionStatus::Pending)
+        ->invited_at->toBeNull()
+        ->expires_at->toBeNull();
+
+    Notification::assertNothingSent();
+});
+
+test('a supplier added without an invitation can have products assigned to it', function () {
+    [$user, $distributor] = newOrganizationMember();
+    newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies', 'invited_at' => null, 'expires_at' => null]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.create', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('availableConnections.0.label', 'Acme Supplies')
+            ->where('availableConnections.0.isPending', true)
+            ->where('availableConnections.0.isInvited', false)
+            ->where('canAddSupplier', true),
+        );
+});
+
+test('the suppliers list marks a supplier that has not been invited and offers to invite them', function () {
+    [$user, $distributor] = newOrganizationMember();
+    SupplierConnection::factory()->for($distributor, 'distributorOrganization')->notInvited()->create();
+
+    $this
+        ->actingAs($user)
+        ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.statusLabel', 'Not invited')
+            ->where('connections.0.isInvited', false)
+            ->where('connections.0.canResend', true),
+        );
+});
+
+test('inviting a supplier added earlier mails the link and starts its expiry', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = SupplierConnection::factory()->for($distributor, 'distributorOrganization')->notInvited()->create();
+
+    $this
+        ->actingAs($user)
+        ->post(route('suppliers.resend', ['current_organization' => $distributor->slug, 'supplier_connection' => $connection->id]))
+        ->assertRedirect(route('suppliers.index', ['current_organization' => $distributor->slug]));
+
+    expect($connection->fresh())
+        ->invited_at->not->toBeNull()
+        ->expires_at->not->toBeNull();
+
+    Notification::assertSentOnDemand(SupplierConnectionInvitation::class);
+});
+
+test('re-adding a revoked unclaimed supplier without an invitation reopens it uninvited', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, attributes: [
+        'contact_email' => 'compliance@acme.test',
+        'status' => SupplierConnectionStatus::Revoked,
+    ]);
+    $oldCode = $connection->code;
+
+    $this
+        ->actingAs($user)
+        ->post(route('suppliers.store', ['current_organization' => $distributor->slug]), [
+            'company_name' => 'Acme Supplies',
+            'contact_email' => 'compliance@acme.test',
+            'send_invitation' => '0',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($connection->fresh())
+        ->status->toBe(SupplierConnectionStatus::Pending)
+        ->invited_at->toBeNull()
+        ->code->not->toBe($oldCode);
+
+    expect(SupplierConnection::count())->toBe(1);
+    Notification::assertNothingSent();
+});
+
+test('a supplier added from a product form goes back to that form', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $form = route('products.create', ['current_organization' => $distributor->slug]);
+
+    $this
+        ->actingAs($user)
+        ->from($form)
+        ->post(route('suppliers.store', ['current_organization' => $distributor->slug]), [
+            'company_name' => 'Acme Supplies',
+            'contact_email' => 'compliance@acme.test',
+            'send_invitation' => '0',
+        ])
+        ->assertRedirect($form);
+});

@@ -26,10 +26,22 @@ class SupplierConnectionFactory extends Factory
             'company_name' => fake()->unique()->company(),
             'contact_email' => fake()->unique()->safeEmail(),
             'status' => SupplierConnectionStatus::Pending,
+            'invited_at' => now(),
             'invited_by' => User::factory()->withoutOrganization(),
             'expires_at' => now()->addDays(14),
             'accepted_at' => null,
         ];
+    }
+
+    /**
+     * Indicate that the supplier has been added but not invited yet.
+     */
+    public function notInvited(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'invited_at' => null,
+            'expires_at' => null,
+        ]);
     }
 
     /**

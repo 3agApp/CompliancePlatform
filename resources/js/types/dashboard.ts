@@ -5,6 +5,7 @@ export type DistributorDashboardStats = {
     awaitingReview: number;
     activeSuppliers: number;
     pendingInvitations: number;
+    notInvited: number;
 };
 
 export type SupplierDashboardStats = {

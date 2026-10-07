@@ -40,7 +40,11 @@ class ValidSupplierConnection implements ValidationRule
             return;
         }
 
-        if (! $value->isPending()) {
+        /**
+         * A supplier the distributor has added but not invited was never
+         * sent the link, so it reads the same as one withdrawn.
+         */
+        if (! $value->isPending() || ! $value->isInvited()) {
             $fail(__('This invitation is no longer available.'));
 
             return;

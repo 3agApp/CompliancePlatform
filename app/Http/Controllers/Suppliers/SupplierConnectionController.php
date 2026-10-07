@@ -40,7 +40,13 @@ class SupplierConnectionController extends Controller
     }
 
     /**
-     * Invite a supplier, or re-open a connection that ended earlier.
+     * Add a supplier, inviting them now or leaving that for later, or
+     * re-open a connection that ended earlier.
+     *
+     * Products can be filed against a supplier before they are told about
+     * it, so a distributor still setting up a catalog can add the supplier
+     * without mailing anybody and send the link once there is something
+     * worth showing them.
      *
      * The contact email is never looked up against existing accounts, so a
      * distributor cannot learn who is already on the platform.
@@ -51,6 +57,7 @@ class SupplierConnectionController extends Controller
 
         $companyName = $request->validated('company_name');
         $contactEmail = $request->validated('contact_email');
+        $sendsInvitation = $request->sendsInvitation();
 
         $connection = $currentOrganization->supplierConnections()
             ->whereRaw('LOWER(contact_email) = ?', [strtolower($contactEmail)])
@@ -58,26 +65,38 @@ class SupplierConnectionController extends Controller
             ->first();
 
         if ($connection instanceof SupplierConnection) {
-            $connection->reinvite($companyName);
+            $sendsInvitation
+                ? $connection->reinvite($companyName)
+                : $connection->reopenUninvited($companyName);
         } else {
             $connection = $currentOrganization->supplierConnections()->create([
                 'company_name' => $companyName,
                 'contact_email' => $contactEmail,
                 'status' => SupplierConnectionStatus::Pending,
+                'invited_at' => $sendsInvitation ? now() : null,
                 'invited_by' => $request->user()->id,
-                'expires_at' => now()->addDays(SupplierConnection::CLAIM_EXPIRY_DAYS),
+                'expires_at' => $sendsInvitation ? now()->addDays(SupplierConnection::CLAIM_EXPIRY_DAYS) : null,
             ]);
         }
 
-        $this->sendInvitation($connection);
+        if ($sendsInvitation) {
+            $this->sendInvitation($connection);
+        }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation sent.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $sendsInvitation
+            ? __('Invitation sent.')
+            : __('Supplier added. Invite them whenever you are ready.')]);
 
-        return to_route('suppliers.index', ['current_organization' => $currentOrganization->slug]);
+        /**
+         * Back where the request came from: a supplier is added from its
+         * own list, and inline on a product form that must come back to
+         * itself with what was already typed into it still there.
+         */
+        return back(fallback: route('suppliers.index', ['current_organization' => $currentOrganization->slug]));
     }
 
     /**
-     * Send the claim link again with a fresh token.
+     * Send the claim link, for the first time or again, with a fresh token.
      *
      * A connection revoked before anybody claimed it is re-opened the same
      * way, because that is what a distributor means by inviting them again.
@@ -98,7 +117,7 @@ class SupplierConnectionController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invitation sent.')]);
 
-        return to_route('suppliers.index', ['current_organization' => $currentOrganization->slug]);
+        return back(fallback: route('suppliers.index', ['current_organization' => $currentOrganization->slug]));
     }
 
     /**
@@ -167,7 +186,7 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
@@ -178,10 +197,13 @@ class SupplierConnectionController extends Controller
             'companyName' => $supplier !== null ? $supplier->name : $connection->company_name,
             'contactEmail' => $connection->contact_email,
             'status' => $connection->status->value,
-            'statusLabel' => $connection->isPending() && $connection->isExpired()
-                ? __('Expired')
-                : $connection->status->label(),
+            'statusLabel' => match (true) {
+                $connection->isPending() && ! $connection->isInvited() => __('Not invited'),
+                $connection->isPending() && $connection->isExpired() => __('Expired'),
+                default => $connection->status->label(),
+            },
             'isClaimed' => $connection->isClaimed(),
+            'isInvited' => $connection->isInvited(),
             'isAssignable' => in_array($connection->status, SupplierConnectionStatus::assignable(), strict: true),
             'canResend' => $this->isResendable($connection),
             'canRestore' => $connection->status === SupplierConnectionStatus::Revoked && $connection->isClaimed(),

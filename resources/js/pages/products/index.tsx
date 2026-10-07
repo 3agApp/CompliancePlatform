@@ -314,7 +314,9 @@ export default function ProductsIndex({
                                                 >
                                                     {product.connection_status ===
                                                     'pending'
-                                                        ? 'Pending'
+                                                        ? product.connection_is_invited
+                                                            ? 'Pending'
+                                                            : 'Not invited'
                                                         : 'Revoked'}
                                                 </Badge>
                                             ) : null}

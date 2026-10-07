@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\SupplierConnection;
 use App\Models\User;
+use App\Notifications\Suppliers\SupplierConnectionInvitation;
 use Illuminate\Support\Facades\Notification;
 
 test('a supplier is invited through the invite supplier dialog', function () {
@@ -19,7 +20,7 @@ test('a supplier is invited through the invite supplier dialog', function () {
 
     $page->assertSee('No suppliers yet')
         ->click('@invite-supplier-button')
-        ->assertSee('Invite a supplier')
+        ->assertSee('Add a supplier')
         ->fill('@supplier-company-name', 'Acme Supplies AG')
         ->fill('@supplier-contact-email', 'compliance@acme.test')
         ->click('@invite-supplier-submit')
@@ -31,6 +32,37 @@ test('a supplier is invited through the invite supplier dialog', function () {
     expect(SupplierConnection::sole())
         ->company_name->toBe('Acme Supplies AG')
         ->status->toBe(SupplierConnectionStatus::Pending);
+});
+
+/**
+ * A distributor still setting up a catalog adds the supplier without
+ * telling them, and sends the link once there is something to show.
+ */
+test('a supplier is added without an invitation and invited later from the list', function () {
+    Notification::fake();
+
+    [$user, $distributor] = newOrganizationMember();
+
+    $this->actingAs($user);
+
+    visit(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->click('@invite-supplier-button')
+        ->fill('@supplier-company-name', 'Acme Supplies AG')
+        ->fill('@supplier-contact-email', 'compliance@acme.test')
+        ->click('@supplier-send-invitation')
+        ->assertSee('Nothing is sent.')
+        ->assertSeeIn('@invite-supplier-submit', 'Add supplier')
+        ->click('@invite-supplier-submit')
+        ->assertSee('Supplier added. Invite them whenever you are ready.')
+        ->assertSee('Not invited')
+        ->click('@supplier-invite-button')
+        ->assertSee('Invitation sent.')
+        ->assertSee('Pending')
+        ->assertMissing('@supplier-invite-button')
+        ->assertNoJavaScriptErrors();
+
+    Notification::assertSentOnDemandTimes(SupplierConnectionInvitation::class, 1);
+    expect(SupplierConnection::sole()->invited_at)->not->toBeNull();
 });
 
 test('the invite supplier dialog stays open and shows the validation message for a duplicate contact', function () {

@@ -353,6 +353,16 @@ export default function Dashboard({
                   href: suppliersIndex(organizationSlug).url,
                   testId: 'dashboard-pending',
               },
+              ...(stats.notInvited > 0
+                  ? [
+                        {
+                            label: 'Not invited yet',
+                            value: stats.notInvited,
+                            href: suppliersIndex(organizationSlug).url,
+                            testId: 'dashboard-not-invited',
+                        },
+                    ]
+                  : []),
           ];
 
     /**
@@ -369,7 +379,9 @@ export default function Dashboard({
                   action: null,
               }
             : null
-        : stats.activeSuppliers === 0 && stats.pendingInvitations === 0
+        : stats.activeSuppliers === 0 &&
+            stats.pendingInvitations === 0 &&
+            stats.notInvited === 0
           ? {
                 title: 'Invite your first supplier',
                 body: 'Every product is assigned to a supplier, so start by inviting one.',

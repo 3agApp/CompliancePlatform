@@ -101,7 +101,7 @@ class ProductController extends Controller
      * the server, and the chosen one can say what it will ask for before a
      * single detail has been typed.
      */
-    public function create(Organization $currentOrganization): Response
+    public function create(Request $request, Organization $currentOrganization): Response
     {
         Gate::authorize('create', [Product::class, $currentOrganization]);
 
@@ -110,6 +110,7 @@ class ProductController extends Controller
             'availableTemplates' => $this->availableTemplates($currentOrganization),
             'availableConnections' => $this->assignableConnections($currentOrganization),
             'availableRequirements' => ProductRequirement::options(),
+            'canAddSupplier' => $this->canAddSupplier($request, $currentOrganization),
         ]);
     }
 
@@ -167,6 +168,7 @@ class ProductController extends Controller
             'availableConnections' => $this->assignableConnections($currentOrganization),
             'availableRequirements' => ProductRequirement::options(),
             'canCreateBrand' => $request->user()->toBrandPermissions($currentOrganization)->canCreateBrand,
+            'canAddSupplier' => $this->canAddSupplier($request, $currentOrganization),
             'completeness' => $product->completeness(),
             'reviewNote' => $product->latestReviewNote(),
             'seal' => $product->seal(),
@@ -503,9 +505,23 @@ class ProductController extends Controller
                 'id' => $connection->id,
                 'label' => $this->connectionLabel($connection),
                 'isPending' => $connection->isPending(),
+                'isInvited' => $connection->isInvited(),
             ])
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Determine if the product form may add a supplier inline.
+     *
+     * Only a distributor picks a product's supplier at all, and only a
+     * member who could add one from the suppliers page is offered the
+     * shortcut to it.
+     */
+    protected function canAddSupplier(Request $request, Organization $organization): bool
+    {
+        return $organization->isDistributor()
+            && $request->user()->toSupplierConnectionPermissions($organization)->canManageConnection;
     }
 
     /**
@@ -636,7 +652,7 @@ class ProductController extends Controller
      * it is read from do not: the prose is scored here and left here, so a
      * catalog listing names still carries nothing but the number.
      *
-     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, review_status: string, review_status_label: string, review_status_description: string, submitted_at: string|null, reviewed_at: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int, counterparty: string|null, connection_status: string|null, created_at: string|null}
+     * @return array{id: int, name: string, brand_id: int|null, brand_label: string|null, product_category_id: int, category_label: string, product_template_id: int, template_label: string, completeness_score: int, review_status: string, review_status_label: string, review_status_description: string, submitted_at: string|null, reviewed_at: string|null, ean: string|null, internal_article_number: string|null, supplier_article_number: string|null, order_number: string|null, customs_tariff_number: string|null, country_of_origin: string|null, country_of_origin_label: string|null, supplier_connection_id: int, counterparty: string|null, connection_status: string|null, connection_is_invited: bool, created_at: string|null}
      */
     protected function toProductArray(Product $product, bool $asSupplier = false): array
     {
@@ -669,6 +685,7 @@ class ProductController extends Controller
                 ? null
                 : ($asSupplier ? $connection->distributorOrganization->name : $this->connectionLabel($connection)),
             'connection_status' => $connection?->status->value,
+            'connection_is_invited' => $connection?->isInvited() ?? false,
             'created_at' => $product->created_at?->toISOString(),
         ];
     }

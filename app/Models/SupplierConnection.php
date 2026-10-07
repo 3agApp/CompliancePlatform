@@ -32,6 +32,7 @@ use Illuminate\Support\Str;
  * @property string $company_name
  * @property string $contact_email
  * @property SupplierConnectionStatus $status
+ * @property CarbonImmutable|null $invited_at
  * @property int $invited_by
  * @property CarbonImmutable|null $expires_at
  * @property CarbonImmutable|null $accepted_at
@@ -48,6 +49,7 @@ use Illuminate\Support\Str;
     'company_name',
     'contact_email',
     'status',
+    'invited_at',
     'invited_by',
     'expires_at',
     'accepted_at',
@@ -143,7 +145,27 @@ class SupplierConnection extends Model
             'code' => Str::random(64),
             'company_name' => $companyName,
             'status' => SupplierConnectionStatus::Pending,
+            'invited_at' => now(),
             'expires_at' => now()->addDays(self::CLAIM_EXPIRY_DAYS),
+            'accepted_at' => null,
+        ])->save();
+    }
+
+    /**
+     * Re-open an unclaimed connection without telling anybody yet.
+     *
+     * The same row comes back, so the products and brands already filed
+     * under it stay put, but with no invitation outstanding: the old claim
+     * link is replaced, and nothing is mailed until the distributor asks.
+     */
+    public function reopenUninvited(string $companyName): void
+    {
+        $this->forceFill([
+            'code' => Str::random(64),
+            'company_name' => $companyName,
+            'status' => SupplierConnectionStatus::Pending,
+            'invited_at' => null,
+            'expires_at' => null,
             'accepted_at' => null,
         ])->save();
     }
@@ -167,6 +189,12 @@ class SupplierConnection extends Model
     {
         $query
             ->where('status', SupplierConnectionStatus::Pending)
+            /**
+             * A supplier added but not invited has never been sent the
+             * link, so nobody signing in with that address should find an
+             * invitation waiting for them.
+             */
+            ->whereNotNull('invited_at')
             ->where(fn (Builder $query) => $query
                 ->whereNull('expires_at')
                 ->orWhere('expires_at', '>=', now()));
@@ -205,7 +233,15 @@ class SupplierConnection extends Model
      */
     public function isClaimable(): bool
     {
-        return $this->isPending() && ! $this->isExpired();
+        return $this->isPending() && $this->isInvited() && ! $this->isExpired();
+    }
+
+    /**
+     * Determine if the claim link has been mailed.
+     */
+    public function isInvited(): bool
+    {
+        return $this->invited_at !== null;
     }
 
     /**
@@ -236,6 +272,7 @@ class SupplierConnection extends Model
     {
         return [
             'status' => SupplierConnectionStatus::class,
+            'invited_at' => 'datetime',
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
         ];

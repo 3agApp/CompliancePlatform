@@ -67,6 +67,7 @@ type Props = {
     availableConnections: SupplierConnectionOption[];
     availableRequirements: ProductRequirementOption[];
     canCreateBrand: boolean;
+    canAddSupplier: boolean;
     canGuessDocumentKinds: boolean;
     completeness: ProductCompleteness;
     reviewNote: string | null;
@@ -93,6 +94,7 @@ export default function ProductEdit({
     availableBrands,
     availableConnections,
     canCreateBrand,
+    canAddSupplier,
     canGuessDocumentKinds,
     completeness,
     reviewNote,
@@ -363,11 +365,25 @@ export default function ProductEdit({
                                             templateId={templateId}
                                             onTemplateChange={setTemplateId}
                                             connectionId={connectionId}
-                                            onConnectionChange={setConnectionId}
+                                            /**
+                                             * A supplier added from the
+                                             * dialog is chosen without a
+                                             * change event, so the page is
+                                             * told it has an edit to save.
+                                             */
+                                            onConnectionChange={(id) => {
+                                                setConnectionId(id);
+                                                setDirty(true);
+                                            }}
                                             disabled={
                                                 !permissions.canUpdateProduct
                                             }
                                             idPrefix="edit-product"
+                                            addSupplier={
+                                                canAddSupplier
+                                                    ? { organizationSlug }
+                                                    : null
+                                            }
                                         />
                                     </section>
 
