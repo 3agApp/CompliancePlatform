@@ -2,12 +2,15 @@
 
 namespace App\Actions\Products;
 
+use App\Enums\OrganizationPermission;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\Products\ProductChangesRequested;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * The moves a product can make between the supplier filling it in and the
@@ -67,6 +70,32 @@ class ReviewProduct
 
             $product->recordEvent(ProductEventType::ChangesRequested, $actor, $organization, note: $note);
         });
+
+        $this->tellSupplier($product, $actor, $note);
+    }
+
+    /**
+     * Email the supplier that the product is back with them, and why.
+     *
+     * Only the people who can do something about it: those who may edit the
+     * product on the supplier's side. A supplier that has not claimed the
+     * connection has no account to reach, and the distributor already knows.
+     */
+    protected function tellSupplier(Product $product, User $actor, string $note): void
+    {
+        $supplier = $product->supplierConnection?->isActive()
+            ? $product->supplierConnection->supplierOrganization
+            : null;
+
+        if ($supplier === null) {
+            return;
+        }
+
+        $recipients = $supplier->members()
+            ->get()
+            ->filter(fn (User $member): bool => $member->hasOrganizationPermission($supplier, OrganizationPermission::UpdateProduct));
+
+        Notification::send($recipients, new ProductChangesRequested($product, $supplier, $actor->name, $note));
     }
 
     /**
