@@ -48,7 +48,7 @@ test('a reviewer sends the product back with the AI check draft as the note', fu
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'assessment']))
         ->assertSee('AI document check')
         ->assertSee('Advisory only')
         ->assertSee('EN 71-3 migration of elements')
@@ -86,7 +86,7 @@ test('a run in progress shows its result by itself once it finishes', function (
 
     $this->actingAs($user);
 
-    $page = visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    $page = visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'assessment']))
         ->assertVisible('@assessment-pending');
 
     $assessment->update([
@@ -148,7 +148,7 @@ test('a second run shows what was fixed and what is still open since the first',
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'assessment']))
         ->assertVisible('@assessment-comparison')
         ->assertSee('1 fixed')
         ->assertSee('1 still open')

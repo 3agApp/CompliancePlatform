@@ -15,7 +15,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { formatLocale, t, tc } from '@/lib/i18n';
+import { formatDay } from '@/lib/format';
+import { t, tc } from '@/lib/i18n';
 import { destroy, pdf, show, store } from '@/routes/products/label-batches';
 import type { LabelBatchSummary } from '@/types';
 
@@ -24,16 +25,6 @@ type Props = {
     productId: number;
     batches: LabelBatchSummary[];
 };
-
-function onDay(timestamp: string | null): string {
-    return timestamp
-        ? new Date(timestamp).toLocaleDateString(formatLocale(), {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-          })
-        : '';
-}
 
 /**
  * Labels with a serial for every box in a shipment.
@@ -180,14 +171,16 @@ export default function SerialLabelsPanel({
                                     <p className="text-muted-foreground text-xs">
                                         {batch.revokedAt
                                             ? t('Withdrawn :date', {
-                                                  date: onDay(batch.revokedAt),
+                                                  date: formatDay(
+                                                      batch.revokedAt,
+                                                  ),
                                               })
                                             : [
                                                   tc(
                                                       '1 box|:count boxes',
                                                       batch.quantity,
                                                   ),
-                                                  onDay(batch.createdAt),
+                                                  formatDay(batch.createdAt),
                                                   batch.createdBy,
                                               ]
                                                   .filter(Boolean)

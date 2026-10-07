@@ -55,6 +55,7 @@ test('a pdf opens in the viewer when its name is clicked', function () {
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('en71-part-1.pdf')
         ->click('@product-document-preview')
@@ -89,6 +90,7 @@ test('an image opens as a picture rather than in a frame', function () {
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->click('@product-document-preview')
         ->assertPresent('@document-preview-image')
@@ -99,6 +101,47 @@ test('an image opens as a picture rather than in a frame', function () {
          */
         ->assertScript(
             "document.querySelector('[data-test=\"document-preview-image\"]').naturalWidth > 0",
+            true,
+        )
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * Photos are recognised by sight, so they get a gallery. A paper filed as a
+ * picture is still looked for under its kind.
+ */
+test('product photos form a gallery while a scanned certificate stays with the certificates', function () {
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/wFbqlPUAAAAAElFTkSuQmCC');
+
+    [$user, $organization, $product] = productWithFiledPaper('packaging.png', 'image/png', $png, ProductDocumentType::ProductImage);
+
+    $scan = ProductDocument::factory()
+        ->for($product)
+        ->ofType(ProductDocumentType::Certificate)
+        ->create([
+            'name' => 'ce-certificate-scan.png',
+            'mime_type' => 'image/png',
+            'path' => ProductDocument::directoryFor($product).'/ce-certificate-scan.png',
+            'uploaded_by' => $user->id,
+        ]);
+
+    Storage::disk(ProductDocument::DISK)->put($scan->path, $png);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'tab' => 'documents',
+    ]))
+        ->assertScript(
+            "[...document.querySelectorAll('[data-test=\"product-document-images\"] [data-test=\"product-document-preview\"]')].map((name) => name.textContent)",
+            ['packaging.png'],
+        )
+        ->assertSee('ce-certificate-scan.png')
+        /** The photo is really drawn, not a broken image. */
+        ->assertScript(
+            "document.querySelector('[data-test=\"product-document-images\"] img').naturalWidth > 0",
             true,
         )
         ->assertNoJavaScriptErrors();
@@ -117,6 +160,7 @@ test('a file the browser cannot show is a download rather than a preview', funct
     visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
+        'tab' => 'documents',
     ]))
         ->assertSee('manual.docx')
         /* No viewer is offered for it, because there is nothing to view it with. */

@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { formatFileSize } from '@/lib/format';
 import { t, tc, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { store, suggest } from '@/routes/products/documents';
@@ -78,6 +79,14 @@ type Props = {
     availableDocumentTypes: ProductDocumentTypeOption[];
     /** Whether the organization has a provider to ask for kinds. */
     canGuessKinds: boolean;
+    /**
+     * The kind every file chosen in this sitting is filed as, when the
+     * dialog was opened from the slot of one kind the template is waiting
+     * for. Each row can still be changed.
+     */
+    presetType?: ProductDocumentType | null;
+    /** Files dropped on the page before the dialog opened, taken at once. */
+    initialFiles?: File[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
 };
@@ -101,21 +110,6 @@ function unavailableNotes(): Record<string, string> {
 }
 
 /**
- * Show a file size the way the person who picked the file thinks of it.
- */
-function humanSize(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    const kilobytes = bytes / 1024;
-
-    return kilobytes < 1024
-        ? `${Math.round(kilobytes)} KB`
-        : `${(kilobytes / 1024).toFixed(1)} MB`;
-}
-
-/**
  * File a folder of papers in one go.
  *
  * Nothing is guessed until it is asked for. A folder from a test house
@@ -132,6 +126,8 @@ export default function UploadDocumentsModal({
     productId,
     availableDocumentTypes,
     canGuessKinds,
+    presetType = null,
+    initialFiles = [],
     open,
     onOpenChange,
 }: Props) {
@@ -171,7 +167,7 @@ export default function UploadDocumentsModal({
         SuggestionResponse
     >({ files: [] as CandidateMetadata[] });
 
-    const takeFiles = (chosen: FileList | null) => {
+    const takeFiles = (chosen: FileList | File[] | null) => {
         if (chosen === null || chosen.length === 0) {
             return;
         }
@@ -193,6 +189,7 @@ export default function UploadDocumentsModal({
             .map((file) => ({
                 id: crypto.randomUUID(),
                 file,
+                type: presetType ?? undefined,
                 guessed: false,
                 unsure: false,
             }));
@@ -225,6 +222,17 @@ export default function UploadDocumentsModal({
             fileInput.current.value = '';
         }
     };
+
+    /**
+     * Files dropped on a slot before the dialog opened are the first rows,
+     * so the person lands on a batch ready to file rather than a picker.
+     */
+    useEffect(() => {
+        if (open && initialFiles.length > 0) {
+            takeFiles(initialFiles);
+        }
+        // Only on opening: the files are the ones dropped to open it.
+    }, [open]);
 
     /**
      * Ask what the files look like.
@@ -488,7 +496,9 @@ export default function UploadDocumentsModal({
                                                     {row.file.name}
                                                 </p>
                                                 <p className="text-muted-foreground text-xs">
-                                                    {humanSize(row.file.size)}
+                                                    {formatFileSize(
+                                                        row.file.size,
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>

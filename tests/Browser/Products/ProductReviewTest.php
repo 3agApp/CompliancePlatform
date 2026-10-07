@@ -214,6 +214,7 @@ test('a reviewer takes back an approval given by mistake, with a reason', functi
         ->assertVisible('@product-approve')
         ->assertVisible('@product-request-changes')
         ->assertMissing('@product-reopen-review')
+        ->click('@product-tab-history')
         ->assertSee('Approval taken back')
         ->assertSee('Approved by mistake: the test report has not been checked yet.')
         ->assertNoJavaScriptErrors();
@@ -242,6 +243,7 @@ test('the history says who did what, and an edit by the supplier withdraws the p
         'product' => $product->id,
     ]))
         ->assertSee('In review')
+        ->click('@product-add-warning-text')
         ->fill('@product-warning-text', 'Not suitable for children under 3 years.')
         ->click('@update-product-submit')
         ->assertSee('Product updated.')
@@ -249,6 +251,7 @@ test('the history says who did what, and an edit by the supplier withdraws the p
         ->assertSee('Draft')
         ->assertSee('Submit for review')
         /** And the history says so, in the supplier's name. */
+        ->click('@product-tab-history')
         ->assertSee('History')
         ->assertSee('Returned to draft')
         ->assertSee('Details updated')

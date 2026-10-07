@@ -98,7 +98,7 @@ test('a distributor issues a run of labels and withdraws it', function () {
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'public']))
         ->assertSee('Serialised labels')
         ->assertMissing('@product-qr-panel')
         ->fill('@label-quantity', '12')
@@ -108,6 +108,9 @@ test('a distributor issues a run of labels and withdraws it', function () {
         ->fill('@label-quantity', '12')
         ->click('@label-issue')
         ->assertSee('Spielwaren Muster AG')
+        /** Answered with a redirect to the plain address, the tab stays put. */
+        ->assertAriaAttribute('@product-tab-public', 'selected', 'true')
+        ->assertQueryStringHas('tab', 'public')
         ->assertSee('12 boxes')
         ->assertSee('0 / 12 checked')
         ->assertPresent('@label-batch-pdf')
@@ -137,7 +140,7 @@ test('the run overview shows unusual serials first and filters between them', fu
 
     $this->actingAs($user);
 
-    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'public']))
         ->assertSee('1 unusual')
         ->click('@label-batch-overview')
         ->assertSee('Labels for Spielwaren Muster AG')

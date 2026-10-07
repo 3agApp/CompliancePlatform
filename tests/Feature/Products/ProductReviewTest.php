@@ -401,6 +401,8 @@ test('a product cannot be submitted twice or approved before it is submitted', f
 test('a supplier editing a submitted product puts it back in draft', function () {
     [, , $supplierUser, $supplier, $product] = tradeWithProduct(ProductReviewStatus::InReview);
 
+    $product->update(['warning_text' => 'Keep away from fire.']);
+
     $this
         ->actingAs($supplierUser)
         ->patch(route('products.update', ['current_organization' => $supplier->slug, 'product' => $product->id]), [
@@ -422,6 +424,7 @@ test('a supplier editing a submitted product puts it back in draft', function ()
     $update = $product->events()->where('type', ProductEventType::Updated)->sole();
 
     expect($update->changes)->toHaveKey('warning_text')
+        ->and($update->changes['warning_text']['from'])->toBe('Keep away from fire.')
         ->and($update->changes['warning_text']['to'])->toBe('Not suitable for children under 3 years.');
 });
 
@@ -555,6 +558,26 @@ test('the history is deferred and reads back who did what', function () {
         ->assertJsonPath('props.history.1.type', 'submitted')
         ->assertJsonPath('props.history.1.actor', $supplierUser->name)
         ->assertJsonPath('props.history.1.actor_organization', $supplier->name);
+});
+
+/**
+ * The column is called changes, which Eloquent also uses for its own
+ * bookkeeping -- read back from the database, the event must still say
+ * what it changed.
+ */
+test('an edit read back from the history names the fields it changed', function () {
+    [, , $supplierUser, $supplier, $product] = tradeWithProduct();
+
+    $product->recordEvent(ProductEventType::Updated, $supplierUser, $supplier, changes: [
+        'warning_text' => ['from' => null, 'to' => 'Not suitable for children under 3 years.'],
+    ]);
+
+    expect($product->events()->sole()->changedFields())->toBe([[
+        'field' => 'warning_text',
+        'label' => 'Warning text',
+        'from' => null,
+        'to' => 'Not suitable for children under 3 years.',
+    ]]);
 });
 
 test('a product keeps what a closed account did to it', function () {
