@@ -3,6 +3,8 @@
 namespace App\Data;
 
 use App\Actions\Products\AssessProductDocuments;
+use App\Enums\FindingSeverity;
+use App\Enums\ProductDocumentType;
 use App\Models\Product;
 use App\Models\ProductAssessment;
 use App\Models\ProductAssessmentFinding;
@@ -64,6 +66,59 @@ class ProductAssessmentView
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /**
+     * Gather what the printed report shows: the run, and enough about the
+     * product to know which one it was about without the platform at hand.
+     *
+     * The report is a record to hand on -- to an auditor, a colleague, the
+     * file -- so it carries the names and numbers as they stand when it is
+     * printed, and says plainly that a person made the decision.
+     *
+     * @return array<string, mixed>
+     */
+    public static function report(ProductAssessment $assessment): array
+    {
+        $product = $assessment->product;
+        $product->loadMissing(['organization', 'supplierConnection.supplierOrganization']);
+
+        $connection = $product->supplierConnection;
+        $detail = self::detail($assessment);
+
+        $documentTypes = collect($assessment->documents)
+            ->mapWithKeys(fn (array $document): array => [
+                $document['id'] => ProductDocumentType::tryFrom($document['type'])?->label(),
+            ]);
+
+        return [
+            'assessment' => [
+                ...$detail,
+                'documents' => array_map(fn (array $document): array => [
+                    ...$document,
+                    'type_label' => $documentTypes->get($document['id']),
+                ], $detail['documents']),
+            ],
+            'severityCounts' => collect(FindingSeverity::cases())
+                ->map(fn (FindingSeverity $severity): array => [
+                    'label' => $severity->label(),
+                    'count' => $assessment->findings->where('severity', $severity)->count(),
+                ])
+                ->all(),
+            'product' => [
+                'name' => $product->name,
+                'ean' => $product->ean,
+                'supplier_article_number' => $product->supplier_article_number,
+                'internal_article_number' => $product->internal_article_number,
+                'age_grading' => $product->age_grading,
+                'review_status_label' => $product->review_status->label(),
+                'distributor' => $product->organization->name,
+                'supplier' => $connection === null
+                    ? null
+                    : ($connection->supplierOrganization !== null ? $connection->supplierOrganization->name : $connection->company_name),
+            ],
+            'generatedAt' => now(),
         ];
     }
 

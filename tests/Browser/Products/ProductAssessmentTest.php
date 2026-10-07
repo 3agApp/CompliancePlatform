@@ -52,6 +52,7 @@ test('a reviewer sends the product back with the AI check draft as the note', fu
         ->assertSee('EN 71-3 migration of elements')
         ->assertSee('No test report covers EN 71-3.')
         ->assertVisible('@assessment-finding-critical')
+        ->assertVisible('@assessment-download-report')
         ->click('@assessment-use-as-request')
         ->assertSee('Send Magnetic Building Set back?')
         ->assertValue('@review-note', 'Please send an EN 71-3 test report for this article.')

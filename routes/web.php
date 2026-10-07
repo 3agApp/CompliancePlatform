@@ -117,6 +117,7 @@ Route::prefix('{current_organization}')
                 ->middleware('throttle:ai-assessments')
                 ->name('products.assessments.store');
             Route::get('products/{product}/assessments/{assessment}', [ProductAssessmentController::class, 'show'])->name('products.assessments.show');
+            Route::get('products/{product}/assessments/{assessment}/report', [ProductAssessmentController::class, 'report'])->name('products.assessments.report');
 
             /**
              * The public seal, set by hand. A distributor-only move, and one

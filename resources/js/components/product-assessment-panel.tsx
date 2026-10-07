@@ -3,6 +3,7 @@ import {
     AlertOctagon,
     AlertTriangle,
     Copy,
+    Download,
     FileText,
     Info,
     Loader2,
@@ -26,7 +27,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatLocale, t, tc } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { show, store } from '@/routes/products/assessments';
+import { report, show, store } from '@/routes/products/assessments';
 import { show as showDocument } from '@/routes/products/documents';
 import type {
     ProductAssessmentDetail,
@@ -399,6 +400,16 @@ function AssessmentRun({
                 {run.summary ? (
                     <p className="text-sm leading-relaxed">{run.summary}</p>
                 ) : null}
+
+                <Button variant="outline" size="sm" asChild>
+                    <a
+                        href={report.url([organizationSlug, productId, run.id])}
+                        data-test="assessment-download-report"
+                    >
+                        <Download className="h-4 w-4" />
+                        {t('Download report')}
+                    </a>
+                </Button>
             </div>
 
             {run.findings.length > 0 ? (
