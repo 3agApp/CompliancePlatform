@@ -47,11 +47,21 @@ class AssessProductDocuments
     /**
      * The most file content one run sends, in bytes.
      *
-     * Providers cap a request's inline content at around twenty megabytes.
-     * Papers past the budget are listed as skipped rather than failing the
-     * whole run, so a reviewer can see what was not read.
+     * Providers cap a request's inline content at around twenty megabytes,
+     * and files travel base64-encoded, which adds a third. Papers past the
+     * budget are listed as skipped rather than failing the whole run, so a
+     * reviewer can see what was not read.
      */
-    public const int SIZE_BUDGET = 18 * 1024 * 1024;
+    public const int SIZE_BUDGET = 14 * 1024 * 1024;
+
+    /**
+     * How long a run may sit queued or running before it is given up on.
+     *
+     * Well past the job's own timeout. A run older than this was lost -- a
+     * worker that died, a queue nobody was running -- and left as it is, it
+     * would refuse every run after it with "already running".
+     */
+    public const int STALE_AFTER_MINUTES = 15;
 
     /**
      * Why a document was not sent.
@@ -116,6 +126,12 @@ class AssessProductDocuments
              * run between them rather than two bills.
              */
             Product::query()->whereKey($product->id)->lockForUpdate()->first();
+
+            $product->assessments()
+                ->whereIn('status', [AssessmentStatus::Queued, AssessmentStatus::Running])
+                ->where('created_at', '<', now()->subMinutes(self::STALE_AFTER_MINUTES))
+                ->get()
+                ->each(fn (ProductAssessment $stale) => $this->fail($stale, __('The check never finished and was given up on. Try again.')));
 
             $pending = $product->assessments()
                 ->whereIn('status', [AssessmentStatus::Queued, AssessmentStatus::Running])

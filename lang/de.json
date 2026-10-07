@@ -736,6 +736,7 @@
     "The AI provider key can no longer be read": "Der Schlüssel des KI-Anbieters kann nicht mehr gelesen werden",
     "The AI provider refused this organization’s key. Pick the kinds yourself.": "Der KI-Anbieter hat den Schlüssel dieser Organisation abgelehnt. Wählen Sie die Arten selbst.",
     "The check could not finish.": "Die Prüfung konnte nicht abgeschlossen werden.",
+    "The check never finished and was given up on. Try again.": "Die Prüfung wurde nie abgeschlossen und abgebrochen. Versuchen Sie es erneut.",
     "The check took too long and was stopped. Try again.": "Die Prüfung hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut.",
     "The code did not match. Type the new code shown in the picture.": "Der Code stimmte nicht. Bitte geben Sie den neuen Code aus dem Bild ein.",
     "The companies :organization supplies products to.": "Die Unternehmen, die :organization mit Produkten beliefert.",
