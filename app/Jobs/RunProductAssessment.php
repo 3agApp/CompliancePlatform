@@ -6,6 +6,7 @@ use App\Actions\Products\AssessProductDocuments;
 use App\Models\ProductAssessment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Traits\Localizable;
 use Throwable;
 
 /**
@@ -16,7 +17,7 @@ use Throwable;
  */
 class RunProductAssessment implements ShouldQueue
 {
-    use Queueable;
+    use Localizable, Queueable;
 
     /**
      * The number of times the job may be attempted.
@@ -44,7 +45,15 @@ class RunProductAssessment implements ShouldQueue
      */
     public function handle(AssessProductDocuments $assess): void
     {
-        $assess->run($this->assessment);
+        /**
+         * In the organization's language, because a worker has none of its
+         * own: the failure reason and the line in the product's history are
+         * written here and read by the organization's reviewers.
+         */
+        $this->withLocale(
+            $this->assessment->organization->locale->value,
+            fn () => $assess->run($this->assessment),
+        );
     }
 
     /**
@@ -62,6 +71,9 @@ class RunProductAssessment implements ShouldQueue
             return;
         }
 
-        app(AssessProductDocuments::class)->fail($assessment, __('The check took too long and was stopped. Try again.'));
+        $this->withLocale(
+            $assessment->organization->locale->value,
+            fn () => app(AssessProductDocuments::class)->fail($assessment, __('The check took too long and was stopped. Try again.')),
+        );
     }
 }

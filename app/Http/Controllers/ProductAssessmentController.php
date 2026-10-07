@@ -37,7 +37,12 @@ class ProductAssessmentController extends Controller
     {
         Gate::authorize('assess', $product);
 
-        $this->assess->start($product, $request->user(), $currentOrganization);
+        /**
+         * The product's own organization, not whichever one is in the URL:
+         * someone who reviews for the distributor and also belongs to the
+         * supplier could otherwise run the check on the supplier's key.
+         */
+        $this->assess->start($product, $request->user(), $product->organization);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('AI check started. It usually takes a minute or two.')]);
 

@@ -476,3 +476,68 @@ test('the supplier may not download the report', function () {
 
     downloadReport($supplier, $product, $assessment)->assertForbidden();
 });
+
+test('a run lost by the queue does not block the next one forever', function () {
+    Queue::fake();
+
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    $lost = ProductAssessment::factory()->for($product)->for($organization)->create([
+        'status' => AssessmentStatus::Queued,
+        'created_at' => now()->subMinutes(AssessProductDocuments::STALE_AFTER_MINUTES + 1),
+    ]);
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product)->assertSessionHasNoErrors();
+
+    expect($lost->fresh()->status)->toBe(AssessmentStatus::Failed)
+        ->and($product->assessments()->count())->toBe(2);
+
+    Queue::assertPushed(RunProductAssessment::class);
+});
+
+test('a failure is written in the organization language, whatever language the worker speaks', function () {
+    [, $organization, $product] = reviewerWithDocumentAnalysis();
+    $organization->update(['locale' => Locale::German]);
+
+    DocumentAssessmentAgent::fake(function (): never {
+        throw new RuntimeException('Gemini is down');
+    });
+
+    $assessment = ProductAssessment::factory()->for($product)->for($organization)->create();
+
+    app()->setLocale('en');
+
+    (new RunProductAssessment($assessment))->handle(app(AssessProductDocuments::class));
+
+    expect($assessment->fresh()->failure_reason)->toBe('Der KI-Anbieter hat nicht geantwortet. Versuchen Sie es in ein paar Minuten erneut.');
+});
+
+test('the check always runs on the distributor key, even opened from the supplier side', function () {
+    DocumentAssessmentAgent::fake()->preventStrayPrompts();
+
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    /** The same person reviews for the distributor and owns the supplier. */
+    $supplier->members()->attach($user, ['role' => OrganizationRole::Owner->value]);
+
+    $product = Product::factory()->for($distributor)->create([
+        'supplier_connection_id' => newSupplierConnection($distributor, $supplier)->id,
+    ]);
+
+    $supplier->aiSetting()->create([
+        'provider' => AiProvider::Gemini,
+        'model' => AiProvider::Gemini->defaultModel(),
+        'api_key' => ASSESSMENT_KEY,
+        'allow_document_analysis' => true,
+    ]);
+
+    $this->actingAs($user);
+
+    startAssessment($supplier, $product)->assertSessionHasErrors('assessment');
+
+    expect($product->assessments()->exists())->toBeFalse();
+    DocumentAssessmentAgent::assertNeverPrompted();
+});
