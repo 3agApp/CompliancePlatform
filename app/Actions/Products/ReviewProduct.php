@@ -2,12 +2,16 @@
 
 namespace App\Actions\Products;
 
+use App\Enums\OrganizationPermission;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\Products\ProductChangesRequested;
+use App\Notifications\Products\ProductSubmittedForReview;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * The moves a product can make between the supplier filling it in and the
@@ -25,6 +29,8 @@ class ReviewProduct
      */
     public function submit(Product $product, User $actor, Organization $organization): void
     {
+        $isResubmission = $product->review_status === ProductReviewStatus::ChangesRequested;
+
         DB::transaction(function () use ($product, $actor, $organization) {
             $product->forceFill([
                 'review_status' => ProductReviewStatus::InReview,
@@ -34,6 +40,35 @@ class ReviewProduct
 
             $product->recordEvent(ProductEventType::Submitted, $actor, $organization);
         });
+
+        $this->tellReviewers($product, $actor, $organization, $isResubmission);
+    }
+
+    /**
+     * Email the distributor's reviewers that the product is waiting on them.
+     *
+     * Only for a supplier's submission. A distributor submitting their own
+     * product is already the one who reviews it, and does not need telling.
+     */
+    protected function tellReviewers(Product $product, User $actor, Organization $organization, bool $isResubmission): void
+    {
+        if ($organization->id === $product->organization_id) {
+            return;
+        }
+
+        $distributor = $product->organization;
+
+        $reviewers = $distributor->members()
+            ->get()
+            ->filter(fn (User $member): bool => $member->hasOrganizationPermission($distributor, OrganizationPermission::ReviewProduct));
+
+        $product->loadMissing(['template', 'documents']);
+
+        $outstanding = collect($product->completeness()->items)
+            ->reject(fn (array $item): bool => $item['satisfied'])
+            ->count();
+
+        Notification::send($reviewers, new ProductSubmittedForReview($product, $organization, $actor->name, $isResubmission, $outstanding));
     }
 
     /**
@@ -67,6 +102,32 @@ class ReviewProduct
 
             $product->recordEvent(ProductEventType::ChangesRequested, $actor, $organization, note: $note);
         });
+
+        $this->tellSupplier($product, $actor, $note);
+    }
+
+    /**
+     * Email the supplier that the product is back with them, and why.
+     *
+     * Only the people who can do something about it: those who may edit the
+     * product on the supplier's side. A supplier that has not claimed the
+     * connection has no account to reach, and the distributor already knows.
+     */
+    protected function tellSupplier(Product $product, User $actor, string $note): void
+    {
+        $supplier = $product->supplierConnection?->isActive()
+            ? $product->supplierConnection->supplierOrganization
+            : null;
+
+        if ($supplier === null) {
+            return;
+        }
+
+        $recipients = $supplier->members()
+            ->get()
+            ->filter(fn (User $member): bool => $member->hasOrganizationPermission($supplier, OrganizationPermission::UpdateProduct));
+
+        Notification::send($recipients, new ProductChangesRequested($product, $supplier, $actor->name, $note));
     }
 
     /**
