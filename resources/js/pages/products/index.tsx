@@ -36,6 +36,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { index as categoriesIndex } from '@/routes/categories';
 import { create, edit, index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
@@ -51,6 +52,15 @@ import type {
     ProductReviewStatusOption,
     SupplierConnectionOption,
 } from '@/types';
+
+/**
+ * Reference numbers a reader looks up rather than scans for. On a laptop
+ * they would push status and completeness -- the columns the list is read
+ * for -- off the side of the table, so they wait for a wide screen. The
+ * search box still finds a product by either one, and a phone, where every
+ * row is a card and nothing is pushed sideways, keeps them.
+ */
+const SECONDARY_COLUMN = 'px-4 md:max-2xl:hidden';
 
 type Props = {
     products: Paginated<Product>;
@@ -208,29 +218,31 @@ export default function ProductsIndex({
                         <Table className="md:min-w-3xl">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
-                                    <TableHead className="px-6">Name</TableHead>
-                                    <TableHead className="px-6">
-                                        Brand
+                                    <TableHead className="px-4 md:pl-6">
+                                        Name
                                     </TableHead>
-                                    <TableHead className="px-6">
-                                        Category
-                                    </TableHead>
-                                    <TableHead className="px-6">
-                                        {counterpartyLabel}
-                                    </TableHead>
-                                    <TableHead className="px-6">
-                                        EAN / barcode
-                                    </TableHead>
-                                    <TableHead className="px-6">
-                                        Country of origin
-                                    </TableHead>
-                                    <TableHead className="px-6">
+                                    <TableHead className="w-px px-4">
                                         Status
                                     </TableHead>
-                                    <TableHead className="px-6">
+                                    <TableHead className="w-px px-4">
                                         Complete
                                     </TableHead>
-                                    <TableHead className="px-6">
+                                    <TableHead className="px-4">
+                                        {counterpartyLabel}
+                                    </TableHead>
+                                    <TableHead className="px-4">
+                                        Brand
+                                    </TableHead>
+                                    <TableHead className="px-4">
+                                        Category
+                                    </TableHead>
+                                    <TableHead className={SECONDARY_COLUMN}>
+                                        EAN / barcode
+                                    </TableHead>
+                                    <TableHead className={SECONDARY_COLUMN}>
+                                        Country of origin
+                                    </TableHead>
+                                    <TableHead className="w-px px-4 md:pr-6">
                                         <span className="sr-only">Actions</span>
                                     </TableHead>
                                 </TableRow>
@@ -241,8 +253,17 @@ export default function ProductsIndex({
                                         key={product.id}
                                         data-test="product-row"
                                     >
-                                        <TableCell className="px-6 font-medium break-words">
-                                            {product.name}
+                                        <TableCell className="min-w-48 px-4 font-medium whitespace-normal md:pl-6">
+                                            <Link
+                                                href={edit([
+                                                    organizationSlug,
+                                                    product.id,
+                                                ])}
+                                                className="hover:underline"
+                                                data-test="product-name-link"
+                                            >
+                                                {product.name}
+                                            </Link>
                                             {product.internal_article_number ? (
                                                 <span
                                                     className="text-muted-foreground block font-mono text-xs font-normal"
@@ -255,20 +276,28 @@ export default function ProductsIndex({
                                             ) : null}
                                         </TableCell>
                                         <TableCell
-                                            className="text-muted-foreground px-6 break-words"
-                                            data-label="Brand"
+                                            className="px-4"
+                                            data-label="Status"
                                         >
-                                            {product.brand_label ?? '—'}
+                                            <ProductReviewStatusBadge
+                                                status={product.review_status}
+                                                label={
+                                                    product.review_status_label
+                                                }
+                                            />
                                         </TableCell>
                                         <TableCell
-                                            className="text-muted-foreground px-6"
-                                            data-test="product-list-category"
-                                            data-label="Category"
+                                            className="px-4"
+                                            data-label="Complete"
                                         >
-                                            {product.category_label}
+                                            <CompletenessMeter
+                                                score={
+                                                    product.completeness_score
+                                                }
+                                            />
                                         </TableCell>
                                         <TableCell
-                                            className="px-6"
+                                            className="px-4 whitespace-normal"
                                             data-test="product-counterparty"
                                             data-label={counterpartyLabel}
                                         >
@@ -291,41 +320,39 @@ export default function ProductsIndex({
                                             ) : null}
                                         </TableCell>
                                         <TableCell
-                                            className="text-muted-foreground px-6 font-mono text-xs"
+                                            className="text-muted-foreground px-4 whitespace-normal"
+                                            data-label="Brand"
+                                        >
+                                            {product.brand_label ?? '—'}
+                                        </TableCell>
+                                        <TableCell
+                                            className="text-muted-foreground px-4 whitespace-normal"
+                                            data-test="product-list-category"
+                                            data-label="Category"
+                                        >
+                                            {product.category_label}
+                                        </TableCell>
+                                        <TableCell
+                                            className={cn(
+                                                SECONDARY_COLUMN,
+                                                'text-muted-foreground font-mono text-xs',
+                                            )}
                                             data-label="EAN / barcode"
                                         >
                                             {product.ean ?? '—'}
                                         </TableCell>
                                         <TableCell
-                                            className="text-muted-foreground px-6"
+                                            className={cn(
+                                                SECONDARY_COLUMN,
+                                                'text-muted-foreground',
+                                            )}
                                             data-label="Country of origin"
                                         >
                                             {product.country_of_origin_label ??
                                                 '—'}
                                         </TableCell>
-                                        <TableCell
-                                            className="px-6"
-                                            data-label="Status"
-                                        >
-                                            <ProductReviewStatusBadge
-                                                status={product.review_status}
-                                                label={
-                                                    product.review_status_label
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell
-                                            className="px-6"
-                                            data-label="Complete"
-                                        >
-                                            <CompletenessMeter
-                                                score={
-                                                    product.completeness_score
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell className="px-6">
-                                            <div className="flex items-center justify-end gap-2">
+                                        <TableCell className="px-4 md:pr-6">
+                                            <div className="flex items-center justify-end gap-1">
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <Button
