@@ -1,12 +1,17 @@
 import { Form } from '@inertiajs/react';
 import { Check, RotateCcw, Send, Undo2 } from 'lucide-react';
 import { useState } from 'react';
+import ApproveProductModal from '@/components/approve-product-modal';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import ReopenProductReviewModal from '@/components/reopen-product-review-modal';
 import RequestProductChangesModal from '@/components/request-product-changes-modal';
 import { Button } from '@/components/ui/button';
 import { approve, submit } from '@/routes/products';
-import type { ProductDetail, ProductPermissions } from '@/types';
+import type {
+    ProductCompleteness,
+    ProductDetail,
+    ProductPermissions,
+} from '@/types';
 
 type Props = {
     organizationSlug: string;
@@ -14,6 +19,7 @@ type Props = {
     permissions: ProductPermissions;
     /** What the distributor wrote when they last sent the product back. */
     reviewNote: string | null;
+    completeness: ProductCompleteness;
 };
 
 /**
@@ -46,9 +52,13 @@ export default function ProductReviewPanel({
     product,
     permissions,
     reviewNote,
+    completeness,
 }: Props) {
     const [changesDialogOpen, setChangesDialogOpen] = useState(false);
     const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
+    const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+
+    const outstanding = completeness.items.filter((item) => !item.satisfied);
 
     const canSubmit =
         permissions.canUpdateProduct &&
@@ -101,6 +111,26 @@ export default function ProductReviewPanel({
                 </p>
             ) : null}
 
+            {/*
+             * Nothing here blocks the move -- the status says whose turn it
+             * is, not whether the product is done -- but whoever is about to
+             * make it should know what is still open before they do.
+             */}
+            {(canSubmit || canRule) && outstanding.length > 0 ? (
+                <p
+                    className="text-sm leading-relaxed text-amber-700 dark:text-amber-400"
+                    data-test="product-review-outstanding"
+                >
+                    {outstanding.length === 1
+                        ? '1 requirement is'
+                        : `${outstanding.length} requirements are`}{' '}
+                    still open.{' '}
+                    {canSubmit
+                        ? 'You can submit anyway, but the distributor may send it back.'
+                        : 'Check the list below before approving.'}
+                </p>
+            ) : null}
+
             {canSubmit ? (
                 <Form
                     {...submit.form([organizationSlug, product.id])}
@@ -121,21 +151,31 @@ export default function ProductReviewPanel({
 
             {canRule ? (
                 <div className="grid gap-2">
-                    <Form
-                        {...approve.form([organizationSlug, product.id])}
-                        options={{ preserveScroll: true }}
-                    >
-                        {({ processing }) => (
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                data-test="product-approve"
-                                disabled={processing}
-                            >
-                                <Check className="h-4 w-4" /> Approve
-                            </Button>
-                        )}
-                    </Form>
+                    {outstanding.length > 0 ? (
+                        <Button
+                            className="w-full"
+                            data-test="product-approve"
+                            onClick={() => setApproveDialogOpen(true)}
+                        >
+                            <Check className="h-4 w-4" /> Approve
+                        </Button>
+                    ) : (
+                        <Form
+                            {...approve.form([organizationSlug, product.id])}
+                            options={{ preserveScroll: true }}
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    className="w-full"
+                                    data-test="product-approve"
+                                    disabled={processing}
+                                >
+                                    <Check className="h-4 w-4" /> Approve
+                                </Button>
+                            )}
+                        </Form>
+                    )}
 
                     <Button
                         variant="outline"
@@ -173,6 +213,18 @@ export default function ProductReviewPanel({
                     Waiting on the distributor.
                 </p>
             ) : null}
+
+            <ApproveProductModal
+                organizationSlug={organizationSlug}
+                product={product}
+                outstanding={outstanding}
+                open={approveDialogOpen}
+                onOpenChange={setApproveDialogOpen}
+                onRequestChanges={() => {
+                    setApproveDialogOpen(false);
+                    setChangesDialogOpen(true);
+                }}
+            />
 
             <RequestProductChangesModal
                 organizationSlug={organizationSlug}

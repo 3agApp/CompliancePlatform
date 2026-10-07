@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
 use App\Models\Product;
+use App\Models\ProductTemplate;
 
 /**
  * The round trip: the supplier hands a product over, the distributor hands
@@ -75,6 +77,76 @@ test('a product goes to the distributor, comes back with a note, and is approved
         ->click('@product-approve')
         ->assertSee('Product approved.')
         ->assertSee('Approved')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->review_status)->toBe(ProductReviewStatus::Approved);
+});
+
+/**
+ * Approving is what turns the public seal to verified, so a product its
+ * template says is unfinished is approved only once the reviewer has seen
+ * what is missing -- and sending it back is offered right beside.
+ */
+test('approving an incomplete product names what is missing and offers sending it back instead', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $template = ProductTemplate::factory()
+        ->requiring(ProductRequirement::TestReport)
+        ->create(['product_category_id' => legalFamily($distributor)->id]);
+
+    $product = Product::factory()
+        ->for($distributor)
+        ->usingTemplate($template)
+        ->reviewed(ProductReviewStatus::InReview)
+        ->create([
+            'name' => 'Magnetic Building Set',
+            'supplier_connection_id' => $connection->id,
+        ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $distributor->slug,
+        'product' => $product->id,
+    ]))
+        ->assertSee('1 requirement is still open.')
+        ->click('@product-approve')
+        ->assertSee('Approve Magnetic Building Set with a requirement still open?')
+        ->assertSeeIn('@approve-outstanding', 'Test report')
+        ->click('@approve-request-changes-instead')
+        ->assertSee('Send Magnetic Building Set back?')
+        ->assertVisible('@review-note')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->review_status)->toBe(ProductReviewStatus::InReview);
+});
+
+test('an incomplete product is approved once the reviewer confirms', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $template = ProductTemplate::factory()
+        ->requiring(ProductRequirement::TestReport)
+        ->create(['product_category_id' => legalFamily($distributor)->id]);
+
+    $product = Product::factory()
+        ->for($distributor)
+        ->usingTemplate($template)
+        ->reviewed(ProductReviewStatus::InReview)
+        ->create(['supplier_connection_id' => $connection->id]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $distributor->slug,
+        'product' => $product->id,
+    ]))
+        ->click('@product-approve')
+        ->click('@approve-confirm')
+        ->assertSee('Product approved.')
         ->assertNoJavaScriptErrors();
 
     expect($product->fresh()->review_status)->toBe(ProductReviewStatus::Approved);
