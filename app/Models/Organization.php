@@ -44,6 +44,19 @@ class Organization extends Model
     use GeneratesUniqueOrganizationSlugs, HasFactory;
 
     /**
+     * The model's default values for attributes.
+     *
+     * Mirrors the column's default, so an organization created without a
+     * language already speaks English in memory rather than only once it
+     * is read back from the database.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'locale' => 'en',
+    ];
+
+    /**
      * Bootstrap the model and its traits.
      */
     protected static function boot(): void
@@ -255,8 +268,13 @@ class Organization extends Model
             return;
         }
 
+        /**
+         * The names are the organization's own data from here on, so they
+         * are written in the language it speaks rather than translated on
+         * the way out: renaming one is then the same for everybody.
+         */
         foreach (ProductCategory::DEFAULT_NAMES as $name) {
-            $this->productCategories()->create(['name' => $name]);
+            $this->productCategories()->create(['name' => __($name, locale: $this->locale->value)]);
         }
     }
 

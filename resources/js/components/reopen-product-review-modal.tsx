@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { t } from '@/lib/i18n';
 import { reopen } from '@/routes/products';
 import type { ProductDetail } from '@/types';
 
@@ -49,20 +50,28 @@ export default function ReopenProductReviewModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Take back the approval on {product.name}?
+                                    {t('Take back the approval on :name?', {
+                                        name: product.name,
+                                    })}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    The product goes back into review and its
-                                    public seal stops showing as verified. You
-                                    can then approve it again or send it back to{' '}
-                                    {product.counterparty ?? 'the supplier'}{' '}
-                                    with a note.
+                                    {product.counterparty
+                                        ? t(
+                                              'The product goes back into review and its public seal stops showing as verified. You can then approve it again or send it back to :supplier with a note.',
+                                              {
+                                                  supplier:
+                                                      product.counterparty,
+                                              },
+                                          )
+                                        : t(
+                                              'The product goes back into review and its public seal stops showing as verified. You can then approve it again or send it back to the supplier with a note.',
+                                          )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="reopen-note">
-                                    Why the approval is being taken back
+                                    {t('Why the approval is being taken back')}
                                 </Label>
                                 <Textarea
                                     id="reopen-note"
@@ -70,14 +79,18 @@ export default function ReopenProductReviewModal({
                                     rows={4}
                                     autoFocus
                                     data-test="reopen-note"
-                                    placeholder="Approved by mistake: the test report has not been checked yet."
+                                    placeholder={t(
+                                        'Approved by mistake: the test report has not been checked yet.',
+                                    )}
                                 />
                                 <InputError message={errors.note} />
                             </div>
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -86,7 +99,7 @@ export default function ReopenProductReviewModal({
                                     data-test="reopen-review-confirm"
                                     disabled={processing}
                                 >
-                                    Take back approval
+                                    {t('Take back approval')}
                                 </Button>
                             </DialogFooter>
                         </>

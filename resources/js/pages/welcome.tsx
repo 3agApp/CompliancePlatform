@@ -7,41 +7,47 @@ import {
     Users,
 } from 'lucide-react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { LanguageToggle } from '@/components/language-menu';
 import { Button } from '@/components/ui/button';
+import { t, tk } from '@/lib/i18n';
 import { dashboard, home, login, onboarding, register } from '@/routes';
 
 const features = [
     {
         icon: Building2,
-        title: 'Every organization, one workspace',
-        description:
+        title: tk('Every organization, one workspace'),
+        description: tk(
             'Switch between organizations and keep people, roles and settings scoped correctly.',
+        ),
     },
     {
         icon: ClipboardCheck,
-        title: 'Built for compliance work',
-        description:
+        title: tk('Built for compliance work'),
+        description: tk(
             'A secure foundation for policies, evidence and accountability as your needs grow.',
+        ),
     },
     {
         icon: ShieldCheck,
-        title: 'Access you can trust',
-        description:
+        title: tk('Access you can trust'),
+        description: tk(
             'Owners, admins and members with clear permissions for sensitive work.',
+        ),
     },
     {
         icon: Users,
-        title: 'Invite your team',
-        description:
+        title: tk('Invite your team'),
+        description: tk(
             'Send invitations, manage membership and keep the right people in the loop.',
+        ),
     },
 ];
 
 const previewMembers = [
-    { name: 'Alex Rivera', role: 'Owner', email: 'alex@acme.co' },
-    { name: 'Jordan Lee', role: 'Admin', email: 'jordan@acme.co' },
-    { name: 'Sam Patel', role: 'Member', email: 'sam@acme.co' },
-    { name: 'Casey Nguyen', role: 'Member', email: 'casey@acme.co' },
+    { name: 'Alex Rivera', role: tk('Owner'), email: 'alex@acme.co' },
+    { name: 'Jordan Lee', role: tk('Admin'), email: 'jordan@acme.co' },
+    { name: 'Sam Patel', role: tk('Member'), email: 'sam@acme.co' },
+    { name: 'Casey Nguyen', role: tk('Member'), email: 'casey@acme.co' },
 ];
 
 export default function Welcome() {
@@ -52,7 +58,7 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="Compliance management for organizations" />
+            <Head title={t('Compliance management for organizations')} />
             <div className="bg-muted/20 text-foreground flex min-h-screen flex-col">
                 <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
                     <Link
@@ -66,17 +72,22 @@ export default function Welcome() {
                     </Link>
 
                     <nav className="flex items-center gap-2">
+                        {auth.user ? null : <LanguageToggle />}
                         {auth.user ? (
                             <Button asChild>
-                                <Link href={dashboardUrl}>Dashboard</Link>
+                                <Link href={dashboardUrl}>
+                                    {t('Dashboard')}
+                                </Link>
                             </Button>
                         ) : (
                             <>
                                 <Button variant="ghost" asChild>
-                                    <Link href={login()}>Log in</Link>
+                                    <Link href={login()}>{t('Log in')}</Link>
                                 </Button>
                                 <Button asChild>
-                                    <Link href={register()}>Get started</Link>
+                                    <Link href={register()}>
+                                        {t('Get started')}
+                                    </Link>
                                 </Button>
                             </>
                         )}
@@ -87,16 +98,18 @@ export default function Welcome() {
                     <section className="mx-auto max-w-6xl px-6 pt-12 pb-16 text-center lg:pt-20">
                         <div className="bg-muted/60 text-muted-foreground mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
                             <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                            Compliance management for organizations
+                            {t('Compliance management for organizations')}
                         </div>
                         <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                            Keep compliance work clear across every
-                            organization.
+                            {t(
+                                'Keep compliance work clear across every organization.',
+                            )}
                         </h1>
                         <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-base text-balance sm:text-lg">
-                            {name} gives your team one place to manage
-                            organizations, members and the access that keeps
-                            compliance work on track.
+                            {t(
+                                ':name gives your team one place to manage organizations, members and the access that keeps compliance work on track.',
+                                { name },
+                            )}
                         </p>
                         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                             <Button size="lg" asChild>
@@ -104,14 +117,14 @@ export default function Welcome() {
                                     href={auth.user ? dashboardUrl : register()}
                                 >
                                     {auth.user
-                                        ? 'Open dashboard'
-                                        : 'Start for free'}
+                                        ? t('Open dashboard')
+                                        : t('Start for free')}
                                     <ArrowRight />
                                 </Link>
                             </Button>
                             {auth.user ? null : (
                                 <Button size="lg" variant="outline" asChild>
-                                    <Link href={login()}>Log in</Link>
+                                    <Link href={login()}>{t('Log in')}</Link>
                                 </Button>
                             )}
                         </div>
@@ -130,9 +143,11 @@ export default function Welcome() {
                                 <div className="bg-muted mb-4 flex size-10 items-center justify-center rounded-lg">
                                     <feature.icon className="size-5" />
                                 </div>
-                                <h2 className="font-medium">{feature.title}</h2>
+                                <h2 className="font-medium">
+                                    {t(feature.title)}
+                                </h2>
                                 <p className="text-muted-foreground mt-2 text-sm">
-                                    {feature.description}
+                                    {t(feature.description)}
                                 </p>
                             </div>
                         ))}
@@ -146,8 +161,10 @@ export default function Welcome() {
                             {name}
                         </span>
                         <span>
-                            © {new Date().getFullYear()} {name}. All rights
-                            reserved.
+                            {t('© :year :name. All rights reserved.', {
+                                year: new Date().getFullYear(),
+                                name,
+                            })}
                         </span>
                     </div>
                 </footer>
@@ -167,20 +184,20 @@ function DashboardPreview() {
                 <span className="size-2.5 rounded-full bg-amber-400/80" />
                 <span className="size-2.5 rounded-full bg-emerald-400/80" />
                 <span className="text-muted-foreground ml-3 text-xs">
-                    Acme Corp · Organization
+                    {t('Acme Corp · Organization')}
                 </span>
             </div>
 
             <div className="grid gap-3 border-b p-4 sm:grid-cols-3">
                 {[
-                    { label: 'Members', value: '12', icon: Users },
+                    { label: t('Members'), value: '12', icon: Users },
                     {
-                        label: 'Pending invites',
+                        label: t('Pending invites'),
                         value: '3',
                         icon: ClipboardCheck,
                     },
                     {
-                        label: 'Organizations',
+                        label: t('Organizations'),
                         value: '4',
                         icon: Building2,
                     },
@@ -204,9 +221,15 @@ function DashboardPreview() {
                 <table className="w-full text-left text-sm">
                     <thead className="text-muted-foreground border-b">
                         <tr>
-                            <th className="px-4 py-2.5 font-medium">Member</th>
-                            <th className="px-4 py-2.5 font-medium">Role</th>
-                            <th className="px-4 py-2.5 font-medium">Email</th>
+                            <th className="px-4 py-2.5 font-medium">
+                                {t('Member')}
+                            </th>
+                            <th className="px-4 py-2.5 font-medium">
+                                {t('Role')}
+                            </th>
+                            <th className="px-4 py-2.5 font-medium">
+                                {t('Email')}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -220,7 +243,7 @@ function DashboardPreview() {
                                 </td>
                                 <td className="px-4 py-3">
                                     <span className="bg-muted inline-flex rounded-md px-2 py-0.5 text-xs font-medium">
-                                        {member.role}
+                                        {t(member.role)}
                                     </span>
                                 </td>
                                 <td className="text-muted-foreground px-4 py-3 whitespace-nowrap">

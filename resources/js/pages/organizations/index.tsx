@@ -20,6 +20,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { t, tk } from '@/lib/i18n';
 import { edit, index, switchMethod } from '@/routes/organizations';
 import type { Organization } from '@/types';
 
@@ -44,21 +45,23 @@ export default function OrganizationsIndex({ organizations }: Props) {
 
     return (
         <>
-            <Head title="Organizations" />
+            <Head title={t('Organizations')} />
 
-            <h1 className="sr-only">Organizations</h1>
+            <h1 className="sr-only">{t('Organizations')}</h1>
 
             <div className="flex flex-col space-y-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <Heading
                         variant="small"
-                        title="Organizations"
-                        description="Manage your organizations and organization memberships"
+                        title={t('Organizations')}
+                        description={t(
+                            'Manage your organizations and organization memberships',
+                        )}
                     />
 
                     <CreateOrganizationModal>
                         <Button data-test="organizations-new-organization-button">
-                            <Plus /> New organization
+                            <Plus /> {t('New organization')}
                         </Button>
                     </CreateOrganizationModal>
                 </div>
@@ -67,8 +70,12 @@ export default function OrganizationsIndex({ organizations }: Props) {
                     <div className="rounded-lg border">
                         <EmptyState
                             icon={Building2}
-                            title="You don't belong to any organizations yet"
-                            description="Create one, or ask an owner to invite you to theirs."
+                            title={t(
+                                "You don't belong to any organizations yet",
+                            )}
+                            description={t(
+                                'Create one, or ask an owner to invite you to theirs.',
+                            )}
                         />
                     </div>
                 ) : (
@@ -107,7 +114,7 @@ export default function OrganizationsIndex({ organizations }: Props) {
                                                         variant="outline"
                                                         data-test="organization-current"
                                                     >
-                                                        Current
+                                                        {t('Current')}
                                                     </Badge>
                                                 ) : null}
                                             </div>
@@ -124,7 +131,12 @@ export default function OrganizationsIndex({ organizations }: Props) {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    aria-label={`More actions for ${organization.name}`}
+                                                    aria-label={t(
+                                                        'More actions for :name',
+                                                        {
+                                                            name: organization.name,
+                                                        },
+                                                    )}
                                                     data-test="organization-actions"
                                                 >
                                                     <MoreHorizontal className="h-4 w-4" />
@@ -141,8 +153,9 @@ export default function OrganizationsIndex({ organizations }: Props) {
                                                         }
                                                     >
                                                         <ArrowRightLeft />
-                                                        Switch to this
-                                                        organization
+                                                        {t(
+                                                            'Switch to this organization',
+                                                        )}
                                                     </DropdownMenuItem>
                                                 ) : null}
                                                 {canLeaveOrganization ? (
@@ -156,7 +169,9 @@ export default function OrganizationsIndex({ organizations }: Props) {
                                                         }
                                                     >
                                                         <LogOut />
-                                                        Leave organization
+                                                        {t(
+                                                            'Leave organization',
+                                                        )}
                                                     </DropdownMenuItem>
                                                 ) : null}
                                             </DropdownMenuContent>
@@ -181,7 +196,7 @@ export default function OrganizationsIndex({ organizations }: Props) {
 OrganizationsIndex.layout = {
     breadcrumbs: [
         {
-            title: 'Organizations',
+            title: tk('Organizations'),
             href: index(),
         },
     ],

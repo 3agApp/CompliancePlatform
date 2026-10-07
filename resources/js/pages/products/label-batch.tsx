@@ -10,6 +10,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { formatLocale, t, tc } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { edit } from '@/routes/products';
 import { pdf } from '@/routes/products/label-batches';
@@ -35,7 +36,7 @@ type Filter = 'all' | 'checked' | 'unusual';
 
 function onDay(timestamp: string | null, withTime = false): string {
     return timestamp
-        ? new Date(timestamp).toLocaleString(undefined, {
+        ? new Date(timestamp).toLocaleString(formatLocale(), {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
@@ -75,7 +76,7 @@ export default function LabelBatchOverview({
 
     return (
         <>
-            <Head title={`Labels for ${batch.issuedFor}`} />
+            <Head title={t('Labels for :name', { name: batch.issuedFor })} />
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -91,15 +92,27 @@ export default function LabelBatchOverview({
                             </Link>
                         </Button>
                         <h1 className="page-title break-words">
-                            Labels for {batch.issuedFor}
+                            {t('Labels for :name', { name: batch.issuedFor })}
                         </h1>
                         <p className="text-muted-foreground text-sm">
-                            {batch.quantity} boxes · issued{' '}
-                            {onDay(batch.createdAt)}
-                            {batch.createdBy ? ` by ${batch.createdBy}` : ''}
-                            {batch.revokedAt
-                                ? ` · withdrawn ${onDay(batch.revokedAt)}`
-                                : ''}
+                            {[
+                                tc('1 box|:count boxes', batch.quantity),
+                                batch.createdBy
+                                    ? t('issued :date by :name', {
+                                          date: onDay(batch.createdAt),
+                                          name: batch.createdBy,
+                                      })
+                                    : t('issued :date', {
+                                          date: onDay(batch.createdAt),
+                                      }),
+                                batch.revokedAt
+                                    ? t('withdrawn :date', {
+                                          date: onDay(batch.revokedAt),
+                                      })
+                                    : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
                         </p>
                         {batch.note ? (
                             <p className="text-sm whitespace-pre-line">
@@ -119,24 +132,33 @@ export default function LabelBatchOverview({
                                     ]).url
                                 }
                             >
-                                <FileText className="h-4 w-4" /> Labels (PDF)
+                                <FileText className="h-4 w-4" />{' '}
+                                {t('Labels (PDF)')}
                             </a>
                         </Button>
                     )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <Stat label="Labels" value={batch.quantity} />
+                    <Stat label={t('Labels')} value={batch.quantity} />
                     <Stat
-                        label="Checked at least once"
+                        label={t('Checked at least once')}
                         value={summary.checked}
-                        hint={`${Math.round((summary.checked / Math.max(batch.quantity, 1)) * 100)}% of the run`}
+                        hint={t(':percent% of the run', {
+                            percent: Math.round(
+                                (summary.checked /
+                                    Math.max(batch.quantity, 1)) *
+                                    100,
+                            ),
+                        })}
                     />
-                    <Stat label="Checks in total" value={summary.checks} />
+                    <Stat label={t('Checks in total')} value={summary.checks} />
                     <Stat
-                        label="Unusual"
+                        label={t('Unusual')}
                         value={summary.unusual}
-                        hint={`Checked ${unusualThreshold}+ times`}
+                        hint={t('Checked :count+ times', {
+                            count: unusualThreshold,
+                        })}
                         alarming={summary.unusual > 0}
                         testId="label-batch-unusual-count"
                     />
@@ -149,30 +171,45 @@ export default function LabelBatchOverview({
                     >
                         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                         <p>
-                            {summary.unusual === 1
-                                ? '1 serial in this run has'
-                                : `${summary.unusual} serials in this run have`}{' '}
-                            been checked {unusualThreshold} or more times. A
-                            buyer checks a new box once or twice, so these
-                            labels have most likely been copied onto other boxes
-                            or passed around. Consider withdrawing the run and
-                            asking {batch.issuedFor} where these boxes went.
+                            {tc(
+                                '1 serial in this run has been checked :threshold or more times. A buyer checks a new box once or twice, so this label has most likely been copied onto other boxes or passed around. Consider withdrawing the run and asking :name where these boxes went.|:count serials in this run have been checked :threshold or more times. A buyer checks a new box once or twice, so these labels have most likely been copied onto other boxes or passed around. Consider withdrawing the run and asking :name where these boxes went.',
+                                summary.unusual,
+                                {
+                                    threshold: unusualThreshold,
+                                    name: batch.issuedFor,
+                                },
+                            )}
                         </p>
                     </div>
                 ) : null}
 
                 <section className="workspace-panel overflow-hidden">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
-                        <h2 className="text-sm font-medium">Serials</h2>
+                        <h2 className="text-sm font-medium">{t('Serials')}</h2>
                         <div
                             className="bg-muted inline-flex rounded-lg p-0.5 text-xs"
                             role="tablist"
                         >
                             {(
                                 [
-                                    ['all', `All (${units.length})`],
-                                    ['checked', `Checked (${summary.checked})`],
-                                    ['unusual', `Unusual (${summary.unusual})`],
+                                    [
+                                        'all',
+                                        t('All (:count)', {
+                                            count: units.length,
+                                        }),
+                                    ],
+                                    [
+                                        'checked',
+                                        t('Checked (:count)', {
+                                            count: summary.checked,
+                                        }),
+                                    ],
+                                    [
+                                        'unusual',
+                                        t('Unusual (:count)', {
+                                            count: summary.unusual,
+                                        }),
+                                    ],
                                 ] as [Filter, string][]
                             ).map(([value, label]) => (
                                 <button
@@ -200,17 +237,17 @@ export default function LabelBatchOverview({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="pl-4">
-                                        Serial
+                                        {t('Serial')}
                                     </TableHead>
                                     <TableHead className="text-right">
-                                        Checks
+                                        {t('Checks')}
                                     </TableHead>
                                     <TableHead className="text-right">
-                                        Devices
+                                        {t('Devices')}
                                     </TableHead>
-                                    <TableHead>First checked</TableHead>
+                                    <TableHead>{t('First checked')}</TableHead>
                                     <TableHead className="pr-4">
-                                        Last checked
+                                        {t('Last checked')}
                                     </TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -241,7 +278,9 @@ export default function LabelBatchOverview({
                                                 {unusual ? (
                                                     <TriangleAlert
                                                         className="ml-2 inline h-3.5 w-3.5 text-red-600"
-                                                        aria-label="Unusual"
+                                                        aria-label={t(
+                                                            'Unusual',
+                                                        )}
                                                     />
                                                 ) : null}
                                             </TableCell>
@@ -280,8 +319,12 @@ export default function LabelBatchOverview({
                             data-test="label-units-empty"
                         >
                             {filter === 'unusual'
-                                ? 'No serial in this run has been checked unusually often.'
-                                : 'No serial in this run has been checked yet.'}
+                                ? t(
+                                      'No serial in this run has been checked unusually often.',
+                                  )
+                                : t(
+                                      'No serial in this run has been checked yet.',
+                                  )}
                         </p>
                     )}
                 </section>

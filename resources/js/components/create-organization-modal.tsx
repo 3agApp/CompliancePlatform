@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { store } from '@/routes/organizations';
 
 export default function CreateOrganizationModal({
@@ -38,21 +39,24 @@ export default function CreateOrganizationModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Create a new organization
+                                    {t('Create a new organization')}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    Create a new organization to collaborate
-                                    with others.
+                                    {t(
+                                        'Create a new organization to collaborate with others.',
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Organization name</Label>
+                                <Label htmlFor="name">
+                                    {t('Organization name')}
+                                </Label>
                                 <Input
                                     id="name"
                                     name="name"
                                     data-test="create-organization-name"
-                                    placeholder="My organization"
+                                    placeholder={t('My organization')}
                                     required
                                 />
                                 <InputError message={errors.name} />
@@ -66,7 +70,9 @@ export default function CreateOrganizationModal({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -74,7 +80,7 @@ export default function CreateOrganizationModal({
                                     data-test="create-organization-submit"
                                     disabled={processing}
                                 >
-                                    Create organization
+                                    {t('Create organization')}
                                 </Button>
                             </DialogFooter>
                         </>

@@ -25,6 +25,7 @@ import type {
     ProductRequirementOption,
     ProductTemplate,
 } from '@/types';
+import { t, tc } from '@/lib/i18n';
 
 type Props = {
     categories: ProductCategory[];
@@ -118,16 +119,17 @@ export default function CategoriesIndex({
 
     return (
         <>
-            <Head title="Categories" />
+            <Head title={t('Categories')} />
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <h1 className="page-title">Categories</h1>
+                        <h1 className="page-title">{t('Categories')}</h1>
                         <p className="text-muted-foreground text-sm">
-                            The legal families {currentOrganization?.name} files
-                            its products under, and the templates that say what
-                            each kind of product needs.
+                            {t(
+                                'The legal families :organization files its products under, and the templates that say what each kind of product needs.',
+                                { organization: currentOrganization?.name },
+                            )}
                         </p>
                     </div>
 
@@ -136,7 +138,7 @@ export default function CategoriesIndex({
                             data-test="categories-new-category-button"
                             onClick={addCategory}
                         >
-                            <Plus /> New category
+                            <Plus /> {t('New category')}
                         </Button>
                     ) : null}
                 </div>
@@ -148,17 +150,17 @@ export default function CategoriesIndex({
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
-                                            Name
+                                            {t('Name')}
                                         </th>
                                         <th className="px-6 font-medium">
-                                            Templates
+                                            {t('Templates')}
                                         </th>
                                         <th className="px-6 font-medium">
-                                            Products
+                                            {t('Products')}
                                         </th>
                                         <th className="px-6 font-medium">
                                             <span className="sr-only">
-                                                Actions
+                                                {t('Actions')}
                                             </span>
                                         </th>
                                     </tr>
@@ -189,7 +191,23 @@ export default function CategoriesIndex({
                                                             aria-expanded={
                                                                 isOpen
                                                             }
-                                                            aria-label={`${isOpen ? 'Hide' : 'Show'} the templates under ${category.name}`}
+                                                            aria-label={
+                                                                isOpen
+                                                                    ? t(
+                                                                          'Hide the templates under :category',
+                                                                          {
+                                                                              category:
+                                                                                  category.name,
+                                                                          },
+                                                                      )
+                                                                    : t(
+                                                                          'Show the templates under :category',
+                                                                          {
+                                                                              category:
+                                                                                  category.name,
+                                                                          },
+                                                                      )
+                                                            }
                                                             onClick={() =>
                                                                 toggle(
                                                                     category.id,
@@ -207,18 +225,22 @@ export default function CategoriesIndex({
                                                     <td
                                                         className="text-muted-foreground px-6"
                                                         data-test="category-templates-count"
-                                                        data-label="Templates"
+                                                        data-label={t(
+                                                            'Templates',
+                                                        )}
                                                     >
                                                         {category.templates
                                                             .length > 0
                                                             ? category.templates
                                                                   .length
-                                                            : 'None yet'}
+                                                            : t('None yet')}
                                                     </td>
                                                     <td
                                                         className="text-muted-foreground px-6"
                                                         data-test="category-products-count"
-                                                        data-label="Products"
+                                                        data-label={t(
+                                                            'Products',
+                                                        )}
                                                     >
                                                         {category.products_count >
                                                         0
@@ -244,15 +266,17 @@ export default function CategoriesIndex({
                                                                         >
                                                                             <Pencil className="h-4 w-4" />
                                                                             <span className="sr-only">
-                                                                                Rename
-                                                                                category
+                                                                                {t(
+                                                                                    'Rename category',
+                                                                                )}
                                                                             </span>
                                                                         </Button>
                                                                     </TooltipTrigger>
                                                                     <TooltipContent>
                                                                         <p>
-                                                                            Rename
-                                                                            category
+                                                                            {t(
+                                                                                'Rename category',
+                                                                            )}
                                                                         </p>
                                                                     </TooltipContent>
                                                                 </Tooltip>
@@ -275,15 +299,17 @@ export default function CategoriesIndex({
                                                                         >
                                                                             <Trash2 className="h-4 w-4" />
                                                                             <span className="sr-only">
-                                                                                Delete
-                                                                                category
+                                                                                {t(
+                                                                                    'Delete category',
+                                                                                )}
                                                                             </span>
                                                                         </Button>
                                                                     </TooltipTrigger>
                                                                     <TooltipContent>
                                                                         <p>
-                                                                            Delete
-                                                                            category
+                                                                            {t(
+                                                                                'Delete category',
+                                                                            )}
                                                                         </p>
                                                                     </TooltipContent>
                                                                 </Tooltip>
@@ -349,11 +375,17 @@ export default function CategoriesIndex({
                             <Tags className="text-muted-foreground size-6" />
                         </div>
                         <div className="space-y-1">
-                            <h2 className="font-medium">No categories yet</h2>
+                            <h2 className="font-medium">
+                                {t('No categories yet')}
+                            </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                 {permissions.canCreateCategory
-                                    ? 'Add the legal families your products fall under, such as toy or magnetic toy.'
-                                    : 'Categories added to this organization will show up here.'}
+                                    ? t(
+                                          'Add the legal families your products fall under, such as toy or magnetic toy.',
+                                      )
+                                    : t(
+                                          'Categories added to this organization will show up here.',
+                                      )}
                             </p>
                         </div>
                     </div>
@@ -416,8 +448,10 @@ function TemplateList({
                     className="text-muted-foreground text-sm"
                     data-test="category-templates-empty"
                 >
-                    No templates yet. A product must be held to one, so nothing
-                    can be filed under {category.name} until you add a template.
+                    {t(
+                        'No templates yet. A product must be held to one, so nothing can be filed under :category until you add a template.',
+                        { category: category.name },
+                    )}
                 </p>
             ) : (
                 <ul className="grid gap-2">
@@ -444,9 +478,10 @@ function TemplateList({
                                     className="text-muted-foreground text-xs"
                                     data-test="template-products-count"
                                 >
-                                    {template.products_count === 1
-                                        ? '1 product'
-                                        : `${template.products_count} products`}
+                                    {tc(
+                                        '1 product|:count products',
+                                        template.products_count,
+                                    )}
                                 </span>
 
                                 {canManage ? (
@@ -459,7 +494,7 @@ function TemplateList({
                                         >
                                             <Pencil className="h-4 w-4" />
                                             <span className="sr-only">
-                                                Edit template
+                                                {t('Edit template')}
                                             </span>
                                         </Button>
 
@@ -471,7 +506,7 @@ function TemplateList({
                                         >
                                             <Trash2 className="h-4 w-4" />
                                             <span className="sr-only">
-                                                Delete template
+                                                {t('Delete template')}
                                             </span>
                                         </Button>
                                     </>
@@ -490,7 +525,7 @@ function TemplateList({
                         data-test="category-new-template-button"
                         onClick={onAdd}
                     >
-                        <Plus className="h-4 w-4" /> Add template
+                        <Plus className="h-4 w-4" /> {t('Add template')}
                     </Button>
                 </div>
             ) : null}

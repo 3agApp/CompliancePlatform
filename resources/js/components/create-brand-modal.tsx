@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { store } from '@/routes/brands';
 import type { BrandOption } from '@/types';
 
@@ -94,12 +95,12 @@ export default function CreateBrandModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Add a brand</DialogTitle>
+                                <DialogTitle>{t('Add a brand')}</DialogTitle>
                                 <DialogDescription>
-                                    The maker behind the product.{' '}
-                                    {supplierLabel} carries it, so the brand is
-                                    filed under them and shows up on every
-                                    product they supply.
+                                    {t(
+                                        'The maker behind the product. :supplier carries it, so the brand is filed under them and shows up on every product they supply.',
+                                        { supplier: supplierLabel },
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -111,7 +112,7 @@ export default function CreateBrandModal({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="inline-brand-name">
-                                    Brand name
+                                    {t('Brand name')}
                                 </Label>
                                 <Input
                                     id="inline-brand-name"
@@ -137,7 +138,7 @@ export default function CreateBrandModal({
                                     variant="secondary"
                                     onClick={() => onOpenChange(false)}
                                 >
-                                    Cancel
+                                    {t('Cancel')}
                                 </Button>
 
                                 <Button
@@ -145,7 +146,7 @@ export default function CreateBrandModal({
                                     data-test="inline-brand-submit"
                                     disabled={processing}
                                 >
-                                    Add brand
+                                    {t('Add brand')}
                                 </Button>
                             </DialogFooter>
                         </>

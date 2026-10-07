@@ -10,6 +10,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { t } from '@/lib/i18n';
 import { index as productsIndex } from '@/routes/products';
 import { resend, restore } from '@/routes/suppliers';
 import type {
@@ -37,15 +38,17 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
 
     return (
         <>
-            <Head title="Suppliers" />
+            <Head title={t('Suppliers')} />
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <h1 className="page-title">Suppliers</h1>
+                        <h1 className="page-title">{t('Suppliers')}</h1>
                         <p className="text-muted-foreground text-sm">
-                            The companies that provide compliance data for{' '}
-                            {currentOrganization?.name}.
+                            {t(
+                                'The companies that provide compliance data for :organization.',
+                                { organization: currentOrganization?.name },
+                            )}
                         </p>
                     </div>
 
@@ -54,7 +57,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                             organizationSlug={organizationSlug}
                         >
                             <Button data-test="invite-supplier-button">
-                                <Plus /> Add supplier
+                                <Plus /> {t('Add supplier')}
                             </Button>
                         </InviteSupplierModal>
                     ) : null}
@@ -67,20 +70,20 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
-                                            Company
+                                            {t('Company')}
                                         </th>
                                         <th className="px-6 font-medium">
-                                            Contact
+                                            {t('Contact')}
                                         </th>
                                         <th className="px-6 font-medium">
-                                            Status
+                                            {t('Status')}
                                         </th>
                                         <th className="px-6 font-medium">
-                                            Products
+                                            {t('Products')}
                                         </th>
                                         <th className="px-6 font-medium">
                                             <span className="sr-only">
-                                                Actions
+                                                {t('Actions')}
                                             </span>
                                         </th>
                                     </tr>
@@ -111,13 +114,13 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                             </td>
                                             <td
                                                 className="text-muted-foreground px-6 break-all"
-                                                data-label="Contact"
+                                                data-label={t('Contact')}
                                             >
                                                 {connection.contactEmail}
                                             </td>
                                             <td
                                                 className="px-6"
-                                                data-label="Status"
+                                                data-label={t('Status')}
                                             >
                                                 <Badge
                                                     variant={
@@ -132,7 +135,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                             </td>
                                             <td
                                                 className="text-muted-foreground px-6"
-                                                data-label="Products"
+                                                data-label={t('Products')}
                                             >
                                                 {connection.productsCount}
                                             </td>
@@ -168,7 +171,9 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                                     }
                                                                 >
                                                                     <Send className="h-4 w-4" />
-                                                                    Invite
+                                                                    {t(
+                                                                        'Invite',
+                                                                    )}
                                                                 </Button>
                                                             )}
                                                         </Form>
@@ -195,17 +200,17 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                                     >
                                                                         <Send className="h-4 w-4" />
                                                                         <span className="sr-only">
-                                                                            Send
-                                                                            invitation
-                                                                            again
+                                                                            {t(
+                                                                                'Send invitation again',
+                                                                            )}
                                                                         </span>
                                                                     </Button>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>
                                                                     <p>
-                                                                        Send
-                                                                        invitation
-                                                                        again
+                                                                        {t(
+                                                                            'Send invitation again',
+                                                                        )}
                                                                     </p>
                                                                 </TooltipContent>
                                                             </Tooltip>
@@ -232,15 +237,17 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                                     >
                                                                         <RotateCcw className="h-4 w-4" />
                                                                         <span className="sr-only">
-                                                                            Reconnect
-                                                                            supplier
+                                                                            {t(
+                                                                                'Reconnect supplier',
+                                                                            )}
                                                                         </span>
                                                                     </Button>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>
                                                                     <p>
-                                                                        Reconnect
-                                                                        supplier
+                                                                        {t(
+                                                                            'Reconnect supplier',
+                                                                        )}
                                                                     </p>
                                                                 </TooltipContent>
                                                             </Tooltip>
@@ -266,15 +273,17 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                                                                 >
                                                                     <Unplug className="h-4 w-4" />
                                                                     <span className="sr-only">
-                                                                        Disconnect
-                                                                        supplier
+                                                                        {t(
+                                                                            'Disconnect supplier',
+                                                                        )}
                                                                     </span>
                                                                 </Button>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
                                                                 <p>
-                                                                    Disconnect
-                                                                    supplier
+                                                                    {t(
+                                                                        'Disconnect supplier',
+                                                                    )}
                                                                 </p>
                                                             </TooltipContent>
                                                         </Tooltip>
@@ -293,11 +302,17 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                             <Factory className="text-muted-foreground size-6" />
                         </div>
                         <div className="space-y-1">
-                            <h2 className="font-medium">No suppliers yet</h2>
+                            <h2 className="font-medium">
+                                {t('No suppliers yet')}
+                            </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                 {permissions.canManageConnection
-                                    ? 'Add your first supplier, then assign products to them. You can invite them now or later.'
-                                    : 'Suppliers invited to this organization will show up here.'}
+                                    ? t(
+                                          'Add your first supplier, then assign products to them. You can invite them now or later.',
+                                      )
+                                    : t(
+                                          'Suppliers invited to this organization will show up here.',
+                                      )}
                             </p>
                         </div>
                     </div>

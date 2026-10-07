@@ -13,8 +13,8 @@ enum CountryOfOrigin: string
     public function label(): string
     {
         return match ($this) {
-            self::Germany => 'Germany',
-            self::Switzerland => 'Switzerland',
+            self::Germany => __('Germany'),
+            self::Switzerland => __('Switzerland'),
         };
     }
 

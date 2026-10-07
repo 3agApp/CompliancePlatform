@@ -11,6 +11,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { t, tc } from '@/lib/i18n';
 import { index as distributorsIndex } from '@/routes/distributors';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
@@ -35,7 +36,6 @@ export default function BrandsIndex({
     const organizationSlug = currentOrganization?.slug ?? '';
 
     const isSupplier = viewerType === 'supplier';
-    const counterpartyLabel = isSupplier ? 'distributors' : 'suppliers';
 
     const [renameOpen, setRenameOpen] = useState(false);
     const [brandToRename, setBrandToRename] = useState<Brand | null>(null);
@@ -65,15 +65,15 @@ export default function BrandsIndex({
 
     return (
         <>
-            <Head title="Brands" />
+            <Head title={t('Brands')} />
 
             <div className="workspace-page">
                 <div className="page-heading">
-                    <h1 className="page-title">Brands</h1>
+                    <h1 className="page-title">{t('Brands')}</h1>
                     <p className="text-muted-foreground text-sm">
-                        The makers behind each trade. A brand belongs to the
-                        supplier that carries it, so it is filed under them and
-                        shows up on every product they supply.
+                        {t(
+                            'The makers behind each trade. A brand belongs to the supplier that carries it, so it is filed under them and shows up on every product they supply.',
+                        )}
                     </p>
                 </div>
 
@@ -104,10 +104,11 @@ export default function BrandsIndex({
                                         </h2>
                                         <p className="text-muted-foreground text-xs">
                                             {connection.brands.length === 0
-                                                ? 'No brands yet.'
-                                                : connection.brands.length === 1
-                                                  ? '1 brand'
-                                                  : `${connection.brands.length} brands`}
+                                                ? t('No brands yet.')
+                                                : tc(
+                                                      '1 brand|:count brands',
+                                                      connection.brands.length,
+                                                  )}
                                         </p>
                                     </div>
 
@@ -118,8 +119,8 @@ export default function BrandsIndex({
                                             data-test="brand-add-button"
                                             onClick={() => addBrand(connection)}
                                         >
-                                            <Plus className="size-4" /> Add
-                                            brand
+                                            <Plus className="size-4" />{' '}
+                                            {t('Add brand')}
                                         </Button>
                                     ) : null}
                                 </div>
@@ -141,10 +142,10 @@ export default function BrandsIndex({
                                                         className="text-muted-foreground text-xs"
                                                         data-test="brand-products-count"
                                                     >
-                                                        {brand.products_count ===
-                                                        1
-                                                            ? '1 product'
-                                                            : `${brand.products_count} products`}
+                                                        {tc(
+                                                            '1 product|:count products',
+                                                            brand.products_count,
+                                                        )}
                                                     </span>
 
                                                     {permissions.canUpdateBrand ? (
@@ -164,14 +165,17 @@ export default function BrandsIndex({
                                                                 >
                                                                     <Pencil className="h-4 w-4" />
                                                                     <span className="sr-only">
-                                                                        Rename
-                                                                        brand
+                                                                        {t(
+                                                                            'Rename brand',
+                                                                        )}
                                                                     </span>
                                                                 </Button>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
                                                                 <p>
-                                                                    Rename brand
+                                                                    {t(
+                                                                        'Rename brand',
+                                                                    )}
                                                                 </p>
                                                             </TooltipContent>
                                                         </Tooltip>
@@ -194,14 +198,17 @@ export default function BrandsIndex({
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
                                                                     <span className="sr-only">
-                                                                        Delete
-                                                                        brand
+                                                                        {t(
+                                                                            'Delete brand',
+                                                                        )}
                                                                     </span>
                                                                 </Button>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
                                                                 <p>
-                                                                    Delete brand
+                                                                    {t(
+                                                                        'Delete brand',
+                                                                    )}
                                                                 </p>
                                                             </TooltipContent>
                                                         </Tooltip>
@@ -221,11 +228,18 @@ export default function BrandsIndex({
                         </div>
                         <div className="space-y-1">
                             <h2 className="font-medium">
-                                No {counterpartyLabel} yet
+                                {isSupplier
+                                    ? t('No distributors yet')
+                                    : t('No suppliers yet')}
                             </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                A brand belongs to a trade, so there is nowhere
-                                to file one until you have {counterpartyLabel}.
+                                {isSupplier
+                                    ? t(
+                                          'A brand belongs to a trade, so there is nowhere to file one until you have distributors.',
+                                      )
+                                    : t(
+                                          'A brand belongs to a trade, so there is nowhere to file one until you have suppliers.',
+                                      )}
                             </p>
                         </div>
                         <Button variant="outline" asChild>
@@ -237,7 +251,9 @@ export default function BrandsIndex({
                                 }
                                 data-test="brands-connections-link"
                             >
-                                View {counterpartyLabel}
+                                {isSupplier
+                                    ? t('View distributors')
+                                    : t('View suppliers')}
                             </Link>
                         </Button>
                     </div>

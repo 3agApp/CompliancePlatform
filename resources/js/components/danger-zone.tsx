@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Heading from '@/components/heading';
+import { t } from '@/lib/i18n';
 
 type Props = {
     title: string;
@@ -17,7 +18,7 @@ type Props = {
 export default function DangerZone({
     title,
     description,
-    warning = 'Please proceed with caution, this cannot be undone.',
+    warning = t('Please proceed with caution, this cannot be undone.'),
     children,
 }: Props) {
     return (
@@ -25,7 +26,7 @@ export default function DangerZone({
             <Heading variant="small" title={title} description={description} />
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
                 <div className="min-w-0 space-y-0.5 text-red-600 dark:text-red-100">
-                    <p className="font-medium">Warning</p>
+                    <p className="font-medium">{t('Warning')}</p>
                     <p className="text-sm">{warning}</p>
                 </div>
                 {children}

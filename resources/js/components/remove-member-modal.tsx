@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tn } from '@/lib/i18n';
 import { destroy as destroyMember } from '@/routes/organizations/members';
 import type { Organization, OrganizationMember } from '@/types';
 
@@ -44,16 +45,18 @@ export default function RemoveMemberModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Remove organization member</DialogTitle>
+                    <DialogTitle>{t('Remove organization member')}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to remove{' '}
-                        <strong>{member?.name}</strong> from this organization?
+                        {tn(
+                            'Are you sure you want to remove :name from this organization?',
+                            { name: <strong>{member?.name}</strong> },
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
+                        <Button variant="secondary">{t('Cancel')}</Button>
                     </DialogClose>
 
                     <Button
@@ -62,7 +65,7 @@ export default function RemoveMemberModal({
                         disabled={processing}
                         onClick={removeMember}
                     >
-                        Remove member
+                        {t('Remove member')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

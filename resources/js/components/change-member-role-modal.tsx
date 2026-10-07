@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tn } from '@/lib/i18n';
 import { update as updateMember } from '@/routes/organizations/members';
 import type { RoleOption, Organization, OrganizationMember } from '@/types';
 
@@ -48,17 +49,23 @@ export default function ChangeMemberRoleModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Change role</DialogTitle>
+                    <DialogTitle>{t('Change role')}</DialogTitle>
                     <DialogDescription>
-                        Make <strong>{member?.name}</strong> {article(role)}{' '}
-                        <strong>{role?.label}</strong> of this organization?
-                        This changes what they can see and do straight away.
+                        {tn(
+                            role && /^[aeiou]/i.test(role.label)
+                                ? 'Make :name an :role of this organization? This changes what they can see and do straight away.'
+                                : 'Make :name a :role of this organization? This changes what they can see and do straight away.',
+                            {
+                                name: <strong>{member?.name}</strong>,
+                                role: <strong>{role?.label}</strong>,
+                            },
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
+                        <Button variant="secondary">{t('Cancel')}</Button>
                     </DialogClose>
 
                     <Button
@@ -66,14 +73,10 @@ export default function ChangeMemberRoleModal({
                         disabled={processing}
                         onClick={changeRole}
                     >
-                        Change role
+                        {t('Change role')}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
-}
-
-function article(role: RoleOption | null): string {
-    return role && /^[aeiou]/i.test(role.label) ? 'an' : 'a';
 }

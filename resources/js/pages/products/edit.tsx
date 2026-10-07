@@ -18,6 +18,7 @@ import SerialLabelsPanel from '@/components/serial-labels-panel';
 import { Button } from '@/components/ui/button';
 import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { t, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index, update } from '@/routes/products';
 import type {
@@ -211,10 +212,10 @@ export default function ProductEdit({
      * page is submitted together and find-in-page still finds it all.
      */
     const sections = [
-        { id: 'product-classification', label: 'Classification' },
+        { id: 'product-classification', label: t('Classification') },
         {
             id: 'product-identification',
-            label: 'Identification',
+            label: t('Identification'),
             badge: (
                 <OutstandingBadge
                     section="product-identification"
@@ -224,7 +225,7 @@ export default function ProductEdit({
         },
         {
             id: 'product-compliance',
-            label: 'Compliance',
+            label: t('Compliance'),
             badge: (
                 <OutstandingBadge
                     section="product-compliance"
@@ -234,7 +235,7 @@ export default function ProductEdit({
         },
         {
             id: 'product-documents',
-            label: 'Documents',
+            label: t('Documents'),
             badge: outstanding['product-documents'] ? (
                 <OutstandingBadge
                     section="product-documents"
@@ -244,7 +245,7 @@ export default function ProductEdit({
                 <SectionBadge>{product.documents.length}</SectionBadge>
             ) : undefined,
         },
-        { id: 'product-history', label: 'History' },
+        { id: 'product-history', label: t('History') },
     ];
 
     return (
@@ -265,7 +266,8 @@ export default function ProductEdit({
                             asChild
                         >
                             <Link href={index(organizationSlug)}>
-                                <ArrowLeft className="h-4 w-4" /> Products
+                                <ArrowLeft className="h-4 w-4" />{' '}
+                                {t('Products')}
                             </Link>
                         </Button>
                         <h1 className="page-title break-words">
@@ -277,12 +279,18 @@ export default function ProductEdit({
                         />
                         {product.counterparty ? (
                             <p className="text-muted-foreground text-sm">
-                                {viewerType === 'supplier'
-                                    ? 'Assigned by '
-                                    : 'Supplied by '}
-                                <span className="text-foreground font-medium">
-                                    {product.counterparty}
-                                </span>
+                                {tn(
+                                    viewerType === 'supplier'
+                                        ? 'Assigned by :name'
+                                        : 'Supplied by :name',
+                                    {
+                                        name: (
+                                            <span className="text-foreground font-medium">
+                                                {product.counterparty}
+                                            </span>
+                                        ),
+                                    },
+                                )}
                             </p>
                         ) : null}
                     </div>
@@ -293,7 +301,7 @@ export default function ProductEdit({
                             data-test="product-delete-button"
                             onClick={() => setDeleteDialogOpen(true)}
                         >
-                            <Trash2 className="h-4 w-4" /> Delete product
+                            <Trash2 className="h-4 w-4" /> {t('Delete product')}
                         </Button>
                     ) : null}
                 </div>
@@ -344,8 +352,10 @@ export default function ProductEdit({
                                     >
                                         <Heading
                                             variant="small"
-                                            title="Classification"
-                                            description="Who supplies the product, and which template it is held to."
+                                            title={t('Classification')}
+                                            description={t(
+                                                'Who supplies the product, and which template it is held to.',
+                                            )}
                                         />
 
                                         <ProductClassificationFields
@@ -394,8 +404,10 @@ export default function ProductEdit({
                                     >
                                         <Heading
                                             variant="small"
-                                            title="Product details"
-                                            description="What the product is, and the numbers each side of the trade knows it by."
+                                            title={t('Product details')}
+                                            description={t(
+                                                'What the product is, and the numbers each side of the trade knows it by.',
+                                            )}
                                         />
 
                                         <ProductFormFields
@@ -426,8 +438,10 @@ export default function ProductEdit({
                                     >
                                         <Heading
                                             variant="small"
-                                            title="Compliance details"
-                                            description="What the product claims about its own safety: the warnings it carries, who it is for, and how it may be used."
+                                            title={t('Compliance details')}
+                                            description={t(
+                                                'What the product claims about its own safety: the warnings it carries, who it is for, and how it may be used.',
+                                            )}
                                         />
 
                                         <ProductComplianceFields
@@ -455,8 +469,9 @@ export default function ProductEdit({
                                         />
                                     ) : (
                                         <p className="text-muted-foreground text-sm">
-                                            You do not have permission to edit
-                                            this product.
+                                            {t(
+                                                'You do not have permission to edit this product.',
+                                            )}
                                         </p>
                                     )}
                                 </>
@@ -595,7 +610,7 @@ function OutstandingBadge({
 
     return (
         <SectionBadge tone="attention" testId={`${section}-outstanding`}>
-            <span className="sr-only">still needed: </span>
+            <span className="sr-only">{t('still needed:')} </span>
             {count}
         </SectionBadge>
     );
@@ -640,7 +655,7 @@ function SaveRow({
                 data-test="update-product-submit"
                 disabled={processing}
             >
-                Save changes
+                {t('Save changes')}
             </Button>
         </div>
     );
@@ -673,7 +688,7 @@ function UnsavedChangesBar({
         >
             <div className="bg-card pointer-events-auto flex items-center gap-3 rounded-full border py-2 pr-2 pl-5 shadow-lg">
                 <span className="text-muted-foreground text-sm whitespace-nowrap">
-                    Unsaved changes
+                    {t('Unsaved changes')}
                 </span>
                 <Button
                     type="submit"
@@ -682,7 +697,7 @@ function UnsavedChangesBar({
                     data-test="product-unsaved-bar-submit"
                     disabled={processing}
                 >
-                    {processing ? 'Saving…' : 'Save changes'}
+                    {processing ? t('Saving…') : t('Save changes')}
                 </Button>
             </div>
         </div>
@@ -698,7 +713,7 @@ function UnsavedChangesBar({
 function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
     useUnsavedChanges(
         dirty,
-        'This product has changes that have not been saved. Leave anyway?',
+        t('This product has changes that have not been saved. Leave anyway?'),
     );
 
     return null;

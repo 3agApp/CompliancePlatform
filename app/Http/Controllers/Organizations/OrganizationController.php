@@ -16,7 +16,6 @@ use App\Models\Organization;
 use App\Models\OrganizationInvitation;
 use App\Models\User;
 use App\Support\OrganizationHealth;
-use Carbon\CarbonInterface;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -70,6 +69,7 @@ class OrganizationController extends Controller
                 'slug' => $organization->slug,
                 'type' => $organization->type->value,
                 'typeLabel' => $organization->type->label(),
+                'locale' => $organization->locale->value,
             ],
             'members' => $organization->members()->get()->map(function (User $member) {
                 /** @var Membership $membership */
@@ -95,9 +95,10 @@ class OrganizationController extends Controller
                     'role_label' => $invitation->role->label(),
                     'created_at' => $invitation->created_at->toISOString(),
                     'sent_at_diff' => $invitation->created_at->diffForHumans(),
-                    // Without "ago" or "from now", so the page can say
-                    // "Expires in 2 days" or "Expired 3 hours ago".
-                    'expires_at_diff' => $invitation->expires_at?->diffForHumans(syntax: CarbonInterface::DIFF_ABSOLUTE),
+                    // Relative and in the reader's language -- "in 2 days",
+                    // "vor 3 Stunden" -- because German bends the number to
+                    // fit the preposition, so the page cannot glue its own on.
+                    'expires_at_diff' => $invitation->expires_at?->diffForHumans(),
                     'is_expired' => $invitation->isExpired(),
                 ]),
             'attention' => fn () => (new OrganizationHealth($organization, $permissions))->attention(),

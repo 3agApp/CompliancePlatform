@@ -31,10 +31,10 @@ enum ProductReviewStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft => 'Draft',
-            self::InReview => 'In review',
-            self::Approved => 'Approved',
-            self::ChangesRequested => 'Changes requested',
+            self::Draft => __('Draft'),
+            self::InReview => __('In review'),
+            self::Approved => __('Approved'),
+            self::ChangesRequested => __('Changes requested'),
         };
     }
 
@@ -44,10 +44,10 @@ enum ProductReviewStatus: string
     public function description(): string
     {
         return match ($this) {
-            self::Draft => 'Not submitted yet. Fill in what the template asks for, then submit it for review.',
-            self::InReview => 'Submitted and waiting on the distributor.',
-            self::Approved => 'Signed off by the distributor.',
-            self::ChangesRequested => 'Sent back with a note. Make the changes, then submit it again.',
+            self::Draft => __('Not submitted yet. Fill in what the template asks for, then submit it for review.'),
+            self::InReview => __('Submitted and waiting on the distributor.'),
+            self::Approved => __('Signed off by the distributor.'),
+            self::ChangesRequested => __('Sent back with a note. Make the changes, then submit it again.'),
         };
     }
 

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/lib/i18n';
 import { store, update } from '@/routes/categories';
 import type { ProductCategory } from '@/types';
 
@@ -59,26 +60,26 @@ export default function SaveCategoryModal({
                             <DialogHeader>
                                 <DialogTitle>
                                     {isEditing
-                                        ? 'Rename category'
-                                        : 'Add a category'}
+                                        ? t('Rename category')
+                                        : t('Add a category')}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    A category is the legal family a product is
-                                    regulated under, such as a toy or a magnetic
-                                    toy.
+                                    {t(
+                                        'A category is the legal family a product is regulated under, such as a toy or a magnetic toy.',
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="category-name">
-                                    Category name
+                                    {t('Category name')}
                                 </Label>
                                 <Input
                                     id="category-name"
                                     name="name"
                                     data-test="category-name"
                                     defaultValue={category?.name ?? ''}
-                                    placeholder="Magnetic toy"
+                                    placeholder={t('Magnetic toy')}
                                     autoComplete="off"
                                     required
                                 />
@@ -87,7 +88,9 @@ export default function SaveCategoryModal({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -96,8 +99,8 @@ export default function SaveCategoryModal({
                                     disabled={processing}
                                 >
                                     {isEditing
-                                        ? 'Save changes'
-                                        : 'Add category'}
+                                        ? t('Save changes')
+                                        : t('Add category')}
                                 </Button>
                             </DialogFooter>
                         </>

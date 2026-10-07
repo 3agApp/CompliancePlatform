@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { t } from '@/lib/i18n';
 import { requestChanges } from '@/routes/products';
 import type { ProductDetail } from '@/types';
 
@@ -49,19 +50,28 @@ export default function RequestProductChangesModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Send {product.name} back?
+                                    {t('Send :name back?', {
+                                        name: product.name,
+                                    })}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    {product.counterparty ?? 'The supplier'}{' '}
-                                    gets the product back with your note, and
-                                    submits it again once they have made the
-                                    changes.
+                                    {product.counterparty
+                                        ? t(
+                                              ':supplier gets the product back with your note, and submits it again once they have made the changes.',
+                                              {
+                                                  supplier:
+                                                      product.counterparty,
+                                              },
+                                          )
+                                        : t(
+                                              'The supplier gets the product back with your note, and submits it again once they have made the changes.',
+                                          )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="review-note">
-                                    What still needs to change
+                                    {t('What still needs to change')}
                                 </Label>
                                 <Textarea
                                     id="review-note"
@@ -69,14 +79,18 @@ export default function RequestProductChangesModal({
                                     rows={5}
                                     autoFocus
                                     data-test="review-note"
-                                    placeholder="The test report is for the 2021 version. We need the one covering the current article number."
+                                    placeholder={t(
+                                        'The test report is for the 2021 version. We need the one covering the current article number.',
+                                    )}
                                 />
                                 <InputError message={errors.note} />
                             </div>
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -84,7 +98,7 @@ export default function RequestProductChangesModal({
                                     data-test="request-changes-confirm"
                                     disabled={processing}
                                 >
-                                    Send back
+                                    {t('Send back')}
                                 </Button>
                             </DialogFooter>
                         </>

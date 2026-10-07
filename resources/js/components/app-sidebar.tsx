@@ -22,6 +22,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { t } from '@/lib/i18n';
 import { dashboard, onboarding } from '@/routes';
 import { index as invitationsIndex } from '@/routes/invitations';
 import { edit as editOrganization } from '@/routes/organizations';
@@ -40,7 +41,7 @@ export function AppSidebar() {
 
     const mainNavItems: NavItem[] = [
         {
-            title: 'Dashboard',
+            title: t('Dashboard'),
             href: dashboardUrl,
             icon: LayoutGrid,
             testId: 'nav-dashboard',
@@ -51,7 +52,7 @@ export function AppSidebar() {
         const isSupplier = currentOrganization.type === 'supplier';
 
         mainNavItems.push({
-            title: isSupplier ? 'Assigned products' : 'Products',
+            title: isSupplier ? t('Assigned products') : t('Products'),
             href: productsIndex(currentOrganization.slug),
             icon: Package,
             testId: 'nav-products',
@@ -59,7 +60,7 @@ export function AppSidebar() {
 
         if (!isSupplier) {
             mainNavItems.push({
-                title: 'Categories',
+                title: t('Categories'),
                 href: categoriesIndex(currentOrganization.slug),
                 icon: Tags,
                 testId: 'nav-categories',
@@ -72,7 +73,7 @@ export function AppSidebar() {
          * distributor's catalog.
          */
         mainNavItems.push({
-            title: 'Brands',
+            title: t('Brands'),
             href: brandsIndex(currentOrganization.slug),
             icon: Copyright,
             testId: 'nav-brands',
@@ -81,13 +82,13 @@ export function AppSidebar() {
         mainNavItems.push(
             isSupplier
                 ? {
-                      title: 'Distributors',
+                      title: t('Distributors'),
                       href: distributorsIndex(currentOrganization.slug),
                       icon: Truck,
                       testId: 'nav-distributors',
                   }
                 : {
-                      title: 'Suppliers',
+                      title: t('Suppliers'),
                       href: suppliersIndex(currentOrganization.slug),
                       icon: Factory,
                       testId: 'nav-suppliers',
@@ -95,7 +96,7 @@ export function AppSidebar() {
         );
 
         mainNavItems.push({
-            title: 'Organization settings',
+            title: t('Organization settings'),
             href: editOrganization(currentOrganization.slug),
             icon: Settings2,
             testId: 'nav-organization-settings',
@@ -104,7 +105,7 @@ export function AppSidebar() {
 
     if (pendingInvitationsCount > 0) {
         mainNavItems.push({
-            title: 'Invitations',
+            title: t('Invitations'),
             href: invitationsIndex(),
             icon: Mail,
             testId: 'nav-invitations',

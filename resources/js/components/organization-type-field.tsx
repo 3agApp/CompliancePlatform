@@ -1,5 +1,6 @@
 import InputError from '@/components/input-error';
 import type { OrganizationType, OrganizationTypeOption } from '@/types';
+import { t } from '@/lib/i18n';
 
 type Props = {
     options: OrganizationTypeOption[];
@@ -23,7 +24,7 @@ export default function OrganizationTypeField({
     return (
         <fieldset className="grid gap-2">
             <legend className="mb-2 text-sm font-medium">
-                What does your company do?
+                {t('What does your company do?')}
             </legend>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -53,8 +54,9 @@ export default function OrganizationTypeField({
             </div>
 
             <p className="text-muted-foreground text-xs">
-                This cannot be changed later. A company that both imports and
-                supplies can create one organization of each type.
+                {t(
+                    'This cannot be changed later. A company that both imports and supplies can create one organization of each type.',
+                )}
             </p>
 
             <InputError message={error} />

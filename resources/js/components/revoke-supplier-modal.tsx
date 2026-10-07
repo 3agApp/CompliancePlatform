@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tc } from '@/lib/i18n';
 import { revoke } from '@/routes/suppliers';
 import type { SupplierConnection } from '@/types';
 
@@ -41,23 +42,23 @@ export default function RevokeSupplierModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Disconnect {connection.companyName}?
+                                    {t('Disconnect :name?', {
+                                        name: connection.companyName,
+                                    })}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    They lose access to the{' '}
-                                    {connection.productsCount}{' '}
-                                    {connection.productsCount === 1
-                                        ? 'product'
-                                        : 'products'}{' '}
-                                    assigned to them right away. The products
-                                    keep their assignment, and you can reconnect
-                                    at any time.
+                                    {tc(
+                                        'They lose access to the 1 product assigned to them right away. The products keep their assignment, and you can reconnect at any time.|They lose access to the :count products assigned to them right away. The products keep their assignment, and you can reconnect at any time.',
+                                        connection.productsCount,
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -66,7 +67,7 @@ export default function RevokeSupplierModal({
                                     data-test="revoke-supplier-confirm"
                                     disabled={processing}
                                 >
-                                    Disconnect supplier
+                                    {t('Disconnect supplier')}
                                 </Button>
                             </DialogFooter>
                         </>

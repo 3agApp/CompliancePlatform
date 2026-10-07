@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t, tn } from '@/lib/i18n';
 import { destroy } from '@/routes/organizations';
 import type { Organization } from '@/types';
 
@@ -51,20 +52,31 @@ export default function DeleteOrganizationModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Are you sure?</DialogTitle>
+                                <DialogTitle>{t('Are you sure?')}</DialogTitle>
                                 <DialogDescription>
-                                    This action cannot be undone. This will
-                                    permanently delete the organization{' '}
-                                    <strong>"{organization.name}"</strong>.
+                                    {tn(
+                                        'This action cannot be undone. This will permanently delete the organization :name.',
+                                        {
+                                            name: (
+                                                <strong>
+                                                    "{organization.name}"
+                                                </strong>
+                                            ),
+                                        },
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="space-y-4 py-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="confirmation-name">
-                                        Type{' '}
-                                        <strong>"{organization.name}"</strong>{' '}
-                                        to confirm
+                                        {tn('Type :name to confirm', {
+                                            name: (
+                                                <strong>
+                                                    "{organization.name}"
+                                                </strong>
+                                            ),
+                                        })}
                                     </Label>
                                     <Input
                                         id="confirmation-name"
@@ -76,7 +88,9 @@ export default function DeleteOrganizationModal({
                                                 event.target.value,
                                             )
                                         }
-                                        placeholder="Enter organization name"
+                                        placeholder={t(
+                                            'Enter organization name',
+                                        )}
                                         autoComplete="off"
                                     />
                                     <InputError message={errors.name} />
@@ -85,7 +99,9 @@ export default function DeleteOrganizationModal({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
+                                    <Button variant="secondary">
+                                        {t('Cancel')}
+                                    </Button>
                                 </DialogClose>
 
                                 <Button
@@ -96,7 +112,7 @@ export default function DeleteOrganizationModal({
                                         !canDeleteOrganization || processing
                                     }
                                 >
-                                    Delete organization
+                                    {t('Delete organization')}
                                 </Button>
                             </DialogFooter>
                         </>

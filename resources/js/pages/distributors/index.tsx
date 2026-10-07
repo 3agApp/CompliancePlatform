@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Truck } from 'lucide-react';
+import { t } from '@/lib/i18n';
 import { index as productsIndex } from '@/routes/products';
 import type { DistributorConnection } from '@/types';
 
@@ -13,15 +14,19 @@ export default function DistributorsIndex({ connections }: Props) {
 
     return (
         <>
-            <Head title="Distributors" />
+            <Head title={t('Distributors')} />
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
-                        <h1 className="page-title">Distributors</h1>
+                        <h1 className="page-title">{t('Distributors')}</h1>
                         <p className="text-muted-foreground text-sm">
-                            The companies {currentOrganization?.name} supplies
-                            products to.
+                            {t(
+                                'The companies :organization supplies products to.',
+                                {
+                                    organization: currentOrganization?.name,
+                                },
+                            )}
                         </p>
                     </div>
                 </div>
@@ -33,10 +38,10 @@ export default function DistributorsIndex({ connections }: Props) {
                                 <thead>
                                     <tr className="text-muted-foreground">
                                         <th className="px-6 font-medium">
-                                            Company
+                                            {t('Company')}
                                         </th>
                                         <th className="px-6 font-medium">
-                                            Products assigned to you
+                                            {t('Products assigned to you')}
                                         </th>
                                     </tr>
                                 </thead>
@@ -66,7 +71,9 @@ export default function DistributorsIndex({ connections }: Props) {
                                             </td>
                                             <td
                                                 className="text-muted-foreground px-6"
-                                                data-label="Products assigned to you"
+                                                data-label={t(
+                                                    'Products assigned to you',
+                                                )}
                                             >
                                                 {connection.productsCount}
                                             </td>
@@ -82,10 +89,13 @@ export default function DistributorsIndex({ connections }: Props) {
                             <Truck className="text-muted-foreground size-6" />
                         </div>
                         <div className="space-y-1">
-                            <h2 className="font-medium">No distributors yet</h2>
+                            <h2 className="font-medium">
+                                {t('No distributors yet')}
+                            </h2>
                             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                Distributors who connect with you will show up
-                                here, along with the products they assign.
+                                {t(
+                                    'Distributors who connect with you will show up here, along with the products they assign.',
+                                )}
                             </p>
                         </div>
                     </div>

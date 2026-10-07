@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tn } from '@/lib/i18n';
 import { leave as leaveOrganizationAction } from '@/routes/organizations';
 import type { Organization } from '@/types';
 
@@ -42,16 +43,17 @@ export default function LeaveOrganizationModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Leave organization</DialogTitle>
+                    <DialogTitle>{t('Leave organization')}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to leave{' '}
-                        <strong>{organization?.name}</strong>?
+                        {tn('Are you sure you want to leave :name?', {
+                            name: <strong>{organization?.name}</strong>,
+                        })}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
+                        <Button variant="secondary">{t('Cancel')}</Button>
                     </DialogClose>
 
                     <Button
@@ -60,7 +62,7 @@ export default function LeaveOrganizationModal({
                         disabled={processing}
                         onClick={leaveOrganization}
                     >
-                        Leave organization
+                        {t('Leave organization')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

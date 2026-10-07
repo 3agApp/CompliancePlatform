@@ -6,6 +6,7 @@ import Heading from '@/components/heading';
 import PreviewDocumentModal from '@/components/preview-document-modal';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
 import { Button } from '@/components/ui/button';
+import { formatLocale, t } from '@/lib/i18n';
 import { show, visibility } from '@/routes/products/documents';
 import type { ProductDocument, ProductDocumentTypeOption } from '@/types';
 
@@ -39,7 +40,7 @@ function filedOn(timestamp: string | null): string {
         return '';
     }
 
-    return new Date(timestamp).toLocaleDateString(undefined, {
+    return new Date(timestamp).toLocaleDateString(formatLocale(), {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -116,8 +117,10 @@ export default function ProductDocumentsPanel({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <Heading
                         variant="small"
-                        title="Documents"
-                        description="Test reports, declarations of conformity, manuals, certificates and images. A product can carry several of the same kind."
+                        title={t('Documents')}
+                        description={t(
+                            'Test reports, declarations of conformity, manuals, certificates and images. A product can carry several of the same kind.',
+                        )}
                     />
 
                     {canUpload ? (
@@ -127,7 +130,7 @@ export default function ProductDocumentsPanel({
                             onClick={() => setUploadOpen(true)}
                         >
                             <Upload className="size-4" />
-                            Upload
+                            {t('Upload')}
                         </Button>
                     ) : null}
                 </div>
@@ -141,7 +144,7 @@ export default function ProductDocumentsPanel({
                 {canUpload && outstandingTypes.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-muted-foreground text-xs">
-                            Still needed
+                            {t('Still needed')}
                         </span>
                         {outstandingTypes.map((option) => (
                             <button
@@ -237,7 +240,7 @@ export default function ProductDocumentsPanel({
                                                             data-test="product-document-public-badge"
                                                         >
                                                             <Globe className="h-3 w-3" />
-                                                            Public
+                                                            {t('Public')}
                                                         </span>
                                                     ) : null}
                                                 </p>
@@ -250,8 +253,12 @@ export default function ProductDocumentsPanel({
                                                     data-test="product-document-visibility-button"
                                                     title={
                                                         document.is_public
-                                                            ? 'Hide from the public page'
-                                                            : 'Show on the public page'
+                                                            ? t(
+                                                                  'Hide from the public page',
+                                                              )
+                                                            : t(
+                                                                  'Show on the public page',
+                                                              )
                                                     }
                                                     onClick={() =>
                                                         router.patch(
@@ -277,8 +284,18 @@ export default function ProductDocumentsPanel({
                                                     )}
                                                     <span className="sr-only">
                                                         {document.is_public
-                                                            ? `Hide ${document.name} from the public page`
-                                                            : `Show ${document.name} on the public page`}
+                                                            ? t(
+                                                                  'Hide :name from the public page',
+                                                                  {
+                                                                      name: document.name,
+                                                                  },
+                                                              )
+                                                            : t(
+                                                                  'Show :name on the public page',
+                                                                  {
+                                                                      name: document.name,
+                                                                  },
+                                                              )}
                                                     </span>
                                                 </Button>
                                             ) : null}
@@ -306,7 +323,9 @@ export default function ProductDocumentsPanel({
                                                 >
                                                     <Download className="h-4 w-4" />
                                                     <span className="sr-only">
-                                                        Download {document.name}
+                                                        {t('Download :name', {
+                                                            name: document.name,
+                                                        })}
                                                     </span>
                                                 </a>
                                             </Button>
@@ -322,7 +341,9 @@ export default function ProductDocumentsPanel({
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                     <span className="sr-only">
-                                                        Delete {document.name}
+                                                        {t('Delete :name', {
+                                                            name: document.name,
+                                                        })}
                                                     </span>
                                                 </Button>
                                             ) : null}
@@ -338,8 +359,12 @@ export default function ProductDocumentsPanel({
                         data-test="product-documents-empty"
                     >
                         {canUpload
-                            ? 'No documents yet — upload the first ones above.'
-                            : 'No documents have been filed against this product yet.'}
+                            ? t(
+                                  'No documents yet — upload the first ones above.',
+                              )
+                            : t(
+                                  'No documents have been filed against this product yet.',
+                              )}
                     </p>
                 )}
             </div>

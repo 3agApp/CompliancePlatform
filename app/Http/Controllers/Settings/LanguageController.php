@@ -28,11 +28,19 @@ class LanguageController extends Controller
         ]);
 
         $locale = isset($validated['locale']) ? Locale::from($validated['locale']) : null;
+        $user = $request->user();
 
-        $request->user()?->update(['locale' => $locale]);
+        $user?->update(['locale' => $locale]);
 
-        if ($locale !== null) {
-            Cookie::queue(SetLocale::COOKIE, $locale->value, 60 * 24 * 365);
+        /**
+         * The browser keeps the language that now applies -- the
+         * organization's, for somebody who just went back to following it
+         * -- so the login page and the public pages agree with the app.
+         */
+        $applies = $locale ?? ($user !== null ? Locale::from($user->preferredLocale()) : null);
+
+        if ($applies !== null) {
+            Cookie::queue(SetLocale::COOKIE, $applies->value, 60 * 24 * 365);
         }
 
         return back();

@@ -1,5 +1,6 @@
 import { CircleDashed, Clock, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { formatLocale, t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { ProductSeal as Seal, ProductSealStatus } from '@/types';
 
@@ -46,7 +47,7 @@ const LOOKS: Record<
  * claim nobody can check.
  */
 function approvedOn(timestamp: string): string {
-    return new Date(timestamp).toLocaleDateString(undefined, {
+    return new Date(timestamp).toLocaleDateString(formatLocale(), {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -84,7 +85,9 @@ export default function ProductSealMark({ seal, className }: Props) {
                             className="text-muted-foreground text-xs"
                             data-test="product-seal-approved-at"
                         >
-                            Approved {approvedOn(seal.approvedAt)}
+                            {t('Approved :date', {
+                                date: approvedOn(seal.approvedAt),
+                            })}
                         </p>
                     ) : null}
                 </div>
@@ -100,7 +103,7 @@ export default function ProductSealMark({ seal, className }: Props) {
                 <div className="mt-4 space-y-1.5" data-test="product-seal-bar">
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">
-                            Compliance data collected
+                            {t('Compliance data collected')}
                         </span>
                         <span className="font-medium tabular-nums">
                             {seal.score}%
@@ -112,7 +115,7 @@ export default function ProductSealMark({ seal, className }: Props) {
                         aria-valuenow={seal.score}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label="Compliance data collected"
+                        aria-label={t('Compliance data collected')}
                     >
                         <div
                             className={cn('h-full rounded-full', look.bar)}
@@ -132,7 +135,9 @@ export default function ProductSealMark({ seal, className }: Props) {
                     className="text-muted-foreground mt-4 text-xs"
                     data-test="product-seal-overridden"
                 >
-                    Set by the distributor rather than by a completed check.
+                    {t(
+                        'Set by the distributor rather than by a completed check.',
+                    )}
                 </p>
             ) : null}
         </div>

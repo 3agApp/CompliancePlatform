@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -37,7 +38,9 @@ export default function CompletenessMeter({
         <div
             className={cn('flex items-center gap-2', className)}
             data-test="product-completeness"
-            title={`${score}% of what this product's template asks for`}
+            title={t(":score% of what this product's template asks for", {
+                score,
+            })}
         >
             <div
                 className="bg-muted h-1.5 w-16 shrink-0 overflow-hidden rounded-full"
@@ -45,7 +48,7 @@ export default function CompletenessMeter({
                 aria-valuenow={score}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label="Completeness"
+                aria-label={t('Completeness')}
             >
                 <div
                     className={cn(

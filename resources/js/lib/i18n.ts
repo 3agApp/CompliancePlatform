@@ -1,4 +1,6 @@
 import { router } from '@inertiajs/react';
+import { createElement, Fragment } from 'react';
+import type { ReactNode } from 'react';
 
 /**
  * The application's own translations, for everything behind the login.
@@ -85,10 +87,74 @@ function replace(text: string, replacements?: Replacements): string {
 }
 
 /**
+ * Mark a string as one to translate where it is shown, not where it is
+ * written: a page's static layout props are read before the translations
+ * load, so the layout translates them when it renders. Returns the key
+ * untouched; its only job is to say "this is English that has a German".
+ */
+export function tk(key: string): string {
+    return key;
+}
+
+/**
  * Translate a string, filling in any `:placeholders`.
  */
 export function t(key: string, replacements?: Replacements): string {
     return replace(strings[key] ?? key, replacements);
+}
+
+/**
+ * Translate a sentence with markup inside it.
+ *
+ * A name in bold or a link in the middle of a sentence cannot be glued on
+ * around a translated fragment, because German puts it somewhere else. So
+ * the whole sentence is translated, and each `:placeholder` in the result
+ * is swapped for the element given for it, wherever it ended up.
+ */
+export function tn(
+    key: string,
+    replacements: Record<string, ReactNode>,
+): ReactNode {
+    return fill(strings[key] ?? key, replacements);
+}
+
+/**
+ * Translate a sentence with markup inside it that changes with a count:
+ * `tc` and `tn` together.
+ */
+export function tcn(
+    key: string,
+    count: number,
+    replacements: Record<string, ReactNode>,
+): ReactNode {
+    const forms = (strings[key] ?? key).split('|');
+    const form = count === 1 ? forms[0] : (forms[1] ?? forms[0]);
+
+    return fill(form, { count, ...replacements });
+}
+
+/**
+ * Swap each `:placeholder` in a translated string for its element.
+ */
+function fill(
+    text: string,
+    replacements: Record<string, ReactNode>,
+): ReactNode {
+    const names = Object.keys(replacements).sort((a, b) => b.length - a.length);
+
+    if (names.length === 0) {
+        return text;
+    }
+
+    const pattern = new RegExp(`:(${names.join('|')})`, 'g');
+
+    return text
+        .split(pattern)
+        .map((part, index) =>
+            index % 2 === 1
+                ? createElement(Fragment, { key: index }, replacements[part])
+                : part,
+        );
 }
 
 /**

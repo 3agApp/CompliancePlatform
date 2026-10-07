@@ -3,6 +3,7 @@ import { ChevronRight, Inbox } from 'lucide-react';
 import CompletenessMeter from '@/components/completeness-meter';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import { Button } from '@/components/ui/button';
+import { formatLocale, t, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as distributorsIndex } from '@/routes/distributors';
 import { edit, index as productsIndex } from '@/routes/products';
@@ -53,7 +54,9 @@ function ago(timestamp: string | null): string | null {
     }
 
     const seconds = (new Date(timestamp).getTime() - Date.now()) / 1000;
-    const format = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+    const format = new Intl.RelativeTimeFormat(formatLocale(), {
+        numeric: 'auto',
+    });
     const units: [Intl.RelativeTimeFormatUnit, number][] = [
         ['year', 31_536_000],
         ['month', 2_592_000],
@@ -73,14 +76,20 @@ function ago(timestamp: string | null): string | null {
 }
 
 /**
- * What started the clock on a product in the queue.
+ * What started the clock on a product in the queue, and how long ago.
  */
-const WAITING_SINCE: Record<ProductReviewStatus, string> = {
-    in_review: 'Submitted',
-    changes_requested: 'Sent back',
-    draft: 'Added',
-    approved: 'Approved',
-};
+function waitingSince(status: ProductReviewStatus, when: string): string {
+    switch (status) {
+        case 'in_review':
+            return t('Submitted :when', { when });
+        case 'changes_requested':
+            return t('Sent back :when', { when });
+        case 'approved':
+            return t('Approved :when', { when });
+        default:
+            return t('Added :when', { when });
+    }
+}
 
 /**
  * One number and where to go to act on it. Every tile is a link, because a
@@ -127,14 +136,17 @@ function Pipeline({
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id="pipeline-heading" className="font-medium">
-                    Review progress
+                    {t('Review progress')}
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                    <span className="text-foreground font-semibold tabular-nums">
-                        {approved}
-                    </span>{' '}
-                    of <span className="tabular-nums">{total}</span> products
-                    approved
+                    {tn(':approved of :total products approved', {
+                        approved: (
+                            <span className="text-foreground font-semibold tabular-nums">
+                                {approved}
+                            </span>
+                        ),
+                        total: <span className="tabular-nums">{total}</span>,
+                    })}
                 </p>
             </div>
 
@@ -232,7 +244,7 @@ function Queue({
                         className="text-muted-foreground hover:text-foreground text-sm"
                         data-test="dashboard-queue-view-all"
                     >
-                        View all
+                        {t('View all')}
                     </Link>
                 ) : null}
             </div>
@@ -289,7 +301,7 @@ function QueueRow({
                         {[
                             item.counterparty,
                             since
-                                ? `${WAITING_SINCE[item.review_status]} ${since}`
+                                ? waitingSince(item.review_status, since)
                                 : null,
                         ]
                             .filter(Boolean)
@@ -334,7 +346,7 @@ export default function Dashboard({
     const tiles: Stat[] = isSupplier
         ? [
               {
-                  label: 'Distributors',
+                  label: t('Distributors'),
                   value: stats.distributors,
                   href: distributorsIndex(organizationSlug).url,
                   testId: 'dashboard-distributors',
@@ -342,13 +354,13 @@ export default function Dashboard({
           ]
         : [
               {
-                  label: 'Active suppliers',
+                  label: t('Active suppliers'),
                   value: stats.activeSuppliers,
                   href: suppliersIndex(organizationSlug).url,
                   testId: 'dashboard-suppliers',
               },
               {
-                  label: 'Pending invitations',
+                  label: t('Pending invitations'),
                   value: stats.pendingInvitations,
                   href: suppliersIndex(organizationSlug).url,
                   testId: 'dashboard-pending',
@@ -356,7 +368,7 @@ export default function Dashboard({
               ...(stats.notInvited > 0
                   ? [
                         {
-                            label: 'Not invited yet',
+                            label: t('Not invited yet'),
                             value: stats.notInvited,
                             href: suppliersIndex(organizationSlug).url,
                             testId: 'dashboard-not-invited',
@@ -374,8 +386,10 @@ export default function Dashboard({
     const nextStep = isSupplier
         ? stats.distributors === 0
             ? {
-                  title: 'Waiting on a distributor',
-                  body: 'Once a distributor connects with you and assigns products, they will show up here.',
+                  title: t('Waiting on a distributor'),
+                  body: t(
+                      'Once a distributor connects with you and assigns products, they will show up here.',
+                  ),
                   action: null,
               }
             : null
@@ -383,20 +397,22 @@ export default function Dashboard({
             stats.pendingInvitations === 0 &&
             stats.notInvited === 0
           ? {
-                title: 'Invite your first supplier',
-                body: 'Every product is assigned to a supplier, so start by inviting one.',
+                title: t('Invite your first supplier'),
+                body: t(
+                    'Every product is assigned to a supplier, so start by inviting one.',
+                ),
                 action: {
-                    label: 'Invite a supplier',
+                    label: t('Invite a supplier'),
                     href: suppliersIndex(organizationSlug).url,
                     testId: 'dashboard-invite-supplier',
                 },
             }
           : stats.products === 0
             ? {
-                  title: 'Add your first product',
-                  body: 'You have a supplier to assign products to.',
+                  title: t('Add your first product'),
+                  body: t('You have a supplier to assign products to.'),
                   action: {
-                      label: 'Go to products',
+                      label: t('Go to products'),
                       href: productsIndex(organizationSlug).url,
                       testId: 'dashboard-add-product',
                   },
@@ -415,13 +431,15 @@ export default function Dashboard({
 
     return (
         <>
-            <Head title="Dashboard" />
+            <Head title={t('Dashboard')} />
 
             <div className="workspace-page">
                 <div className="page-heading">
-                    <h1 className="page-title">Dashboard</h1>
+                    <h1 className="page-title">{t('Dashboard')}</h1>
                     <p className="text-muted-foreground text-sm">
-                        You're working in {currentOrganization?.name}.
+                        {t("You're working in :organization.", {
+                            organization: currentOrganization?.name,
+                        })}
                     </p>
                 </div>
 
@@ -462,19 +480,23 @@ export default function Dashboard({
                         <Queue
                             title={
                                 isSupplier
-                                    ? 'Your to-do'
-                                    : 'Waiting on your review'
+                                    ? t('Your to-do')
+                                    : t('Waiting on your review')
                             }
                             queue={queue}
                             emptyTitle={
                                 isSupplier
-                                    ? 'Nothing to fill in right now'
-                                    : 'Nothing is waiting on your review'
+                                    ? t('Nothing to fill in right now')
+                                    : t('Nothing is waiting on your review')
                             }
                             emptyBody={
                                 isSupplier
-                                    ? 'Products sent back to you, and ones not yet submitted, show up here.'
-                                    : 'Products show up here as soon as a supplier submits them.'
+                                    ? t(
+                                          'Products sent back to you, and ones not yet submitted, show up here.',
+                                      )
+                                    : t(
+                                          'Products show up here as soon as a supplier submits them.',
+                                      )
                             }
                             viewAllHref={
                                 productsIndex(organizationSlug, {

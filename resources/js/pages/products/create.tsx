@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { t } from '@/lib/i18n';
 import { index as categoriesIndex } from '@/routes/categories';
 import { index as productsIndex, store } from '@/routes/products';
 import type {
@@ -77,7 +78,7 @@ export default function ProductsCreate({
 
     return (
         <div className="workspace-page">
-            <Head title="Add a product" />
+            <Head title={t('Add a product')} />
 
             <div className="page-heading">
                 <Link
@@ -86,12 +87,13 @@ export default function ProductsCreate({
                     data-test="product-back-link"
                 >
                     <ArrowLeft className="size-4" />
-                    Products
+                    {t('Products')}
                 </Link>
-                <h1 className="page-title">Add a product</h1>
+                <h1 className="page-title">{t('Add a product')}</h1>
                 <p className="text-muted-foreground text-sm">
-                    Say what kind of product it is and what it is called. The
-                    rest is filled in on the product itself.
+                    {t(
+                        'Say what kind of product it is and what it is called. The rest is filled in on the product itself.',
+                    )}
                 </p>
             </div>
 
@@ -117,12 +119,12 @@ export default function ProductsCreate({
                         >
                             <div className="grid gap-1">
                                 <h2 className="text-base font-semibold">
-                                    Classify the product
+                                    {t('Classify the product')}
                                 </h2>
                                 <p className="text-muted-foreground text-sm">
-                                    Which supplier is responsible for it, which
-                                    legal family it falls under, and which of
-                                    that family's templates it is held to.
+                                    {t(
+                                        "Which supplier is responsible for it, which legal family it falls under, and which of that family's templates it is held to.",
+                                    )}
                                 </p>
                             </div>
 
@@ -146,13 +148,13 @@ export default function ProductsCreate({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="create-product-name">
-                                    Product name
+                                    {t('Product name')}
                                 </Label>
                                 <Input
                                     id="create-product-name"
                                     name="name"
                                     data-test="product-name"
-                                    placeholder="Organic oat milk 1L"
+                                    placeholder={t('Organic oat milk 1L')}
                                     required
                                 />
                                 <InputError message={errors.name} />
@@ -162,15 +164,16 @@ export default function ProductsCreate({
                                 <Alert data-test="product-template-dead-end">
                                     <Tags className="size-4" />
                                     <AlertTitle>
-                                        {categoryLabel} has no templates yet
+                                        {t(':category has no templates yet', {
+                                            category: categoryLabel,
+                                        })}
                                     </AlertTitle>
                                     <AlertDescription>
                                         <p>
-                                            A template says which documents and
-                                            data this kind of product needs.
-                                            Every product is held to one, so add
-                                            a template to {categoryLabel} before
-                                            filing anything under it.
+                                            {t(
+                                                'A template says which documents and data this kind of product needs. Every product is held to one, so add a template to :category before filing anything under it.',
+                                                { category: categoryLabel },
+                                            )}
                                         </p>
                                         <Link
                                             href={categoriesIndex(
@@ -179,7 +182,9 @@ export default function ProductsCreate({
                                             className="font-medium underline underline-offset-4"
                                             data-test="product-manage-categories-link"
                                         >
-                                            Manage categories and templates
+                                            {t(
+                                                'Manage categories and templates',
+                                            )}
                                         </Link>
                                     </AlertDescription>
                                 </Alert>
@@ -188,7 +193,9 @@ export default function ProductsCreate({
                             {template !== null ? (
                                 <div className="bg-muted/40 grid gap-2 rounded-xl border p-4">
                                     <p className="text-sm font-medium">
-                                        {template.label} asks for
+                                        {t(':template asks for', {
+                                            template: template.label,
+                                        })}
                                     </p>
                                     <TemplateRequirementSummary
                                         requirements={template.requirements}
@@ -198,9 +205,9 @@ export default function ProductsCreate({
                                         detailed
                                     />
                                     <p className="text-muted-foreground text-xs">
-                                        None of it is required to save. You fill
-                                        it in on the product, which keeps score
-                                        of what is still outstanding.
+                                        {t(
+                                            'None of it is required to save. You fill it in on the product, which keeps score of what is still outstanding.',
+                                        )}
                                     </p>
                                 </div>
                             ) : null}
@@ -211,7 +218,7 @@ export default function ProductsCreate({
                                     data-test="create-product-submit"
                                     disabled={processing}
                                 >
-                                    Add product
+                                    {t('Add product')}
                                 </Button>
                             </div>
                         </section>
@@ -231,7 +238,7 @@ export default function ProductsCreate({
 function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
     useUnsavedChanges(
         dirty,
-        'This product has changes that have not been saved. Leave anyway?',
+        t('This product has changes that have not been saved. Leave anyway?'),
     );
 
     return null;

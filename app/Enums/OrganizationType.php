@@ -21,8 +21,8 @@ enum OrganizationType: string
     public function label(): string
     {
         return match ($this) {
-            self::Distributor => 'Distributor',
-            self::Supplier => 'Supplier',
+            self::Distributor => __('Distributor'),
+            self::Supplier => __('Supplier'),
         };
     }
 
@@ -32,8 +32,8 @@ enum OrganizationType: string
     public function description(): string
     {
         return match ($this) {
-            self::Distributor => 'We place products on the market and collect compliance data from our suppliers.',
-            self::Supplier => 'We manufacture or supply products and provide compliance data to distributors.',
+            self::Distributor => __('We place products on the market and collect compliance data from our suppliers.'),
+            self::Supplier => __('We manufacture or supply products and provide compliance data to distributors.'),
         };
     }
 

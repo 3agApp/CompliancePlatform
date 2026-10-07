@@ -19,6 +19,7 @@ import type {
     Product,
     ProductRequirementKey,
 } from '@/types';
+import { t } from '@/lib/i18n';
 
 type FieldName =
     | 'name'
@@ -58,7 +59,9 @@ type Props = {
  */
 export function Optional() {
     return (
-        <span className="text-muted-foreground font-normal">(optional)</span>
+        <span className="text-muted-foreground font-normal">
+            {t('(optional)')}
+        </span>
     );
 }
 
@@ -73,7 +76,9 @@ export function Optional() {
  * checklist's job, not the label's.
  */
 export function RequiredByTemplate() {
-    return <span className="text-foreground font-normal">(required)</span>;
+    return (
+        <span className="text-foreground font-normal">{t('(required)')}</span>
+    );
 }
 
 /**
@@ -126,13 +131,13 @@ export default function ProductFormFields({
     return (
         <div className="grid gap-4">
             <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}-name`}>Product name</Label>
+                <Label htmlFor={`${idPrefix}-name`}>{t('Product name')}</Label>
                 <Input
                     id={`${idPrefix}-name`}
                     name="name"
                     data-test="product-name"
                     defaultValue={product?.name ?? ''}
-                    placeholder="Organic oat milk 1L"
+                    placeholder={t('Organic oat milk 1L')}
                     disabled={disabled}
                     required
                 />
@@ -142,7 +147,8 @@ export default function ProductFormFields({
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-brand`}>
-                        Brand <FieldMarker required={needs('requires_brand')} />
+                        {t('Brand')}{' '}
+                        <FieldMarker required={needs('requires_brand')} />
                     </Label>
                     <div className="flex gap-2">
                         <Select
@@ -155,7 +161,9 @@ export default function ProductFormFields({
                                 data-test="product-brand"
                                 className="w-full"
                             >
-                                <SelectValue placeholder="Select a brand" />
+                                <SelectValue
+                                    placeholder={t('Select a brand')}
+                                />
                             </SelectTrigger>
                             <SelectContent>
                                 {brands.map((brand) => (
@@ -175,7 +183,7 @@ export default function ProductFormFields({
                                 variant="outline"
                                 size="icon"
                                 data-test="product-add-brand"
-                                aria-label="Add a brand"
+                                aria-label={t('Add a brand')}
                                 onClick={() => setBrandDialogOpen(true)}
                             >
                                 <Plus className="size-4" />
@@ -189,15 +197,19 @@ export default function ProductFormFields({
                     />
                     <p className="text-muted-foreground text-xs">
                         {brands.length === 0
-                            ? `${supplierLabel ?? 'This supplier'} has no brands yet.`
-                            : 'The maker of the product.'}
+                            ? supplierLabel
+                                ? t(':supplier has no brands yet.', {
+                                      supplier: supplierLabel,
+                                  })
+                                : t('This supplier has no brands yet.')
+                            : t('The maker of the product.')}
                     </p>
                     <InputError message={errors.brand_id} />
 
                     <CreateBrandModal
                         organizationSlug={organizationSlug}
                         supplierConnectionId={supplierConnectionId}
-                        supplierLabel={supplierLabel ?? 'This supplier'}
+                        supplierLabel={supplierLabel ?? t('This supplier')}
                         open={brandDialogOpen}
                         onOpenChange={setBrandDialogOpen}
                         onCreated={(brand) => setBrandId(String(brand.id))}
@@ -206,7 +218,7 @@ export default function ProductFormFields({
 
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-ean`}>
-                        EAN / barcode{' '}
+                        {t('EAN / barcode')}{' '}
                         <FieldMarker required={needs('requires_ean')} />
                     </Label>
                     <Input
@@ -226,7 +238,7 @@ export default function ProductFormFields({
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-internal-article-number`}>
-                        Internal article number{' '}
+                        {t('Internal article number')}{' '}
                         <FieldMarker
                             required={needs('requires_internal_article_number')}
                         />
@@ -241,14 +253,14 @@ export default function ProductFormFields({
                         disabled={disabled}
                     />
                     <p className="text-muted-foreground text-xs">
-                        The distributor's own SKU.
+                        {t("The distributor's own SKU.")}
                     </p>
                     <InputError message={errors.internal_article_number} />
                 </div>
 
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-supplier-article-number`}>
-                        Supplier article number{' '}
+                        {t('Supplier article number')}{' '}
                         <FieldMarker
                             required={needs('requires_supplier_article_number')}
                         />
@@ -263,7 +275,7 @@ export default function ProductFormFields({
                         disabled={disabled}
                     />
                     <p className="text-muted-foreground text-xs">
-                        The manufacturer's SKU.
+                        {t("The manufacturer's SKU.")}
                     </p>
                     <InputError message={errors.supplier_article_number} />
                 </div>
@@ -272,7 +284,7 @@ export default function ProductFormFields({
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-order-number`}>
-                        Order number{' '}
+                        {t('Order number')}{' '}
                         <FieldMarker
                             required={needs('requires_order_number')}
                         />
@@ -291,7 +303,7 @@ export default function ProductFormFields({
 
                 <div className="grid content-start gap-2">
                     <Label htmlFor={`${idPrefix}-customs-tariff-number`}>
-                        Customs tariff number{' '}
+                        {t('Customs tariff number')}{' '}
                         <FieldMarker
                             required={needs('requires_customs_tariff_number')}
                         />
@@ -307,7 +319,7 @@ export default function ProductFormFields({
                         disabled={disabled}
                     />
                     <p className="text-muted-foreground text-xs">
-                        Its HS code.
+                        {t('Its HS code.')}
                     </p>
                     <InputError message={errors.customs_tariff_number} />
                 </div>
@@ -315,7 +327,7 @@ export default function ProductFormFields({
 
             <div className="grid gap-2 sm:max-w-[calc(50%-0.5rem)]">
                 <Label htmlFor={`${idPrefix}-country-of-origin`}>
-                    Country of origin{' '}
+                    {t('Country of origin')}{' '}
                     <FieldMarker
                         required={needs('requires_country_of_origin')}
                     />
@@ -332,7 +344,7 @@ export default function ProductFormFields({
                         data-test="product-country-of-origin"
                         className="w-full"
                     >
-                        <SelectValue placeholder="Select a country" />
+                        <SelectValue placeholder={t('Select a country')} />
                     </SelectTrigger>
                     <SelectContent>
                         {availableCountries.map((availableCountry) => (

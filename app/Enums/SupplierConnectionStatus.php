@@ -23,10 +23,10 @@ enum SupplierConnectionStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending => 'Pending',
-            self::Active => 'Active',
-            self::Declined => 'Declined',
-            self::Revoked => 'Revoked',
+            self::Pending => __('Pending'),
+            self::Active => __('Active'),
+            self::Declined => __('Declined'),
+            self::Revoked => __('Revoked'),
         };
     }
 

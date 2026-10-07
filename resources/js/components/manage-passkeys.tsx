@@ -6,6 +6,7 @@ import Heading from '@/components/heading';
 import PasskeyItem from '@/components/passkey-item';
 import PasskeyRegistration from '@/components/passkey-register';
 import type { Passkey } from '@/types/auth';
+import { t } from '@/lib/i18n';
 
 export type Props = {
     canManagePasskeys?: boolean;
@@ -34,8 +35,8 @@ export default function ManagePasskeys(props: Props) {
         <div className="space-y-6">
             <Heading
                 variant="small"
-                title="Passkeys"
-                description="Manage your passkeys for passwordless sign-in"
+                title={t('Passkeys')}
+                description={t('Manage your passkeys for passwordless sign-in')}
             />
 
             <div className="border-border overflow-hidden rounded-lg border">
@@ -50,8 +51,10 @@ export default function ManagePasskeys(props: Props) {
                 ) : (
                     <EmptyState
                         icon={KeyRound}
-                        title="No passkeys yet"
-                        description="Add a passkey to sign in without a password"
+                        title={t('No passkeys yet')}
+                        description={t(
+                            'Add a passkey to sign in without a password',
+                        )}
                     />
                 )}
             </div>

@@ -5,6 +5,7 @@ import OrganizationTypeField from '@/components/organization-type-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t, tc, tk } from '@/lib/i18n';
 import { onboarding } from '@/routes';
 import { index as invitationsIndex } from '@/routes/invitations';
 import { store } from '@/routes/organizations';
@@ -14,18 +15,18 @@ export default function Onboarding() {
 
     return (
         <>
-            <Head title="Create your first organization" />
+            <Head title={t('Create your first organization')} />
 
             <div className="workspace-page">
                 <div className="mx-auto w-full max-w-xl space-y-6">
                     <div className="page-heading">
                         <h1 className="page-title">
-                            Create your first organization
+                            {t('Create your first organization')}
                         </h1>
                         <p className="text-muted-foreground text-sm">
-                            An organization is where your team works on
-                            compliance together. You can add more organizations
-                            and invite people later.
+                            {t(
+                                'An organization is where your team works on compliance together. You can add more organizations and invite people later.',
+                            )}
                         </p>
                     </div>
 
@@ -39,14 +40,15 @@ export default function Onboarding() {
                                     <Mail className="text-muted-foreground size-5" />
                                 </div>
                                 <p className="text-sm">
-                                    {pendingInvitationsCount === 1
-                                        ? 'You have been invited to an organization.'
-                                        : `You have been invited to ${pendingInvitationsCount} organizations.`}
+                                    {tc(
+                                        'You have been invited to an organization.|You have been invited to :count organizations.',
+                                        pendingInvitationsCount,
+                                    )}
                                 </p>
                             </div>
                             <Button variant="secondary" asChild>
                                 <Link href={invitationsIndex()}>
-                                    View invitations
+                                    {t('View invitations')}
                                 </Link>
                             </Button>
                         </div>
@@ -60,7 +62,7 @@ export default function Onboarding() {
                             <>
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">
-                                        Organization name
+                                        {t('Organization name')}
                                     </Label>
                                     <Input
                                         id="name"
@@ -85,7 +87,7 @@ export default function Onboarding() {
                                     data-test="onboarding-organization-submit"
                                     disabled={processing}
                                 >
-                                    Create organization
+                                    {t('Create organization')}
                                 </Button>
                             </>
                         )}
@@ -99,7 +101,7 @@ export default function Onboarding() {
 Onboarding.layout = {
     breadcrumbs: [
         {
-            title: 'Get started',
+            title: tk('Get started'),
             href: onboarding(),
         },
     ],

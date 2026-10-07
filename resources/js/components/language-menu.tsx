@@ -130,3 +130,74 @@ export function LanguageToggle() {
         </Button>
     );
 }
+
+/**
+ * The language choice on the profile page, laid out like the appearance
+ * choice beside it: following the organization first, then each language
+ * under its own name.
+ */
+export function LanguageTabs() {
+    const { auth, currentOrganization, availableLocales } = usePage().props;
+    const chosen = auth.user.locale ?? null;
+    const organizationLabel = availableLocales.find(
+        (option) => option.value === currentOrganization?.locale,
+    )?.label;
+
+    const options: {
+        value: Locale | null;
+        label: string;
+        hint?: string;
+        lang?: string;
+    }[] = [
+        ...(currentOrganization
+            ? [
+                  {
+                      value: null,
+                      label: t('Organization default'),
+                      hint: organizationLabel,
+                  },
+              ]
+            : []),
+        ...availableLocales.map((option) => ({
+            value: option.value,
+            label: option.label,
+            lang: option.value,
+        })),
+    ];
+
+    return (
+        <div
+            className="bg-muted/50 grid w-full gap-2 rounded-xl p-2 sm:grid-cols-3"
+            role="radiogroup"
+            aria-label={t('Language')}
+        >
+            {options.map((option) => {
+                const selected = chosen === option.value;
+
+                return (
+                    <button
+                        key={option.value ?? 'organization'}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        lang={option.lang}
+                        data-test={`language-option-${option.value ?? 'organization'}`}
+                        onClick={() => switchLanguage(option.value)}
+                        className={
+                            selected
+                                ? 'bg-card text-foreground ring-border focus-visible:ring-ring flex flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-4 shadow-xs ring-1 transition-colors focus-visible:ring-2 focus-visible:outline-none'
+                                : 'focus-visible:ring-ring flex flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-4 text-neutral-500 transition-colors hover:bg-neutral-200/60 hover:text-black focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700/60'
+                        }
+                    >
+                        <span className="text-sm">{option.label}</span>
+                        {option.hint ? (
+                            <span className="text-xs opacity-70">
+                                {option.hint}
+                            </span>
+                        ) : null}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}

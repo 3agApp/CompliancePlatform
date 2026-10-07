@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import { t, tn } from '@/lib/i18n';
 import { destroy as stopImpersonating } from '@/routes/impersonation';
 
 export function ImpersonationBanner() {
@@ -15,9 +16,10 @@ export function ImpersonationBanner() {
             className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-amber-100 px-4 py-2 text-sm text-amber-900 dark:bg-amber-500/15 dark:text-amber-200"
         >
             <span>
-                You are signed in as{' '}
-                <span className="font-medium">{auth.user.name}</span> (
-                {auth.user.email}).
+                {tn('You are signed in as :name (:email).', {
+                    name: <span className="font-medium">{auth.user.name}</span>,
+                    email: auth.user.email,
+                })}
             </span>
             <Button
                 size="sm"
@@ -26,7 +28,7 @@ export function ImpersonationBanner() {
                 data-test="impersonation-stop"
                 onClick={() => router.visit(stopImpersonating())}
             >
-                Return to admin
+                {t('Return to admin')}
             </Button>
         </div>
     );

@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 type Props = {
     processing: boolean;
@@ -19,7 +20,7 @@ export default function SaveButton({
     processing,
     isDirty,
     recentlySuccessful,
-    label = 'Save',
+    label = t('Save'),
     ...props
 }: Props) {
     return (
@@ -37,7 +38,7 @@ export default function SaveButton({
                     role="status"
                     className="text-muted-foreground animate-in fade-in flex items-center gap-1.5 text-sm"
                 >
-                    <Check className="size-4" /> Saved
+                    <Check className="size-4" /> {t('Saved')}
                 </p>
             ) : null}
         </div>

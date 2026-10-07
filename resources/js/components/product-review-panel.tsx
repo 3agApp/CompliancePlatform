@@ -6,6 +6,7 @@ import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import ReopenProductReviewModal from '@/components/reopen-product-review-modal';
 import RequestProductChangesModal from '@/components/request-product-changes-modal';
 import { Button } from '@/components/ui/button';
+import { formatLocale, t, tc } from '@/lib/i18n';
 import { approve, submit } from '@/routes/products';
 import type {
     ProductCompleteness,
@@ -30,7 +31,7 @@ function on(timestamp: string | null): string {
         return '';
     }
 
-    return new Date(timestamp).toLocaleDateString(undefined, {
+    return new Date(timestamp).toLocaleDateString(formatLocale(), {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -77,7 +78,7 @@ export default function ProductReviewPanel({
             data-test="product-review-panel"
         >
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-medium">Review</h2>
+                <h2 className="text-sm font-medium">{t('Review')}</h2>
                 <ProductReviewStatusBadge
                     status={product.review_status}
                     label={product.review_status_label}
@@ -104,9 +105,9 @@ export default function ProductReviewPanel({
 
             {product.submitted_at ? (
                 <p className="text-muted-foreground text-xs">
-                    Submitted {on(product.submitted_at)}
+                    {t('Submitted :date', { date: on(product.submitted_at) })}
                     {product.reviewed_at
-                        ? ` · Reviewed ${on(product.reviewed_at)}`
+                        ? ` · ${t('Reviewed :date', { date: on(product.reviewed_at) })}`
                         : null}
                 </p>
             ) : null}
@@ -121,13 +122,15 @@ export default function ProductReviewPanel({
                     className="text-sm leading-relaxed text-amber-700 dark:text-amber-400"
                     data-test="product-review-outstanding"
                 >
-                    {outstanding.length === 1
-                        ? '1 requirement is'
-                        : `${outstanding.length} requirements are`}{' '}
-                    still open.{' '}
+                    {tc(
+                        '1 requirement is still open.|:count requirements are still open.',
+                        outstanding.length,
+                    )}{' '}
                     {canSubmit
-                        ? 'You can submit anyway, but the distributor may send it back.'
-                        : 'Check the list below before approving.'}
+                        ? t(
+                              'You can submit anyway, but the distributor may send it back.',
+                          )
+                        : t('Check the list below before approving.')}
                 </p>
             ) : null}
 
@@ -143,7 +146,8 @@ export default function ProductReviewPanel({
                             data-test="product-submit-review"
                             disabled={processing}
                         >
-                            <Send className="h-4 w-4" /> Submit for review
+                            <Send className="h-4 w-4" />{' '}
+                            {t('Submit for review')}
                         </Button>
                     )}
                 </Form>
@@ -157,7 +161,7 @@ export default function ProductReviewPanel({
                             data-test="product-approve"
                             onClick={() => setApproveDialogOpen(true)}
                         >
-                            <Check className="h-4 w-4" /> Approve
+                            <Check className="h-4 w-4" /> {t('Approve')}
                         </Button>
                     ) : (
                         <Form
@@ -171,7 +175,7 @@ export default function ProductReviewPanel({
                                     data-test="product-approve"
                                     disabled={processing}
                                 >
-                                    <Check className="h-4 w-4" /> Approve
+                                    <Check className="h-4 w-4" /> {t('Approve')}
                                 </Button>
                             )}
                         </Form>
@@ -183,7 +187,7 @@ export default function ProductReviewPanel({
                         data-test="product-request-changes"
                         onClick={() => setChangesDialogOpen(true)}
                     >
-                        <Undo2 className="h-4 w-4" /> Request changes
+                        <Undo2 className="h-4 w-4" /> {t('Request changes')}
                     </Button>
                 </div>
             ) : null}
@@ -199,7 +203,7 @@ export default function ProductReviewPanel({
                     data-test="product-reopen-review"
                     onClick={() => setReopenDialogOpen(true)}
                 >
-                    <RotateCcw className="h-4 w-4" /> Take back approval
+                    <RotateCcw className="h-4 w-4" /> {t('Take back approval')}
                 </Button>
             ) : null}
 
@@ -210,7 +214,7 @@ export default function ProductReviewPanel({
              */}
             {!canSubmit && !canRule && product.review_status === 'in_review' ? (
                 <p className="text-muted-foreground text-xs">
-                    Waiting on the distributor.
+                    {t('Waiting on the distributor.')}
                 </p>
             ) : null}
 

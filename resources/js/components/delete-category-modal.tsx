@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { t, tcn, tn } from '@/lib/i18n';
 import { destroy } from '@/routes/categories';
 import type { ProductCategory } from '@/types';
 
@@ -51,32 +52,25 @@ export default function DeleteCategoryModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Delete category</DialogTitle>
+                    <DialogTitle>{t('Delete category')}</DialogTitle>
                     <DialogDescription>
-                        {isInUse ? (
-                            <>
-                                <strong>{category?.name}</strong> is still used
-                                by{' '}
-                                {productCount === 1
-                                    ? '1 product'
-                                    : `${productCount} products`}
-                                . Move {productCount === 1 ? 'it' : 'them'} to
-                                another category before deleting it.
-                            </>
-                        ) : (
-                            <>
-                                This action cannot be undone. This will
-                                permanently delete{' '}
-                                <strong>{category?.name}</strong>.
-                            </>
-                        )}
+                        {isInUse
+                            ? tcn(
+                                  ':name is still used by 1 product. Move it to another category before deleting it.|:name is still used by :count products. Move them to another category before deleting it.',
+                                  productCount,
+                                  { name: <strong>{category?.name}</strong> },
+                              )
+                            : tn(
+                                  'This action cannot be undone. This will permanently delete :name.',
+                                  { name: <strong>{category?.name}</strong> },
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <DialogFooter className="gap-2">
                     <DialogClose asChild>
                         <Button variant="secondary">
-                            {isInUse ? 'Close' : 'Cancel'}
+                            {isInUse ? t('Close') : t('Cancel')}
                         </Button>
                     </DialogClose>
 
@@ -87,7 +81,7 @@ export default function DeleteCategoryModal({
                             disabled={processing}
                             onClick={deleteCategory}
                         >
-                            Delete category
+                            {t('Delete category')}
                         </Button>
                     )}
                 </DialogFooter>
