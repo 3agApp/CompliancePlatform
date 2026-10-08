@@ -30,6 +30,14 @@ readonly class ProductFilters
      */
     public const array PAGE_SIZES = [25, 50, 100];
 
+    /**
+     * The orders the list can be read in, the first of which is the
+     * default: alphabetical, or the most recently changed first.
+     *
+     * @var list<string>
+     */
+    public const array SORTS = ['name', 'updated'];
+
     public function __construct(
         public ?int $connection = null,
         public ?int $category = null,
@@ -37,6 +45,7 @@ readonly class ProductFilters
         public ?string $search = null,
         public ?ProductReviewStatus $status = null,
         public int $perPage = self::PAGE_SIZES[0],
+        public string $sort = self::SORTS[0],
     ) {
         //
     }
@@ -53,7 +62,19 @@ readonly class ProductFilters
             search: self::value($request, 'search', self::MAX_SEARCH_LENGTH),
             status: self::status($request),
             perPage: self::perPage($request),
+            sort: self::sort($request),
         );
+    }
+
+    /**
+     * Read the order, which like the page size is a choice from a fixed
+     * list: anything else reads the list in its default order.
+     */
+    protected static function sort(Request $request): string
+    {
+        $value = trim((string) $request->query('sort', ''));
+
+        return in_array($value, self::SORTS, true) ? $value : self::SORTS[0];
     }
 
     /**

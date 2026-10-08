@@ -32,3 +32,34 @@ export function formatFileSize(bytes: number): string {
         ? `${Math.round(kilobytes)} KB`
         : `${(kilobytes / 1024).toFixed(1)} MB`;
 }
+
+/**
+ * How long ago something happened, in the largest unit that is not zero:
+ * "12 days ago" is what a reader weighs, and the exact minute is not.
+ */
+export function formatRelative(timestamp: string | null): string | null {
+    if (timestamp === null) {
+        return null;
+    }
+
+    const seconds = (new Date(timestamp).getTime() - Date.now()) / 1000;
+    const format = new Intl.RelativeTimeFormat(formatLocale(), {
+        numeric: 'auto',
+    });
+    const units: [Intl.RelativeTimeFormatUnit, number][] = [
+        ['year', 31_536_000],
+        ['month', 2_592_000],
+        ['week', 604_800],
+        ['day', 86_400],
+        ['hour', 3_600],
+        ['minute', 60],
+    ];
+
+    for (const [unit, size] of units) {
+        if (Math.abs(seconds) >= size) {
+            return format.format(Math.round(seconds / size), unit);
+        }
+    }
+
+    return format.format(0, 'minute');
+}

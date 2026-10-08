@@ -24,6 +24,7 @@ use App\Models\ProductEvent;
 use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use App\Support\ProductChanges;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Http\RedirectResponse;
@@ -87,6 +88,7 @@ class ProductController extends Controller
             'filterableBrands' => $this->filterableBrands($currentOrganization, $isSupplier),
             'filters' => $filters,
             'availableStatuses' => ProductReviewStatus::options(),
+            'statusCounts' => $this->statusCounts($currentOrganization, $isSupplier, $filters),
             'hasProducts' => $products->total() > 0
                 || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
             'viewerType' => $currentOrganization->type->value,
@@ -304,15 +306,50 @@ class ProductController extends Controller
      */
     protected function products(Organization $organization, bool $asSupplier, ProductFilters $filters): LengthAwarePaginator
     {
+        return $this->filtered($organization, $asSupplier, $filters)
+            ->when($filters->status, fn ($query, ProductReviewStatus $status) => $query->inReviewStatus($status))
+            ->when(
+                $filters->sort === 'updated',
+                fn ($query) => $query->orderByDesc('products.updated_at')->orderBy('products.id'),
+                fn ($query) => $query->orderBy('products.name'),
+            )
+            ->paginate($filters->perPage)
+            ->withQueryString();
+    }
+
+    /**
+     * Get the visible products narrowed by every filter but the status.
+     *
+     * The status is left off because it is what the tabs above the list
+     * choose between: each tab counts what the other filters let through.
+     *
+     * @return Builder<Product>|HasMany<Product, Organization>|HasManyThrough<Product, SupplierConnection, Organization>
+     */
+    protected function filtered(Organization $organization, bool $asSupplier, ProductFilters $filters): Builder|HasMany|HasManyThrough
+    {
         return $this->visibleProducts($organization, $asSupplier)
             ->when($filters->connection, fn ($query, int $connectionId) => $query->assignedTo($connectionId))
             ->when($filters->category, fn ($query, int $categoryId) => $query->inCategory($categoryId))
             ->when($filters->brand, fn ($query, int $brandId) => $query->ofBrand($brandId))
-            ->when($filters->search, fn ($query, string $term) => $query->matching($term))
-            ->when($filters->status, fn ($query, ProductReviewStatus $status) => $query->inReviewStatus($status))
-            ->orderBy('products.name')
-            ->paginate($filters->perPage)
-            ->withQueryString();
+            ->when($filters->search, fn ($query, string $term) => $query->matching($term));
+    }
+
+    /**
+     * Count the filtered products in each state of review, for the tabs.
+     *
+     * @return array<string, int>
+     */
+    protected function statusCounts(Organization $organization, bool $asSupplier, ProductFilters $filters): array
+    {
+        $counts = $this->filtered($organization, $asSupplier, $filters)
+            ->toBase()
+            ->selectRaw('products.review_status as status, count(*) as aggregate')
+            ->groupBy('products.review_status')
+            ->pluck('aggregate', 'status');
+
+        return collect(ProductReviewStatus::cases())
+            ->mapWithKeys(fn (ProductReviewStatus $status) => [$status->value => (int) ($counts[$status->value] ?? 0)])
+            ->all();
     }
 
     /**
@@ -704,6 +741,8 @@ class ProductController extends Controller
             'connection_status' => $connection?->status->value,
             'connection_is_invited' => $connection?->isInvited() ?? false,
             'created_at' => $product->created_at?->toISOString(),
+            'updated_at' => $product->updated_at?->toISOString(),
+            'public_url' => $product->publicUrl(),
         ];
     }
 

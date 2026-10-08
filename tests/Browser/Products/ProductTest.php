@@ -495,7 +495,10 @@ test('a product is deleted through the confirmation dialog', function () {
 
     $page = visit(route('products.index', ['current_organization' => $organization->slug]));
 
-    $page->click('@product-delete-button')
+    /** Deleting is tucked behind the row's menu, away from a stray click. */
+    $page->assertMissing('@product-delete-button')
+        ->click('@product-actions')
+        ->click('@product-delete-button')
         ->assertSee('This action cannot be undone.')
         ->click('@delete-product-confirm')
         ->assertSee('No products yet')
@@ -517,8 +520,9 @@ test('a member sees the product list without the create and delete controls', fu
     visit(route('products.index', ['current_organization' => $organization->slug]))
         ->assertSee('Organic Oat Milk')
         ->assertMissing('@products-new-product-button')
-        ->assertMissing('@product-delete-button')
+        ->click('@product-actions')
         ->assertPresent('@product-edit-button')
+        ->assertMissing('@product-delete-button')
         ->assertNoJavaScriptErrors();
 });
 
