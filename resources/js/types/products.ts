@@ -359,6 +359,9 @@ export type Product = {
     /** Whether the supplier has been sent the claim link yet. */
     connection_is_invited: boolean;
     created_at: string | null;
+    updated_at: string | null;
+    /** The page a buyer reaches from the label on the box. */
+    public_url: string;
 };
 
 export type ProductPermissions = {
@@ -378,7 +381,11 @@ export type ProductFilters = {
     search: string | null;
     status: ProductReviewStatus | null;
     perPage: number;
+    sort: ProductSort;
 };
+
+/** The orders the product list can be read in. Mirrors ProductFilters::SORTS. */
+export type ProductSort = 'name' | 'updated';
 
 export type ProductCounterparty = {
     id: number;

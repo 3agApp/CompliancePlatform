@@ -6,7 +6,9 @@ use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Models\ProductEvent;
 use App\Models\SupplierConnection;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Http\Request;
@@ -23,11 +25,19 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
+    /**
+     * How many days without a change before a supplier with drafts counts
+     * as having gone quiet.
+     */
+    protected const int QUIET_AFTER_DAYS = 14;
+
     public function __invoke(Request $request, Organization $currentOrganization): Response
     {
         Gate::authorize('viewAny', [Product::class, $currentOrganization]);
 
         $isSupplier = $currentOrganization->isSupplier();
+
+        $suppliers = $isSupplier ? [] : $this->supplierProgress($currentOrganization);
 
         return Inertia::render('dashboard', [
             'viewerType' => $currentOrganization->type->value,
@@ -36,7 +46,152 @@ class DashboardController extends Controller
                 : $this->distributorStats($currentOrganization),
             'pipeline' => $this->pipeline($currentOrganization, $isSupplier),
             'queue' => $this->queue($currentOrganization, $isSupplier),
+            'suppliers' => $suppliers,
+            'attention' => $isSupplier ? null : $this->attention($currentOrganization, $suppliers),
+            'activity' => $this->activity($currentOrganization, $isSupplier),
+            'canCreateProduct' => $request->user()->toProductPermissions($currentOrganization)->canCreateProduct,
+            'canInviteSupplier' => ! $isSupplier && $request->user()->can('create', [SupplierConnection::class, $currentOrganization]),
         ]);
+    }
+
+    /**
+     * Get each supplier's share of the catalog and how far along it is.
+     *
+     * One row per supplier that can still hold products -- the revoked and
+     * the declined have nothing left to do -- with their products counted
+     * per stage of the review, and the last time any of them changed, which
+     * is what says who has gone quiet.
+     *
+     * @return array<array{id: int, label: string, status: string, products: int, draft: int, inReview: int, changesRequested: int, approved: int, lastActivity: string|null}>
+     */
+    protected function supplierProgress(Organization $organization): array
+    {
+        $byStatus = fn (ProductReviewStatus $status) => fn ($query) => $query->where('review_status', $status);
+
+        return $organization->supplierConnections()
+            ->whereIn('status', [SupplierConnectionStatus::Active, SupplierConnectionStatus::Pending])
+            ->with('supplierOrganization')
+            ->withCount([
+                'products',
+                'products as draft_count' => $byStatus(ProductReviewStatus::Draft),
+                'products as in_review_count' => $byStatus(ProductReviewStatus::InReview),
+                'products as changes_requested_count' => $byStatus(ProductReviewStatus::ChangesRequested),
+                'products as approved_count' => $byStatus(ProductReviewStatus::Approved),
+            ])
+            ->withMax('products', 'updated_at')
+            ->get()
+            ->map(fn (SupplierConnection $connection) => [
+                'id' => $connection->id,
+                'label' => $connection->supplierOrganization->name ?? $connection->company_name,
+                'status' => match (true) {
+                    $connection->isActive() => 'active',
+                    ! $connection->isInvited() => 'not_invited',
+                    $connection->isExpired() => 'expired',
+                    default => 'invited',
+                },
+                'products' => (int) $connection->getAttribute('products_count'),
+                'draft' => (int) $connection->getAttribute('draft_count'),
+                'inReview' => (int) $connection->getAttribute('in_review_count'),
+                'changesRequested' => (int) $connection->getAttribute('changes_requested_count'),
+                'approved' => (int) $connection->getAttribute('approved_count'),
+                'lastActivity' => $this->toIso($connection->getAttribute('products_max_updated_at')),
+            ])
+            ->sortByDesc('products')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Get what is stuck until somebody acts, from a distributor's side.
+     *
+     * Products sent back sit with a supplier who may not have noticed; an
+     * invitation that ran out leaves every product behind it unfillable;
+     * and a supplier whose drafts have not moved in a fortnight has most
+     * likely forgotten them. Each is named so the next step is obvious.
+     *
+     * @param  array<array{id: int, label: string, status: string, products: int, draft: int, lastActivity: string|null}>  $suppliers
+     * @return array{sentBack: array{items: array<array{id: int, name: string, counterparty: string|null, since: string|null}>, total: int}, expiredInvitations: array<array{id: int, label: string, products: int}>, quietSuppliers: array<array{id: int, label: string, draft: int, lastActivity: string|null}>}
+     */
+    protected function attention(Organization $organization, array $suppliers): array
+    {
+        $sentBack = $organization->products()->inReviewStatus(ProductReviewStatus::ChangesRequested);
+
+        $quietSince = now()->subDays(self::QUIET_AFTER_DAYS);
+
+        return [
+            'sentBack' => [
+                'total' => (clone $sentBack)->count(),
+                'items' => $sentBack
+                    ->with(['supplierConnection.supplierOrganization'])
+                    ->orderBy('products.reviewed_at')
+                    ->orderBy('products.id')
+                    ->limit(3)
+                    ->get()
+                    ->map(fn (Product $product) => [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'counterparty' => $this->counterparty($product->supplierConnection, false),
+                        'since' => $product->reviewed_at?->toISOString(),
+                    ])
+                    ->all(),
+            ],
+            'expiredInvitations' => collect($suppliers)
+                ->where('status', 'expired')
+                ->map(fn (array $supplier) => [
+                    'id' => $supplier['id'],
+                    'label' => $supplier['label'],
+                    'products' => $supplier['products'],
+                ])
+                ->values()
+                ->all(),
+            'quietSuppliers' => collect($suppliers)
+                ->filter(fn (array $supplier) => $supplier['status'] === 'active'
+                    && $supplier['draft'] > 0
+                    && ($supplier['lastActivity'] === null || CarbonImmutable::parse($supplier['lastActivity'])->lt($quietSince)))
+                ->map(fn (array $supplier) => [
+                    'id' => $supplier['id'],
+                    'label' => $supplier['label'],
+                    'draft' => $supplier['draft'],
+                    'lastActivity' => $supplier['lastActivity'],
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * Get the latest things to happen to any product the organization can
+     * see, newest first.
+     *
+     * @return array<array{id: int, type: string, type_label: string, product: array{id: int, name: string}, actor: string|null, created_at: string|null}>
+     */
+    protected function activity(Organization $organization, bool $asSupplier): array
+    {
+        $visible = $this->visibleProducts($organization, $asSupplier)->toBase()->select('products.id');
+
+        return ProductEvent::query()
+            ->whereIn('product_id', $visible)
+            ->with(['product:id,name', 'user:id,name'])
+            ->latest('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (ProductEvent $event) => [
+                'id' => $event->id,
+                'type' => $event->type->value,
+                'type_label' => $event->type->label(),
+                'product' => ['id' => $event->product->id, 'name' => $event->product->name],
+                'actor' => $event->actorName(),
+                'created_at' => $event->created_at?->toISOString(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Read a timestamp an aggregate handed back as a plain string.
+     */
+    protected function toIso(mixed $value): ?string
+    {
+        return $value === null ? null : CarbonImmutable::parse($value)->toISOString();
     }
 
     /**

@@ -285,9 +285,12 @@ test('the catalogue shows where each product stands and can be narrowed to one s
         ->assertSee('Wooden Train')
         ->assertSee('In review')
         ->assertSee('Approved')
-        ->click('@product-filter-status')
-        ->click('[role="option"]:has-text("In review")')
+        /** Each state is a tab, counted under the other filters. */
+        ->assertSeeIn('@product-status-tab-in_review', '1')
+        ->assertSeeIn('@product-status-tab-all', '2')
+        ->click('@product-status-tab-in_review')
         ->assertSee('Magnetic Building Set')
         ->assertDontSee('Wooden Train')
+        ->assertQueryStringHas('status', 'in_review')
         ->assertNoJavaScriptErrors();
 });

@@ -170,8 +170,9 @@ test('a supplier sees the assigned products list without the create and delete c
         ->assertSee('Oat Milk')
         ->assertSee($distributor->name)
         ->assertMissing('@products-new-product-button')
-        ->assertMissing('@product-delete-button')
+        ->click('@product-actions')
         ->assertPresent('@product-edit-button')
+        ->assertMissing('@product-delete-button')
         ->assertNoJavaScriptErrors();
 });
 

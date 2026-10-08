@@ -1,17 +1,21 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ChevronRight, Inbox } from 'lucide-react';
+import { ChevronRight, Inbox, Plus, UserPlus } from 'lucide-react';
 import CompletenessMeter from '@/components/completeness-meter';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import { Button } from '@/components/ui/button';
-import { formatLocale, t, tn } from '@/lib/i18n';
+import { formatDay, formatRelative } from '@/lib/format';
+import { t, tc } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as distributorsIndex } from '@/routes/distributors';
-import { edit, index as productsIndex } from '@/routes/products';
+import { create, edit, index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
+    DashboardActivityItem,
+    DashboardAttention,
     DashboardPipelineStage,
     DashboardQueue,
     DashboardQueueItem,
+    DashboardSupplierProgress,
     DistributorDashboardStats,
     ProductReviewStatus,
     SupplierDashboardStats,
@@ -23,6 +27,13 @@ type Props = (
 ) & {
     pipeline: DashboardPipelineStage[];
     queue: DashboardQueue;
+    /** Each supplier's progress; empty for a supplier looking at it. */
+    suppliers: DashboardSupplierProgress[];
+    /** What is stuck until somebody acts; null for a supplier. */
+    attention: DashboardAttention | null;
+    activity: DashboardActivityItem[];
+    canCreateProduct: boolean;
+    canInviteSupplier: boolean;
 };
 
 type Stat = {
@@ -42,38 +53,6 @@ const STAGE_TONES: Record<ProductReviewStatus, string> = {
     changes_requested: 'bg-amber-500 dark:bg-amber-400',
     approved: 'bg-emerald-500 dark:bg-emerald-400',
 };
-
-/**
- * How long ago something happened, in the largest unit that is not zero,
- * because "waiting 12 days" is what a reviewer weighs and the exact minute
- * is not.
- */
-function ago(timestamp: string | null): string | null {
-    if (timestamp === null) {
-        return null;
-    }
-
-    const seconds = (new Date(timestamp).getTime() - Date.now()) / 1000;
-    const format = new Intl.RelativeTimeFormat(formatLocale(), {
-        numeric: 'auto',
-    });
-    const units: [Intl.RelativeTimeFormatUnit, number][] = [
-        ['year', 31_536_000],
-        ['month', 2_592_000],
-        ['week', 604_800],
-        ['day', 86_400],
-        ['hour', 3_600],
-        ['minute', 60],
-    ];
-
-    for (const [unit, size] of units) {
-        if (Math.abs(seconds) >= size) {
-            return format.format(Math.round(seconds / size), unit);
-        }
-    }
-
-    return format.format(0, 'minute');
-}
 
 /**
  * What started the clock on a product in the queue, and how long ago.
@@ -111,92 +90,512 @@ function StatTile({ stat }: { stat: Stat }) {
 }
 
 /**
- * Where the whole catalog stands, as one bar.
+ * Where the whole catalog stands, one tile per stage of the review.
  *
- * The headline is the share signed off, because that is the number the
- * work is for; the stages under it are links into the list, filtered to
- * exactly the products the stage counts.
+ * Every tile is a link into the list, filtered to exactly the products it
+ * counts, and says in a few words whose move those products are.
  */
-function Pipeline({
+function StatusTiles({
     stages,
     organizationSlug,
+    isSupplier,
 }: {
     stages: DashboardPipelineStage[];
     organizationSlug: string;
+    isSupplier: boolean;
 }) {
-    const total = stages.reduce((sum, stage) => sum + stage.count, 0);
-    const approved =
-        stages.find((stage) => stage.status === 'approved')?.count ?? 0;
+    const hints: Record<ProductReviewStatus, string> = isSupplier
+        ? {
+              draft: t('Not submitted yet'),
+              in_review: t('With the distributor'),
+              changes_requested: t('Sent back to you'),
+              approved: t('Signed off'),
+          }
+        : {
+              draft: t('Suppliers still filling in'),
+              in_review: t('Waiting on your decision'),
+              changes_requested: t('Back with the supplier'),
+              approved: t('Signed off'),
+          };
 
     return (
         <section
-            className="workspace-panel space-y-4 px-6 py-5"
-            aria-labelledby="pipeline-heading"
+            aria-label={t('Products by status')}
+            className="grid grid-cols-2 gap-3 xl:grid-cols-4"
             data-test="dashboard-pipeline"
         >
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id="pipeline-heading" className="font-medium">
-                    {t('Review progress')}
+            {stages.map((stage) => (
+                <Link
+                    key={stage.status}
+                    href={
+                        productsIndex(organizationSlug, {
+                            query: { status: stage.status },
+                        }).url
+                    }
+                    data-test={`dashboard-stage-${stage.status}`}
+                    className="workspace-panel hover:border-foreground/30 grid gap-1 px-5 py-4 transition-colors"
+                >
+                    <span className="text-muted-foreground flex items-center gap-2 text-sm">
+                        <span
+                            className={cn(
+                                'size-2 shrink-0 rounded-full',
+                                STAGE_TONES[stage.status],
+                            )}
+                            aria-hidden
+                        />
+                        {stage.label}
+                    </span>
+                    <span className="text-3xl font-semibold tracking-tight tabular-nums">
+                        {stage.count}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                        {hints[stage.status]}
+                    </span>
+                </Link>
+            ))}
+        </section>
+    );
+}
+
+/**
+ * What is stuck until somebody acts, each with the step that unsticks it.
+ *
+ * Nothing at all when nothing is stuck: an empty list of problems is not
+ * worth the space.
+ */
+function Attention({
+    attention,
+    notInvited,
+    organizationSlug,
+}: {
+    attention: DashboardAttention;
+    notInvited: number;
+    organizationSlug: string;
+}) {
+    const { sentBack, expiredInvitations, quietSuppliers } = attention;
+
+    if (
+        sentBack.total === 0 &&
+        expiredInvitations.length === 0 &&
+        quietSuppliers.length === 0 &&
+        notInvited === 0
+    ) {
+        return null;
+    }
+
+    const suppliersUrl = suppliersIndex(organizationSlug).url;
+
+    return (
+        <section
+            className="workspace-panel min-w-0 overflow-hidden"
+            aria-labelledby="attention-heading"
+            data-test="dashboard-attention"
+        >
+            <div className="border-b px-6 py-4">
+                <h2 id="attention-heading" className="font-medium">
+                    {t('Needs your attention')}
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                    {tn(':approved of :total products approved', {
-                        approved: (
-                            <span className="text-foreground font-semibold tabular-nums">
-                                {approved}
-                            </span>
-                        ),
-                        total: <span className="tabular-nums">{total}</span>,
-                    })}
+                    {t('Things that are stuck until someone acts.')}
                 </p>
             </div>
 
-            <div
-                className="bg-muted flex h-2.5 gap-0.5 overflow-hidden rounded-full"
-                aria-hidden
-            >
-                {stages.map((stage) =>
-                    stage.count > 0 ? (
-                        <div
-                            key={stage.status}
-                            className={cn(
-                                'h-full min-w-1',
-                                STAGE_TONES[stage.status],
-                            )}
-                            style={{ flexGrow: stage.count }}
-                        />
-                    ) : null,
-                )}
-            </div>
+            <ul className="divide-y">
+                {expiredInvitations.length > 0 ? (
+                    <AttentionRow
+                        tone="red"
+                        tag={t('Invitation expired')}
+                        title={tc(
+                            '1 supplier never joined|:count suppliers never joined',
+                            expiredInvitations.length,
+                        )}
+                        body={t(
+                            ':names hold :count products. Nobody can fill those in until the invitation is accepted.',
+                            {
+                                names: expiredInvitations
+                                    .map((supplier) => supplier.label)
+                                    .join(', '),
+                                count: expiredInvitations.reduce(
+                                    (sum, supplier) => sum + supplier.products,
+                                    0,
+                                ),
+                            },
+                        )}
+                        action={{
+                            label: t('Resend from Suppliers'),
+                            href: suppliersUrl,
+                        }}
+                        testId="dashboard-attention-expired"
+                    />
+                ) : null}
 
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
-                {stages.map((stage) => (
-                    <li key={stage.status}>
+                {notInvited > 0 ? (
+                    <AttentionRow
+                        tone="grey"
+                        tag={t('Not invited')}
+                        title={tc(
+                            '1 supplier has not been invited yet|:count suppliers have not been invited yet',
+                            notInvited,
+                        )}
+                        body={t(
+                            'They cannot see their products until they are sent an invitation.',
+                        )}
+                        action={{
+                            label: t('Go to suppliers'),
+                            href: suppliersUrl,
+                        }}
+                        testId="dashboard-attention-not-invited"
+                    />
+                ) : null}
+
+                {sentBack.items.map((product) => (
+                    <AttentionRow
+                        key={product.id}
+                        tone="amber"
+                        tag={t('Changes requested')}
+                        title={product.name}
+                        titleHref={edit([organizationSlug, product.id]).url}
+                        body={[
+                            product.counterparty
+                                ? t('Waiting on :name', {
+                                      name: product.counterparty,
+                                  })
+                                : null,
+                            product.since
+                                ? t('Sent back :when', {
+                                      when: formatRelative(product.since),
+                                  })
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        testId="dashboard-attention-sent-back"
+                    />
+                ))}
+
+                {sentBack.total > sentBack.items.length ? (
+                    <li className="px-6 py-3">
                         <Link
                             href={
                                 productsIndex(organizationSlug, {
-                                    query: { status: stage.status },
+                                    query: { status: 'changes_requested' },
                                 }).url
                             }
-                            data-test={`dashboard-stage-${stage.status}`}
-                            className="hover:bg-muted/60 -mx-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors"
+                            className="text-muted-foreground hover:text-foreground text-sm"
                         >
-                            <span
-                                className={cn(
-                                    'size-2 shrink-0 rounded-full',
-                                    STAGE_TONES[stage.status],
-                                )}
-                                aria-hidden
-                            />
-                            <span className="font-medium tabular-nums">
-                                {stage.count}
-                            </span>
-                            <span className="text-muted-foreground">
-                                {stage.label}
-                            </span>
+                            {t('All :count sent back', {
+                                count: sentBack.total,
+                            })}
                         </Link>
                     </li>
+                ) : null}
+
+                {quietSuppliers.map((supplier) => (
+                    <AttentionRow
+                        key={supplier.id}
+                        tone="grey"
+                        tag={t('No activity')}
+                        title={supplier.label}
+                        body={
+                            supplier.lastActivity
+                                ? tc(
+                                      '1 draft untouched since :date|:count drafts untouched since :date',
+                                      supplier.draft,
+                                      {
+                                          date: formatDay(
+                                              supplier.lastActivity,
+                                          ),
+                                      },
+                                  )
+                                : tc(
+                                      '1 draft not started|:count drafts not started',
+                                      supplier.draft,
+                                  )
+                        }
+                        action={{
+                            label: t('View drafts'),
+                            href: productsIndex(organizationSlug, {
+                                query: {
+                                    connection: supplier.id,
+                                    status: 'draft',
+                                },
+                            }).url,
+                        }}
+                        testId="dashboard-attention-quiet"
+                    />
                 ))}
             </ul>
+        </section>
+    );
+}
+
+const TAG_TONES = {
+    red: 'bg-red-500/10 text-red-700 dark:text-red-400',
+    amber: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+    grey: 'bg-muted text-muted-foreground',
+};
+
+function AttentionRow({
+    tone,
+    tag,
+    title,
+    titleHref,
+    body,
+    action,
+    testId,
+}: {
+    tone: keyof typeof TAG_TONES;
+    tag: string;
+    title: string;
+    titleHref?: string;
+    body: string;
+    action?: { label: string; href: string };
+    testId: string;
+}) {
+    return (
+        <li
+            className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5"
+            data-test={testId}
+        >
+            <div className="grid min-w-0 gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span
+                        className={cn(
+                            'rounded-full px-2 py-0.5 text-xs font-medium',
+                            TAG_TONES[tone],
+                        )}
+                    >
+                        {tag}
+                    </span>
+                    {titleHref ? (
+                        <Link
+                            href={titleHref}
+                            className="text-sm font-medium hover:underline"
+                        >
+                            {title}
+                        </Link>
+                    ) : (
+                        <span className="text-sm font-medium">{title}</span>
+                    )}
+                </div>
+                <p className="text-muted-foreground text-sm">{body}</p>
+            </div>
+
+            {action ? (
+                <Button variant="outline" size="sm" asChild>
+                    <Link href={action.href}>{action.label}</Link>
+                </Button>
+            ) : null}
+        </li>
+    );
+}
+
+const SUPPLIER_STATUS_LABELS = {
+    invited: () => t('Invitation pending'),
+    expired: () => t('Invitation expired'),
+    not_invited: () => t('Not invited'),
+};
+
+/**
+ * Each supplier's share of the catalog and how far through the review it
+ * is, so the one falling behind stands out without opening the list.
+ */
+function SupplierProgress({
+    suppliers,
+    organizationSlug,
+}: {
+    suppliers: DashboardSupplierProgress[];
+    organizationSlug: string;
+}) {
+    return (
+        <section
+            className="workspace-panel min-w-0 overflow-hidden"
+            aria-labelledby="suppliers-heading"
+            data-test="dashboard-supplier-progress"
+        >
+            <div className="flex items-end justify-between gap-4 border-b px-6 py-4">
+                <div>
+                    <h2 id="suppliers-heading" className="font-medium">
+                        {t('Progress by supplier')}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                        {t('Who is keeping up, and who is not.')}
+                    </p>
+                </div>
+                <Link
+                    href={suppliersIndex(organizationSlug).url}
+                    className="text-muted-foreground hover:text-foreground text-sm"
+                >
+                    {t('All suppliers')}
+                </Link>
+            </div>
+
+            <ul className="divide-y">
+                {suppliers.map((supplier) => {
+                    const share = (count: number) =>
+                        supplier.products === 0
+                            ? 0
+                            : (count / supplier.products) * 100;
+
+                    return (
+                        <li
+                            key={supplier.id}
+                            className="grid items-center gap-x-6 gap-y-2 px-6 py-3.5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.4fr)_6rem]"
+                            data-test="dashboard-supplier-row"
+                        >
+                            <div className="grid min-w-0 gap-0.5">
+                                <Link
+                                    href={
+                                        productsIndex(organizationSlug, {
+                                            query: { connection: supplier.id },
+                                        }).url
+                                    }
+                                    className="truncate text-sm font-medium hover:underline"
+                                >
+                                    {supplier.label}
+                                </Link>
+                                <span className="text-muted-foreground text-xs">
+                                    {tc(
+                                        '1 product|:count products',
+                                        supplier.products,
+                                    )}
+                                    {supplier.status !== 'active' ? (
+                                        <span
+                                            className={cn(
+                                                'ml-2',
+                                                supplier.status === 'expired' &&
+                                                    'text-red-700 dark:text-red-400',
+                                            )}
+                                        >
+                                            {SUPPLIER_STATUS_LABELS[
+                                                supplier.status
+                                            ]()}
+                                        </span>
+                                    ) : null}
+                                </span>
+                            </div>
+
+                            <div className="grid gap-1.5">
+                                <div
+                                    className="bg-muted flex h-1.5 overflow-hidden rounded-full"
+                                    aria-hidden
+                                >
+                                    <div
+                                        className={STAGE_TONES.approved}
+                                        style={{
+                                            width: `${share(supplier.approved)}%`,
+                                        }}
+                                    />
+                                    <div
+                                        className={STAGE_TONES.in_review}
+                                        style={{
+                                            width: `${share(supplier.inReview)}%`,
+                                        }}
+                                    />
+                                    <div
+                                        className={
+                                            STAGE_TONES.changes_requested
+                                        }
+                                        style={{
+                                            width: `${share(supplier.changesRequested)}%`,
+                                        }}
+                                    />
+                                </div>
+                                <span className="text-muted-foreground text-xs">
+                                    {[
+                                        supplier.approved > 0
+                                            ? t(':count approved', {
+                                                  count: supplier.approved,
+                                              })
+                                            : null,
+                                        supplier.inReview > 0
+                                            ? t(':count in review', {
+                                                  count: supplier.inReview,
+                                              })
+                                            : null,
+                                        supplier.changesRequested > 0
+                                            ? t(':count sent back', {
+                                                  count: supplier.changesRequested,
+                                              })
+                                            : null,
+                                        supplier.draft > 0
+                                            ? t(':count draft', {
+                                                  count: supplier.draft,
+                                              })
+                                            : null,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ') || t('No products yet')}
+                                </span>
+                            </div>
+
+                            <span className="text-muted-foreground text-sm sm:text-right">
+                                {formatRelative(supplier.lastActivity) ?? '—'}
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+}
+
+/**
+ * The latest things to happen to any product the viewer can see.
+ */
+function Activity({
+    activity,
+    organizationSlug,
+}: {
+    activity: DashboardActivityItem[];
+    organizationSlug: string;
+}) {
+    return (
+        <section
+            className="workspace-panel min-w-0 overflow-hidden"
+            aria-labelledby="activity-heading"
+            data-test="dashboard-activity"
+        >
+            <div className="border-b px-5 py-4">
+                <h2 id="activity-heading" className="font-medium">
+                    {t('Recent activity')}
+                </h2>
+            </div>
+
+            {activity.length === 0 ? (
+                <p className="text-muted-foreground px-5 py-4 text-sm">
+                    {t('Nothing has happened yet.')}
+                </p>
+            ) : (
+                <ol className="divide-y">
+                    {activity.map((event) => (
+                        <li key={event.id} className="grid gap-0.5 px-5 py-3">
+                            <span className="text-sm">
+                                <span className="font-medium">
+                                    {event.type_label}
+                                </span>{' '}
+                                ·{' '}
+                                <Link
+                                    href={
+                                        edit([
+                                            organizationSlug,
+                                            event.product.id,
+                                        ]).url
+                                    }
+                                    className="hover:underline"
+                                >
+                                    {event.product.name}
+                                </Link>
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                                {[event.actor, formatRelative(event.created_at)]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </span>
+                        </li>
+                    ))}
+                </ol>
+            )}
         </section>
     );
 }
@@ -284,7 +683,7 @@ function QueueRow({
     showStatus: boolean;
     organizationSlug: string;
 }) {
-    const since = ago(item.since);
+    const since = formatRelative(item.since);
 
     return (
         <li>
@@ -333,6 +732,11 @@ export default function Dashboard({
     stats,
     pipeline,
     queue,
+    suppliers,
+    attention,
+    activity,
+    canCreateProduct,
+    canInviteSupplier,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
@@ -434,13 +838,40 @@ export default function Dashboard({
             <Head title={t('Dashboard')} />
 
             <div className="workspace-page">
-                <div className="page-heading">
-                    <h1 className="page-title">{t('Dashboard')}</h1>
-                    <p className="text-muted-foreground text-sm">
-                        {t("You're working in :organization.", {
-                            organization: currentOrganization?.name,
-                        })}
-                    </p>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="page-heading">
+                        <h1 className="page-title">{t('Dashboard')}</h1>
+                        <p className="text-muted-foreground text-sm">
+                            {t("You're working in :organization.", {
+                                organization: currentOrganization?.name,
+                            })}
+                        </p>
+                    </div>
+
+                    {canInviteSupplier || canCreateProduct ? (
+                        <div className="flex flex-wrap gap-2">
+                            {canInviteSupplier ? (
+                                <Button variant="outline" asChild>
+                                    <Link
+                                        href={suppliersIndex(organizationSlug)}
+                                        data-test="dashboard-invite-supplier-button"
+                                    >
+                                        <UserPlus /> {t('Invite supplier')}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            {canCreateProduct ? (
+                                <Button asChild>
+                                    <Link
+                                        href={create(organizationSlug)}
+                                        data-test="dashboard-new-product-button"
+                                    >
+                                        <Plus /> {t('New product')}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
 
                 {nextStep ? (
@@ -469,55 +900,92 @@ export default function Dashboard({
                 ) : null}
 
                 {stats.products > 0 ? (
-                    <Pipeline
+                    <StatusTiles
                         stages={pipeline}
                         organizationSlug={organizationSlug}
+                        isSupplier={isSupplier}
                     />
                 ) : null}
 
-                <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                    {stats.products > 0 ? (
-                        <Queue
-                            title={
-                                isSupplier
-                                    ? t('Your to-do')
-                                    : t('Waiting on your review')
-                            }
-                            queue={queue}
-                            emptyTitle={
-                                isSupplier
-                                    ? t('Nothing to fill in right now')
-                                    : t('Nothing is waiting on your review')
-                            }
-                            emptyBody={
-                                isSupplier
-                                    ? t(
-                                          'Products sent back to you, and ones not yet submitted, show up here.',
-                                      )
-                                    : t(
-                                          'Products show up here as soon as a supplier submits them.',
-                                      )
-                            }
-                            viewAllHref={
-                                productsIndex(organizationSlug, {
-                                    query: { status: viewAllStatus },
-                                }).url
-                            }
-                            showStatus={isSupplier}
-                            organizationSlug={organizationSlug}
-                        />
-                    ) : null}
+                <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    {/*
+                     * The review queue leads while it holds anything, since
+                     * that is the distributor's own move; when it is empty,
+                     * what is stuck elsewhere goes first.
+                     */}
+                    <div
+                        className={cn(
+                            'grid min-w-0 gap-4',
+                            queue.total === 0 &&
+                                '[&>[data-test=dashboard-attention]]:order-first',
+                        )}
+                    >
+                        {stats.products > 0 ? (
+                            <Queue
+                                title={
+                                    isSupplier
+                                        ? t('Your to-do')
+                                        : t('Waiting on your review')
+                                }
+                                queue={queue}
+                                emptyTitle={
+                                    isSupplier
+                                        ? t('Nothing to fill in right now')
+                                        : t('Nothing is waiting on your review')
+                                }
+                                emptyBody={
+                                    isSupplier
+                                        ? t(
+                                              'Products sent back to you, and ones not yet submitted, show up here.',
+                                          )
+                                        : t(
+                                              'Products show up here as soon as a supplier submits them.',
+                                          )
+                                }
+                                viewAllHref={
+                                    productsIndex(organizationSlug, {
+                                        query: { status: viewAllStatus },
+                                    }).url
+                                }
+                                showStatus={isSupplier}
+                                organizationSlug={organizationSlug}
+                            />
+                        ) : null}
+
+                        {attention !== null && !isSupplier ? (
+                            <Attention
+                                attention={attention}
+                                notInvited={stats.notInvited}
+                                organizationSlug={organizationSlug}
+                            />
+                        ) : null}
+
+                        {suppliers.length > 0 ? (
+                            <SupplierProgress
+                                suppliers={suppliers}
+                                organizationSlug={organizationSlug}
+                            />
+                        ) : null}
+                    </div>
 
                     <div
                         className={cn(
                             'grid gap-4',
                             stats.products === 0 &&
+                                suppliers.length === 0 &&
                                 'sm:grid-cols-2 lg:col-span-2 lg:grid-cols-4',
                         )}
                     >
                         {tiles.map((tile) => (
                             <StatTile key={tile.testId} stat={tile} />
                         ))}
+
+                        {stats.products > 0 ? (
+                            <Activity
+                                activity={activity}
+                                organizationSlug={organizationSlug}
+                            />
+                        ) : null}
                     </div>
                 </div>
             </div>

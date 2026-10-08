@@ -18,7 +18,6 @@ import type {
     ProductCategoryOption,
     ProductCounterparty,
     ProductFilters,
-    ProductReviewStatusOption,
 } from '@/types';
 
 /**
@@ -32,13 +31,14 @@ const NO_FILTER = 'all';
  * the countries, the categories and the assignable connections cannot change
  * while the page is open.
  */
-const ONLY = ['products', 'filters', 'hasProducts'];
+const ONLY = ['products', 'filters', 'hasProducts', 'statusCounts'];
 
 type Query = {
     connection?: string;
     category?: string;
     brand?: string;
     status?: string;
+    sort?: string;
     search?: string;
     per_page?: string;
 };
@@ -51,7 +51,6 @@ type Props = {
     counterpartyKind: 'supplier' | 'distributor';
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
-    availableStatuses: ProductReviewStatusOption[];
 };
 
 export default function ProductFilterBar({
@@ -61,7 +60,6 @@ export default function ProductFilterBar({
     counterpartyKind,
     filterableCategories,
     filterableBrands,
-    availableStatuses,
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebouncedValue(search);
@@ -111,7 +109,6 @@ export default function ProductFilterBar({
             connection: undefined,
             category: undefined,
             brand: undefined,
-            status: undefined,
             search: undefined,
         });
     };
@@ -120,7 +117,7 @@ export default function ProductFilterBar({
 
     return (
         <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+            <div className="relative min-w-56 flex-1 sm:max-w-xs">
                 <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
                     type="search"
@@ -247,37 +244,33 @@ export default function ProductFilterBar({
             ) : null}
 
             {/*
-             * Whose move it is, which is the filter a reviewer reaches for
-             * first: a distributor opening the catalogue is usually looking
-             * for what is waiting on them.
+             * The status has tabs of its own above the list, so the last
+             * control here is the order the list is read in.
              */}
             <Select
-                value={filters.status === null ? NO_FILTER : filters.status}
+                value={filters.sort}
                 onValueChange={(value) =>
-                    visit({ status: value === NO_FILTER ? undefined : value })
+                    visit({ sort: value === 'name' ? undefined : value })
                 }
             >
                 <SelectTrigger
-                    data-test="product-filter-status"
-                    aria-label={t('Filter by review status')}
-                    className="w-full sm:w-48"
+                    data-test="product-sort"
+                    aria-label={t('Sort products')}
+                    className="w-full sm:ml-auto sm:w-52"
                 >
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value={NO_FILTER}>{t('Any status')}</SelectItem>
-                    {availableStatuses.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                            {status.label}
-                        </SelectItem>
-                    ))}
+                    <SelectItem value="name">{t('Sort: Name A–Z')}</SelectItem>
+                    <SelectItem value="updated">
+                        {t('Sort: Recently updated')}
+                    </SelectItem>
                 </SelectContent>
             </Select>
 
             {filters.connection !== null ||
             filters.category !== null ||
             filters.brand !== null ||
-            filters.status !== null ||
             filters.search !== null ? (
                 <Button
                     variant="ghost"

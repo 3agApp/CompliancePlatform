@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
@@ -214,5 +215,113 @@ test('the dashboard counts suppliers not invited yet apart from pending invitati
         ->assertInertia(fn ($page) => $page
             ->where('stats.pendingInvitations', 1)
             ->where('stats.notInvited', 1),
+        );
+});
+
+test('a distributor sees each supplier with its products counted per review stage', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $active = newSupplierConnection($distributor, $supplier);
+    $expired = newSupplierConnection($distributor, attributes: ['company_name' => 'Late Supplies', 'expires_at' => now()->subDay()]);
+    newSupplierConnection($distributor, attributes: ['status' => SupplierConnectionStatus::Revoked]);
+
+    Product::factory()->count(2)->for($distributor)->create(['supplier_connection_id' => $active->id]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create(['supplier_connection_id' => $active->id]);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $expired->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            /** The revoked supplier has nothing left to do, so it is left out. */
+            ->has('suppliers', 2)
+            ->where('suppliers.0.id', $active->id)
+            ->where('suppliers.0.status', 'active')
+            ->where('suppliers.0.products', 3)
+            ->where('suppliers.0.draft', 2)
+            ->where('suppliers.0.approved', 1)
+            ->where('suppliers.1.label', 'Late Supplies')
+            ->where('suppliers.1.status', 'expired')
+            ->where('suppliers.1.products', 1),
+        );
+});
+
+test('the dashboard names what is stuck: products sent back, expired invitations and suppliers gone quiet', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $quietSupplier] = newSupplierMember();
+    [, $busySupplier] = newSupplierMember();
+
+    $quiet = newSupplierConnection($distributor, $quietSupplier);
+    $busy = newSupplierConnection($distributor, $busySupplier);
+    $expired = newSupplierConnection($distributor, attributes: ['company_name' => 'Late Supplies', 'expires_at' => now()->subDay()]);
+
+    Product::factory()->count(2)->for($distributor)->create([
+        'supplier_connection_id' => $quiet->id,
+        'updated_at' => now()->subDays(20),
+    ]);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $busy->id]);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $expired->id]);
+
+    $sentBack = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::ChangesRequested)->create([
+        'name' => 'Wooden Train',
+        'supplier_connection_id' => $busy->id,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('attention.sentBack.total', 1)
+            ->where('attention.sentBack.items.0.id', $sentBack->id)
+            ->where('attention.expiredInvitations', [['id' => $expired->id, 'label' => 'Late Supplies', 'products' => 1]])
+            /** Only the supplier whose drafts have not moved in a fortnight. */
+            ->has('attention.quietSuppliers', 1)
+            ->where('attention.quietSuppliers.0.id', $quiet->id)
+            ->where('attention.quietSuppliers.0.draft', 2),
+        );
+});
+
+test('the dashboard lists the latest events on the organization products only, newest first', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $other] = newOrganizationMember();
+
+    $connection = newSupplierConnection($distributor);
+    $product = Product::factory()->for($distributor)->create(['name' => 'Wooden Train', 'supplier_connection_id' => $connection->id]);
+    $foreign = Product::factory()->for($other)->create(['supplier_connection_id' => newSupplierConnection($other)->id]);
+
+    foreach (range(1, 9) as $_) {
+        $product->recordEvent(ProductEventType::Updated, $user, $distributor);
+    }
+
+    $latest = $product->recordEvent(ProductEventType::Submitted, $user, $distributor);
+    $foreign->recordEvent(ProductEventType::Submitted);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->has('activity', 8)
+            ->where('activity.0.id', $latest->id)
+            ->where('activity.0.type', 'submitted')
+            ->where('activity.0.product.name', 'Wooden Train')
+            ->where('activity.0.actor', $user->name),
+        );
+});
+
+test('a supplier dashboard carries no supplier progress or attention list', function () {
+    [, $distributor] = newOrganizationMember();
+    [$supplierUser, $supplier] = newSupplierMember();
+
+    newSupplierConnection($distributor, $supplier);
+
+    $this
+        ->actingAs($supplierUser)
+        ->get(route('dashboard', ['current_organization' => $supplier->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('suppliers', [])
+            ->where('attention', null)
+            ->where('canCreateProduct', false)
+            ->where('canInviteSupplier', false),
         );
 });

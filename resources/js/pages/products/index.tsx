@@ -2,6 +2,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ChevronLeft,
     ChevronRight,
+    ExternalLink,
+    MoreHorizontal,
     Package,
     Pencil,
     Plus,
@@ -32,10 +34,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { formatRelative } from '@/lib/format';
 import { t, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as categoriesIndex } from '@/routes/categories';
@@ -50,9 +55,21 @@ import type {
     ProductCounterparty,
     ProductFilters,
     ProductPermissions,
+    ProductReviewStatus,
     ProductReviewStatusOption,
     SupplierConnectionOption,
 } from '@/types';
+
+/**
+ * The order the status tabs run in: the order a product moves through the
+ * review, rather than the order the states happen to be declared in.
+ */
+const STATUS_ORDER: ProductReviewStatus[] = [
+    'draft',
+    'in_review',
+    'changes_requested',
+    'approved',
+];
 
 /**
  * Reference numbers a reader looks up rather than scans for. On a laptop
@@ -74,6 +91,8 @@ type Props = {
     filterableBrands: BrandOption[];
     filters: ProductFilters;
     availableStatuses: ProductReviewStatusOption[];
+    /** How many products each tab would show, under the other filters. */
+    statusCounts: Record<ProductReviewStatus, number>;
     hasProducts: boolean;
     viewerType: OrganizationType;
 };
@@ -89,6 +108,7 @@ export default function ProductsIndex({
     filterableBrands,
     filters,
     availableStatuses,
+    statusCounts,
     hasProducts,
     viewerType,
 }: Props) {
@@ -215,6 +235,15 @@ export default function ProductsIndex({
                 </div>
 
                 {showFilters ? (
+                    <StatusTabs
+                        organizationSlug={organizationSlug}
+                        active={filters.status}
+                        counts={statusCounts}
+                        statuses={availableStatuses}
+                    />
+                ) : null}
+
+                {showFilters ? (
                     <ProductFilterBar
                         organizationSlug={organizationSlug}
                         filters={filters}
@@ -224,7 +253,6 @@ export default function ProductsIndex({
                         }
                         filterableCategories={filterableCategories}
                         filterableBrands={filterableBrands}
-                        availableStatuses={availableStatuses}
                     />
                 ) : null}
 
@@ -256,6 +284,9 @@ export default function ProductsIndex({
                                     </TableHead>
                                     <TableHead className={SECONDARY_COLUMN}>
                                         {t('Country of origin')}
+                                    </TableHead>
+                                    <TableHead className="w-px px-4">
+                                        {t('Updated')}
                                     </TableHead>
                                     <TableHead className="w-px px-4 md:pr-6">
                                         <span className="sr-only">
@@ -370,79 +401,29 @@ export default function ProductsIndex({
                                             {product.country_of_origin_label ??
                                                 '—'}
                                         </TableCell>
+                                        <TableCell
+                                            className="text-muted-foreground px-4 text-sm whitespace-nowrap"
+                                            data-label={t('Updated')}
+                                            data-test="product-updated"
+                                        >
+                                            {formatRelative(
+                                                product.updated_at,
+                                            ) ?? '—'}
+                                        </TableCell>
                                         <TableCell className="px-4 md:pr-6">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            data-test="product-edit-button"
-                                                            asChild
-                                                        >
-                                                            <Link
-                                                                href={edit([
-                                                                    organizationSlug,
-                                                                    product.id,
-                                                                ])}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                                <span className="sr-only">
-                                                                    {permissions.canUpdateProduct
-                                                                        ? t(
-                                                                              'Edit product',
-                                                                          )
-                                                                        : t(
-                                                                              'View product',
-                                                                          )}
-                                                                </span>
-                                                            </Link>
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>
-                                                            {permissions.canUpdateProduct
-                                                                ? t(
-                                                                      'Edit product',
-                                                                  )
-                                                                : t(
-                                                                      'View product',
-                                                                  )}
-                                                        </p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-
-                                                {permissions.canDeleteProduct ? (
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                data-test="product-delete-button"
-                                                                onClick={() =>
-                                                                    confirmDelete(
-                                                                        product,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                                <span className="sr-only">
-                                                                    {t(
-                                                                        'Delete product',
-                                                                    )}
-                                                                </span>
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>
-                                                                {t(
-                                                                    'Delete product',
-                                                                )}
-                                                            </p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                ) : null}
-                                            </div>
+                                            <ProductActions
+                                                product={product}
+                                                organizationSlug={
+                                                    organizationSlug
+                                                }
+                                                canUpdate={
+                                                    permissions.canUpdateProduct
+                                                }
+                                                canDelete={
+                                                    permissions.canDeleteProduct
+                                                }
+                                                onDelete={confirmDelete}
+                                            />
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -616,5 +597,173 @@ export default function ProductsIndex({
                 onOpenChange={setDeleteDialogOpen}
             />
         </>
+    );
+}
+
+/**
+ * The review states as tabs over the list, each with how many products
+ * it holds under whatever else is filtered.
+ *
+ * Links rather than buttons: the status lives in the address with the rest
+ * of the filters, so a tab can be opened in a new window or bookmarked.
+ */
+function StatusTabs({
+    organizationSlug,
+    active,
+    counts,
+    statuses,
+}: {
+    organizationSlug: string;
+    active: ProductReviewStatus | null;
+    counts: Record<ProductReviewStatus, number>;
+    statuses: ProductReviewStatusOption[];
+}) {
+    const total = STATUS_ORDER.reduce(
+        (sum, status) => sum + (counts[status] ?? 0),
+        0,
+    );
+
+    const tabs: Array<{
+        key: string;
+        status: ProductReviewStatus | null;
+        label: string;
+        count: number;
+    }> = [
+        { key: 'all', status: null, label: t('All'), count: total },
+        ...STATUS_ORDER.map((status) => ({
+            key: status,
+            status,
+            label:
+                statuses.find((option) => option.value === status)?.label ??
+                status,
+            count: counts[status] ?? 0,
+        })),
+    ];
+
+    return (
+        <nav
+            aria-label={t('Filter by review status')}
+            className="-mb-2 flex flex-wrap gap-x-6 shadow-[inset_0_-1px_0_var(--border)]"
+        >
+            {tabs.map((tab) => {
+                const isActive = tab.status === active;
+
+                return (
+                    <Link
+                        key={tab.key}
+                        href={productsIndex(organizationSlug, {
+                            mergeQuery: {
+                                status: tab.status ?? undefined,
+                                page: undefined,
+                            },
+                        })}
+                        only={[
+                            'products',
+                            'filters',
+                            'hasProducts',
+                            'statusCounts',
+                        ]}
+                        preserveState
+                        preserveScroll
+                        replace
+                        aria-current={isActive ? 'page' : undefined}
+                        data-test={`product-status-tab-${tab.key}`}
+                        className={cn(
+                            'focus-visible:ring-ring inline-flex shrink-0 items-center gap-2 border-b-2 px-0.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2',
+                            isActive
+                                ? 'border-foreground text-foreground'
+                                : 'text-muted-foreground hover:text-foreground border-transparent',
+                        )}
+                    >
+                        {tab.label}
+                        <span
+                            className={cn(
+                                'rounded-full px-1.5 text-xs tabular-nums',
+                                tab.status === 'changes_requested' &&
+                                    tab.count > 0
+                                    ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                                    : 'bg-muted-foreground/15 text-muted-foreground',
+                            )}
+                        >
+                            {tab.count}
+                        </span>
+                    </Link>
+                );
+            })}
+        </nav>
+    );
+}
+
+/**
+ * What can be done to one product from the list, gathered behind one
+ * button: opening it is what the name is for, and deleting it is rare
+ * enough that it should not sit one click away on every row.
+ */
+function ProductActions({
+    product,
+    organizationSlug,
+    canUpdate,
+    canDelete,
+    onDelete,
+}: {
+    product: Product;
+    organizationSlug: string;
+    canUpdate: boolean;
+    canDelete: boolean;
+    onDelete: (product: Product) => void;
+}) {
+    return (
+        <div className="flex justify-end">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        data-test="product-actions"
+                        aria-label={t('Actions for :name', {
+                            name: product.name,
+                        })}
+                    >
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuItem asChild>
+                        <Link
+                            href={edit([organizationSlug, product.id])}
+                            data-test="product-edit-button"
+                        >
+                            <Pencil className="h-4 w-4" />
+                            {canUpdate ? t('Edit product') : t('View product')}
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <a
+                            href={product.public_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            data-test="product-public-page-link"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            {t('Open public page')}
+                        </a>
+                    </DropdownMenuItem>
+                    {canDelete ? (
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                variant="destructive"
+                                data-test="product-delete-button"
+                                onSelect={() => onDelete(product)}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                {t('Delete product…')}
+                            </DropdownMenuItem>
+                        </>
+                    ) : null}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
     );
 }

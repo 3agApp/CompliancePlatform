@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\Product;
@@ -589,5 +590,52 @@ test('a supplier is offered its active distributors as filter options', function
         ->assertInertia(fn (Assert $page) => $page
             ->has('counterparties', 1)
             ->where('counterparties.0.label', 'Alpine Trading AG'),
+        );
+});
+
+/**
+ * The status tabs count what the other filters let through, so each one
+ * says how many it would show -- whichever tab is open.
+ */
+test('the status tabs count the products under every filter but the status', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $acme = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
+    $other = newSupplierConnection($distributor, attributes: ['contact_email' => 'other@supplier.test']);
+
+    Product::factory()->count(2)->for($distributor)->create(['supplier_connection_id' => $acme->id]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create(['supplier_connection_id' => $acme->id]);
+    Product::factory()->count(4)->for($distributor)->create(['supplier_connection_id' => $other->id]);
+
+    filteredProducts($user, $distributor, ['connection' => $acme->id, 'status' => 'approved'])
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('statusCounts', [
+                'draft' => 2,
+                'in_review' => 0,
+                'approved' => 1,
+                'changes_requested' => 0,
+            ]),
+        );
+});
+
+test('the product list reads the most recently changed products first when asked', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    Product::factory()->for($distributor)->create(['name' => 'Almond Milk', 'supplier_connection_id' => $connection->id, 'updated_at' => now()->subDays(3)]);
+    Product::factory()->for($distributor)->create(['name' => 'Zebra Crackers', 'supplier_connection_id' => $connection->id, 'updated_at' => now()]);
+
+    filteredProducts($user, $distributor, ['sort' => 'updated'])
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.name', 'Zebra Crackers')
+            ->where('filters.sort', 'updated'),
+        );
+
+    /** An order the list does not offer reads it alphabetically. */
+    filteredProducts($user, $distributor, ['sort' => 'price'])
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.name', 'Almond Milk')
+            ->where('filters.sort', 'name'),
         );
 });
