@@ -24,6 +24,7 @@ use App\Models\ProductEvent;
 use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use App\Support\ProductChanges;
+use App\Support\ProductQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -214,6 +215,11 @@ class ProductController extends Controller
                 ])
                 : null,
             'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($product->organization),
+            /**
+             * Where the product sits in the organization's own to-do, so the
+             * page can step to the next one without a trip back to the list.
+             */
+            'todo' => $this->todo($currentOrganization, $isSupplier, $product),
         ]);
     }
 
@@ -350,6 +356,42 @@ class ProductController extends Controller
         return collect(ProductReviewStatus::cases())
             ->mapWithKeys(fn (ProductReviewStatus $status) => [$status->value => (int) ($counts[$status->value] ?? 0)])
             ->all();
+    }
+
+    /**
+     * Get where a product sits in the organization's queue: its place, the
+     * ones either side of it, and what the queue holds.
+     *
+     * A product that is not in the queue -- approved, or waiting on the
+     * other side -- has no place in it, and "next" is then simply the
+     * head of the queue: the thing to pick up after this one.
+     *
+     * @return array{position: int|null, total: int, previous: array{id: int, name: string}|null, next: array{id: int, name: string}|null, counts: array<string, int>}|null
+     */
+    protected function todo(Organization $organization, bool $asSupplier, Product $product): ?array
+    {
+        $queue = ProductQueue::for($organization, $asSupplier)
+            ->get(['products.id', 'products.name', 'products.review_status'])
+            ->values();
+
+        if ($queue->isEmpty()) {
+            return null;
+        }
+
+        $index = $queue->search(fn (Product $item) => $item->id === $product->id);
+        $index = $index === false ? null : $index;
+
+        $at = fn (int $position): ?array => ($item = $queue->get($position)) instanceof Product
+            ? ['id' => $item->id, 'name' => $item->name]
+            : null;
+
+        return [
+            'position' => $index === null ? null : $index + 1,
+            'total' => $queue->count(),
+            'previous' => $index === null || $index === 0 ? null : $at($index - 1),
+            'next' => $at($index === null ? 0 : $index + 1),
+            'counts' => $queue->countBy(fn (Product $item) => $item->review_status->value)->all(),
+        ];
     }
 
     /**

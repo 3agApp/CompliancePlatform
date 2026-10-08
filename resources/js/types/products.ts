@@ -370,6 +370,20 @@ export type Product = {
     public_url: string;
 };
 
+/**
+ * Where a product sits in the viewing organization's own to-do: the
+ * queue the dashboard lists the head of.
+ */
+export type ProductTodo = {
+    /** Its place in the queue, from one; null when it is not in it. */
+    position: number | null;
+    total: number;
+    previous: { id: number; name: string } | null;
+    next: { id: number; name: string } | null;
+    /** How many of the queue sit in each state of review. */
+    counts: Partial<Record<ProductReviewStatus, number>>;
+};
+
 export type ProductPermissions = {
     canCreateProduct: boolean;
     canUpdateProduct: boolean;

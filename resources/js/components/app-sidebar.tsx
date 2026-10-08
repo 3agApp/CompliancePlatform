@@ -10,6 +10,7 @@ import {
     Truck,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
+import CommandSearch from '@/components/command-search';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
@@ -130,6 +131,15 @@ export function AppSidebar() {
                         <OrganizationSwitcher />
                     </SidebarMenuItem>
                 </SidebarMenu>
+                {currentOrganization ? (
+                    <div className="px-2 pt-1">
+                        <CommandSearch
+                            organizationSlug={currentOrganization.slug}
+                            navItems={mainNavItems}
+                            isSupplier={currentOrganization.type === 'supplier'}
+                        />
+                    </div>
+                ) : null}
             </SidebarHeader>
 
             <SidebarContent>

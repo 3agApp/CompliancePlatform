@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductEvent;
 use App\Models\SupplierConnection;
+use App\Support\ProductQueue;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -234,45 +235,30 @@ class DashboardController extends Controller
      */
     protected function queue(Organization $organization, bool $asSupplier): array
     {
-        $limit = 5;
+        $queue = ProductQueue::for($organization, $asSupplier);
 
-        $stages = $asSupplier
-            ? [
-                [ProductReviewStatus::ChangesRequested, 'products.reviewed_at'],
-                [ProductReviewStatus::Draft, 'products.created_at'],
-            ]
-            : [[ProductReviewStatus::InReview, 'products.submitted_at']];
-
-        $items = collect();
-        $total = 0;
-
-        foreach ($stages as [$status, $waitingSince]) {
-            $query = $this->visibleProducts($organization, $asSupplier)->inReviewStatus($status);
-
-            $total += (clone $query)->count();
-
-            if ($items->count() < $limit) {
-                $items = $items->concat(
-                    $query
-                        ->with(['template', 'documents:id,product_id,type', 'supplierConnection.supplierOrganization', 'supplierConnection.distributorOrganization'])
-                        ->orderBy($waitingSince)
-                        ->orderBy('products.id')
-                        ->limit($limit - $items->count())
-                        ->get()
-                        ->map(fn (Product $product) => [
-                            'id' => $product->id,
-                            'name' => $product->name,
-                            'counterparty' => $this->counterparty($product->supplierConnection, $asSupplier),
-                            'review_status' => $product->review_status->value,
-                            'review_status_label' => $product->review_status->label(),
-                            'completeness_score' => $product->completeness()->score,
-                            'since' => $product->getAttribute(str_replace('products.', '', $waitingSince))?->toISOString(),
-                        ]),
-                );
-            }
-        }
-
-        return ['items' => $items->values()->all(), 'total' => $total];
+        return [
+            'total' => (clone $queue)->count(),
+            'items' => $queue
+                ->with(['template', 'documents:id,product_id,type', 'supplierConnection.supplierOrganization', 'supplierConnection.distributorOrganization'])
+                ->limit(5)
+                ->get()
+                ->map(fn (Product $product) => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'counterparty' => $this->counterparty($product->supplierConnection, $asSupplier),
+                    'review_status' => $product->review_status->value,
+                    'review_status_label' => $product->review_status->label(),
+                    'completeness_score' => $product->completeness()->score,
+                    'since' => (match ($product->review_status) {
+                        ProductReviewStatus::InReview => $product->submitted_at,
+                        ProductReviewStatus::ChangesRequested => $product->reviewed_at,
+                        default => $product->created_at,
+                    })?->toISOString(),
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

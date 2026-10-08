@@ -1,5 +1,11 @@
 import { Deferred, Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, ExternalLink, Trash2 } from 'lucide-react';
+import {
+    ArrowLeft,
+    ChevronLeft,
+    ChevronRight,
+    ExternalLink,
+    Trash2,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import DeleteProductModal from '@/components/delete-product-modal';
@@ -24,9 +30,10 @@ import SerialLabelsPanel from '@/components/serial-labels-panel';
 import { Button } from '@/components/ui/button';
 import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
-import { t, tn } from '@/lib/i18n';
+import { t, tc, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { index, update } from '@/routes/products';
+import { dashboard } from '@/routes';
+import { edit, index, update } from '@/routes/products';
 import type {
     BrandOption,
     CountryOption,
@@ -47,6 +54,7 @@ import type {
     ProductSealOption,
     ProductSealOverride,
     ProductTemplateOption,
+    ProductTodo,
     SupplierConnectionOption,
 } from '@/types';
 
@@ -111,6 +119,8 @@ type Props = {
     assessment?: ProductAssessmentState | null;
     assessmentUnavailableReason: ProductAssessmentUnavailableReason | null;
     viewerType: OrganizationType;
+    /** Where the product sits in the viewer's own to-do; null when empty. */
+    todo: ProductTodo | null;
 };
 
 /**
@@ -159,6 +169,7 @@ export default function ProductEdit({
     assessment,
     assessmentUnavailableReason,
     viewerType,
+    todo,
 }: Props) {
     const { currentOrganization } = usePage().props;
     const pageUrl = usePage().url;
@@ -401,6 +412,14 @@ export default function ProductEdit({
              * is showing, so it never covers the last thing on it.
              */}
             <div className={cn('workspace-page', dirty && 'pb-24')}>
+                {todo !== null ? (
+                    <TodoBar
+                        todo={todo}
+                        organizationSlug={organizationSlug}
+                        isSupplier={viewerType === 'supplier'}
+                    />
+                ) : null}
+
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="page-heading">
                         <Button
@@ -483,6 +502,9 @@ export default function ProductEdit({
                             product={product}
                             permissions={permissions}
                             completeness={completeness}
+                            nextProduct={
+                                todo?.position !== null ? todo?.next : null
+                            }
                         />
                     </div>
                 </div>
@@ -1092,4 +1114,105 @@ function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
     );
 
     return null;
+}
+
+/**
+ * Where this product sits in the viewer's own to-do, and the way to the
+ * ones either side of it -- so a supplier filling in a list, or a reviewer
+ * working through submissions, can go from one to the next without
+ * going back to the list in between.
+ */
+function TodoBar({
+    todo,
+    organizationSlug,
+    isSupplier,
+}: {
+    todo: ProductTodo;
+    organizationSlug: string;
+    isSupplier: boolean;
+}) {
+    const summary = isSupplier
+        ? [
+              todo.counts.changes_requested
+                  ? t(':count sent back', {
+                        count: todo.counts.changes_requested,
+                    })
+                  : null,
+              todo.counts.draft
+                  ? t(':count not submitted', { count: todo.counts.draft })
+                  : null,
+          ]
+              .filter(Boolean)
+              .join(', ')
+        : tc(
+              '1 waiting on your review|:count waiting on your review',
+              todo.total,
+          );
+
+    return (
+        <nav
+            aria-label={t('Your to-do')}
+            className="workspace-panel -mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm"
+            data-test="product-todo-bar"
+        >
+            <Link
+                href={dashboard(organizationSlug)}
+                className="text-muted-foreground hover:text-foreground"
+            >
+                {t('Your to-do')}
+            </Link>
+            <span className="bg-border h-4 w-px max-sm:hidden" />
+            <span data-test="product-todo-position">
+                {todo.position !== null ? (
+                    <span className="font-medium">
+                        {t(':position of :total', {
+                            position: todo.position,
+                            total: todo.total,
+                        })}
+                    </span>
+                ) : (
+                    <span className="font-medium">
+                        {t('Not in your to-do')}
+                    </span>
+                )}
+                {summary ? (
+                    <span className="text-muted-foreground"> · {summary}</span>
+                ) : null}
+            </span>
+
+            <span className="ml-auto flex flex-wrap gap-2">
+                {todo.previous ? (
+                    <Button variant="outline" size="sm" asChild>
+                        <Link
+                            href={edit([organizationSlug, todo.previous.id])}
+                            data-test="product-todo-previous"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            {t('Previous')}
+                        </Link>
+                    </Button>
+                ) : null}
+                {todo.next ? (
+                    <Button variant="outline" size="sm" asChild>
+                        <Link
+                            href={edit([organizationSlug, todo.next.id])}
+                            data-test="product-todo-next"
+                            className="max-w-72"
+                        >
+                            <span className="truncate">
+                                {todo.position !== null
+                                    ? t('Next: :name', {
+                                          name: todo.next.name,
+                                      })
+                                    : t('Start with :name', {
+                                          name: todo.next.name,
+                                      })}
+                            </span>
+                            <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                ) : null}
+            </span>
+        </nav>
+    );
 }
