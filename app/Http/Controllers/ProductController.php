@@ -370,27 +370,50 @@ class ProductController extends Controller
      */
     protected function todo(Organization $organization, bool $asSupplier, Product $product): ?array
     {
-        $queue = ProductQueue::for($organization, $asSupplier)
-            ->get(['products.id', 'products.name', 'products.review_status'])
+        /**
+         * The ids alone, in order: enough to find the product's place and
+         * its neighbours without hydrating a model for every draft in a
+         * long backlog. Only the two neighbours are loaded by name.
+         */
+        $ids = ProductQueue::for($organization, $asSupplier)
+            ->toBase()
+            ->pluck('products.id')
+            ->map(fn (mixed $id) => (int) $id)
             ->values();
 
-        if ($queue->isEmpty()) {
+        if ($ids->isEmpty()) {
             return null;
         }
 
-        $index = $queue->search(fn (Product $item) => $item->id === $product->id);
+        $index = $ids->search($product->id, strict: true);
         $index = $index === false ? null : $index;
 
-        $at = fn (int $position): ?array => ($item = $queue->get($position)) instanceof Product
-            ? ['id' => $item->id, 'name' => $item->name]
+        $previousId = $index === null || $index === 0 ? null : $ids->get($index - 1);
+        $nextId = $ids->get($index === null ? 0 : $index + 1);
+
+        $names = Product::query()
+            ->whereKey(array_filter([$previousId, $nextId]))
+            ->pluck('name', 'id');
+
+        $named = fn (?int $id): ?array => $id !== null && $names->has($id)
+            ? ['id' => $id, 'name' => (string) $names->get($id)]
             : null;
+
+        $counts = ProductQueue::for($organization, $asSupplier)
+            ->reorder()
+            ->toBase()
+            ->selectRaw('products.review_status as status, count(*) as aggregate')
+            ->groupBy('products.review_status')
+            ->pluck('aggregate', 'status')
+            ->map(fn (mixed $count) => (int) $count)
+            ->all();
 
         return [
             'position' => $index === null ? null : $index + 1,
-            'total' => $queue->count(),
-            'previous' => $index === null || $index === 0 ? null : $at($index - 1),
-            'next' => $at($index === null ? 0 : $index + 1),
-            'counts' => $queue->countBy(fn (Product $item) => $item->review_status->value)->all(),
+            'total' => $ids->count(),
+            'previous' => $named($previousId),
+            'next' => $named($nextId),
+            'counts' => $counts,
         ];
     }
 

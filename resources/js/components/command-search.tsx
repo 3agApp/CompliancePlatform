@@ -73,6 +73,8 @@ export default function CommandSearch({
 
     const http = useHttp<Record<string, never>, SearchResponse>({});
     const [response, setResponse] = useState<SearchResponse | null>(null);
+    /** The term the response on screen answers, so a newer one shows as pending. */
+    const [answeredTerm, setAnsweredTerm] = useState('');
     const listRef = useRef<HTMLUListElement>(null);
 
     /**
@@ -105,11 +107,23 @@ export default function CommandSearch({
         http.cancel();
         void http
             .get(search.url(organizationSlug, { query: { q: debouncedTerm } }))
-            .then((data) => setResponse(data))
+            .then((data) => {
+                setResponse(data);
+                setAnsweredTerm(debouncedTerm);
+            })
             .catch(() => setResponse(null));
     }, [debouncedTerm, open, organizationSlug]);
 
     const lowered = term.trim().toLocaleLowerCase();
+
+    /**
+     * Still waiting while the typed term has not been answered yet --
+     * during the pause before the request as well as during it -- so an
+     * empty list never claims there is nothing to find.
+     */
+    const isSearching =
+        term.trim().length >= 2 &&
+        (http.processing || answeredTerm !== term.trim());
 
     const results: Result[] = [
         ...(response?.products ?? []).map((product) => ({
@@ -210,6 +224,7 @@ export default function CommandSearch({
             setTerm('');
             setActive(0);
             setResponse(null);
+            setAnsweredTerm('');
         }
     };
 
@@ -219,11 +234,15 @@ export default function CommandSearch({
                 type="button"
                 onClick={() => setOpen(true)}
                 data-test="command-search-trigger"
-                className="bg-background text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-sm transition-colors outline-none group-data-[collapsible=icon]:hidden focus-visible:ring-2"
+                aria-label={t('Search')}
+                title={t('Search (⌘K)')}
+                className="bg-background text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-sm transition-colors outline-none group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 focus-visible:ring-2"
             >
-                <Search className="size-4" />
-                {t('Search')}
-                <kbd className="bg-muted ml-auto rounded border px-1.5 font-sans text-[11px] font-medium">
+                <Search className="size-4 shrink-0" />
+                <span className="group-data-[collapsible=icon]:hidden">
+                    {t('Search')}
+                </span>
+                <kbd className="bg-muted ml-auto rounded border px-1.5 font-sans text-[11px] font-medium group-data-[collapsible=icon]:hidden">
                     ⌘K
                 </kbd>
             </button>
@@ -319,7 +338,7 @@ export default function CommandSearch({
 
                         {results.length === 0 ? (
                             <li className="text-muted-foreground px-4 py-6 text-center text-sm">
-                                {http.processing
+                                {isSearching
                                     ? t('Searching…')
                                     : t('Nothing matches “:term”.', {
                                           term: term.trim(),

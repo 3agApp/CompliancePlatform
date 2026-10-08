@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\SupplierConnection;
+use App\Support\LikePattern;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -76,15 +77,17 @@ class SearchController extends Controller
      */
     protected function connections(Organization $organization, bool $asSupplier, string $term): array
     {
+        $pattern = LikePattern::contains($term);
+
         $query = $asSupplier
             ? $organization->distributorConnections()
                 ->where('status', SupplierConnectionStatus::Active)
-                ->whereHas('distributorOrganization', fn ($query) => $query->whereLike('name', "%{$term}%"))
+                ->whereHas('distributorOrganization', fn ($query) => $query->whereRaw("lower(name) like lower(?) escape '!'", [$pattern]))
                 ->with('distributorOrganization')
             : $organization->supplierConnections()
                 ->where(fn ($query) => $query
-                    ->whereLike('company_name', "%{$term}%")
-                    ->orWhereHas('supplierOrganization', fn ($query) => $query->whereLike('name', "%{$term}%")))
+                    ->whereRaw("lower(company_name) like lower(?) escape '!'", [$pattern])
+                    ->orWhereHas('supplierOrganization', fn ($query) => $query->whereRaw("lower(name) like lower(?) escape '!'", [$pattern])))
                 ->with('supplierOrganization');
 
         return $query
@@ -107,7 +110,7 @@ class SearchController extends Controller
     protected function brands(Organization $organization, bool $asSupplier, string $term): array
     {
         return ($asSupplier ? $organization->suppliedBrands() : $organization->brands())
-            ->whereLike('brands.name', "%{$term}%")
+            ->whereRaw("lower(brands.name) like lower(?) escape '!'", [LikePattern::contains($term)])
             ->with(['supplierConnection.supplierOrganization', 'supplierConnection.distributorOrganization'])
             ->orderBy('brands.name')
             ->limit(self::LIMIT)

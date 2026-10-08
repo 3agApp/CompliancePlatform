@@ -71,3 +71,20 @@ test('a term too short to mean anything finds nothing without asking the databas
         ->assertOk()
         ->assertExactJson(['products' => [], 'productsTotal' => 0, 'connections' => [], 'brands' => []]);
 });
+
+test('a typed underscore or percent sign is matched as itself, not as a wildcard', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    Product::factory()->for($distributor)->create(['name' => 'Kit AB_12', 'supplier_connection_id' => $connection->id]);
+    Product::factory()->for($distributor)->create(['name' => 'Kit ABX12', 'supplier_connection_id' => $connection->id]);
+
+    $this->actingAs($user)
+        ->getJson(route('search', ['current_organization' => $distributor->slug, 'q' => 'ab_1']))
+        ->assertJsonPath('productsTotal', 1)
+        ->assertJsonPath('products.0.name', 'Kit AB_12');
+
+    $this->actingAs($user)
+        ->getJson(route('search', ['current_organization' => $distributor->slug, 'q' => '__']))
+        ->assertJsonPath('productsTotal', 0);
+});

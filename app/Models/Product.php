@@ -8,6 +8,7 @@ use App\Enums\CountryOfOrigin;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Enums\ProductSealStatus;
+use App\Support\LikePattern;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -407,10 +408,12 @@ class Product extends Model
      */
     public function scopeMatching(Builder $query, string $term): void
     {
+        $pattern = LikePattern::contains($term);
+
         $query->where(fn (Builder $query) => $query
-            ->whereLike('products.name', "%{$term}%")
-            ->orWhereLike('products.ean', "%{$term}%")
-            ->orWhereLike('products.internal_article_number', "%{$term}%")
-            ->orWhereLike('products.supplier_article_number', "%{$term}%"));
+            ->whereRaw("lower(products.name) like lower(?) escape '!'", [$pattern])
+            ->orWhereRaw("lower(products.ean) like lower(?) escape '!'", [$pattern])
+            ->orWhereRaw("lower(products.internal_article_number) like lower(?) escape '!'", [$pattern])
+            ->orWhereRaw("lower(products.supplier_article_number) like lower(?) escape '!'", [$pattern]));
     }
 }

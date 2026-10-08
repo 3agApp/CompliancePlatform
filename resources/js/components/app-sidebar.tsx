@@ -132,7 +132,7 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                 </SidebarMenu>
                 {currentOrganization ? (
-                    <div className="px-2 pt-1">
+                    <div className="px-2 pt-1 group-data-[collapsible=icon]:px-0">
                         <CommandSearch
                             organizationSlug={currentOrganization.slug}
                             navItems={mainNavItems}
