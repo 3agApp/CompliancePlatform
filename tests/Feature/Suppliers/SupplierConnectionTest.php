@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Product;
@@ -477,11 +478,16 @@ test('the suppliers list counts each supplier products per review stage, its bra
         'supplier_connection_id' => $connection->id,
         'updated_at' => now()->subDays(3),
     ]);
-    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create([
+    $approved = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create([
         'supplier_connection_id' => $connection->id,
-        'updated_at' => now()->subDay(),
     ]);
     carriedBrand($connection, 'Magna-Tiles');
+
+    /** The supplier last did something yesterday; the distributor since, which does not count. */
+    $approved->recordEvent(ProductEventType::Updated, organization: $supplier)
+        ->forceFill(['created_at' => now()->subDay()])
+        ->save();
+    $approved->recordEvent(ProductEventType::Approved, $user, $distributor);
 
     $this
         ->actingAs($user)

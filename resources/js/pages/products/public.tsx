@@ -381,7 +381,19 @@ function Gallery({
     t: PublicTranslate;
 }) {
     const [shown, setShown] = useState(0);
-    const image = images[shown] ?? null;
+
+    /**
+     * Pictures the browser could not load are dropped, so a missing file
+     * falls back to the "no picture" panel instead of an empty frame.
+     */
+    const [failed, setFailed] = useState<number[]>([]);
+    const visible = images.filter((option) => !failed.includes(option.id));
+    const image = visible[shown] ?? visible[0] ?? null;
+
+    const dropImage = (id: number) => {
+        setFailed((current) => [...current, id]);
+        setShown(0);
+    };
 
     if (image === null) {
         return (
@@ -396,7 +408,7 @@ function Gallery({
     }
 
     const step = (by: number) =>
-        setShown((current) => (current + by + images.length) % images.length);
+        setShown((current) => (current + by + visible.length) % visible.length);
 
     return (
         <figure className="border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
@@ -405,10 +417,11 @@ function Gallery({
                     src={image.url}
                     alt={productName}
                     data-test="product-photo"
+                    onError={() => dropImage(image.id)}
                     className="size-full object-contain p-6"
                 />
 
-                {images.length > 1 ? (
+                {visible.length > 1 ? (
                     <>
                         <button
                             type="button"
@@ -430,15 +443,15 @@ function Gallery({
                 ) : null}
             </div>
 
-            {images.length > 1 ? (
+            {visible.length > 1 ? (
                 <div className="flex gap-2 overflow-x-auto px-4 pb-4">
-                    {images.map((option, index) => (
+                    {visible.map((option, index) => (
                         <button
                             key={option.id}
                             type="button"
                             onClick={() => setShown(index)}
                             data-test="product-photo-thumb"
-                            aria-label={`${t('showPicture')} ${index + 1} / ${images.length}`}
+                            aria-label={`${t('showPicture')} ${index + 1} / ${visible.length}`}
                             aria-current={index === shown}
                             className={cn(
                                 'size-14 shrink-0 overflow-hidden rounded-xl border-2 transition-all',
@@ -450,6 +463,7 @@ function Gallery({
                             <img
                                 src={option.url}
                                 alt=""
+                                onError={() => dropImage(option.id)}
                                 className="size-full object-cover"
                             />
                         </button>

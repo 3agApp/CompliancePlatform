@@ -73,7 +73,7 @@ class DashboardController extends Controller
                 'products as changes_requested_count' => $byStatus(ProductReviewStatus::ChangesRequested),
                 'products as approved_count' => $byStatus(ProductReviewStatus::Approved),
             ])
-            ->withMax('products', 'updated_at')
+            ->withSupplierActivity()
             ->get()
             ->map(fn (SupplierConnection $connection) => [
                 'id' => $connection->id,
@@ -89,7 +89,7 @@ class DashboardController extends Controller
                 'inReview' => (int) $connection->getAttribute('in_review_count'),
                 'changesRequested' => (int) $connection->getAttribute('changes_requested_count'),
                 'approved' => (int) $connection->getAttribute('approved_count'),
-                'lastActivity' => $this->toIso($connection->getAttribute('products_max_updated_at')),
+                'lastActivity' => $connection->supplierLastActivityAt()?->toISOString(),
             ])
             ->sortByDesc('products')
             ->values()
@@ -179,14 +179,6 @@ class DashboardController extends Controller
                 'created_at' => $event->created_at?->toISOString(),
             ])
             ->all();
-    }
-
-    /**
-     * Read a timestamp an aggregate handed back as a plain string.
-     */
-    protected function toIso(mixed $value): ?string
-    {
-        return $value === null ? null : CarbonImmutable::parse($value)->toISOString();
     }
 
     /**
