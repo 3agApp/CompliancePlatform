@@ -64,3 +64,27 @@ test('an owner sets the organization language from its settings', function () {
 
     expect($organization->fresh()->locale)->toBe(Locale::German);
 });
+
+/**
+ * A reader whose browser translates the page has React's text taken out
+ * from under it. Changing language there -- the very thing such a reader is
+ * looking for -- used to take the whole page down with "Failed to execute
+ * 'removeChild' on 'Node'", in production, while every test stayed green.
+ */
+test('an owner changes the organization language on a page the browser has translated', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $this->actingAs($user);
+
+    $page = visit(route('organizations.edit', $organization))->assertSee('Default language');
+
+    translateLikeTheBrowser($page)
+        ->click('@organization-locale')
+        ->click('[role="option"]:has-text("Deutsch")')
+        ->click('@organization-save-button')
+        ->assertSee('Organization updated.')
+        ->assertMissing('@error-boundary')
+        ->assertNoJavaScriptErrors();
+
+    expect($organization->fresh()->locale)->toBe(Locale::German);
+});

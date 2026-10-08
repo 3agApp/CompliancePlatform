@@ -3,6 +3,7 @@ import ErrorBoundary from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+import { installForeignDomTolerance } from '@/lib/foreign-dom-changes';
 import { installTranslations } from '@/lib/i18n';
 import { installPrefetchInvalidation } from '@/lib/prefetch';
 import { installUrlDefaults } from '@/lib/url-defaults';
@@ -11,6 +12,9 @@ import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
 const appName = import.meta.env.VITE_APP_NAME || 'CompliancePlatform';
+
+// Before the app renders: a translated first page must not crash it.
+installForeignDomTolerance();
 
 // Before the app renders: the first page already needs them.
 installUrlDefaults();
