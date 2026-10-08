@@ -639,3 +639,32 @@ test('the product list reads the most recently changed products first when asked
             ->where('filters.sort', 'name'),
         );
 });
+
+/**
+ * A supplier's list runs through its active trades only, so a trade that
+ * was revoked leaves the tab counts along with the list.
+ */
+test('a supplier status tabs count only the products of its active trades', function () {
+    [$supplierUser, $supplier] = newSupplierMember();
+    [, $distributor] = newOrganizationMember();
+    [, $former] = newOrganizationMember();
+
+    $active = newSupplierConnection($distributor, $supplier);
+    $revoked = newSupplierConnection($former, $supplier);
+    $revoked->update(['status' => SupplierConnectionStatus::Revoked]);
+
+    Product::factory()->count(2)->for($distributor)->create(['supplier_connection_id' => $active->id]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create(['supplier_connection_id' => $active->id]);
+    Product::factory()->count(3)->for($former)->create(['supplier_connection_id' => $revoked->id]);
+
+    filteredProducts($supplierUser, $supplier, [])
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 3)
+            ->where('statusCounts', [
+                'draft' => 2,
+                'in_review' => 0,
+                'approved' => 1,
+                'changes_requested' => 0,
+            ]),
+        );
+});

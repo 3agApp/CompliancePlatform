@@ -260,7 +260,8 @@ test('the dashboard names what is stuck: products sent back, expired invitations
         'supplier_connection_id' => $quiet->id,
         'updated_at' => now()->subDays(20),
     ]);
-    Product::factory()->for($distributor)->create(['supplier_connection_id' => $busy->id]);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $busy->id])
+        ->recordEvent(ProductEventType::Updated, organization: $busySupplier);
     Product::factory()->for($distributor)->create(['supplier_connection_id' => $expired->id]);
 
     $sentBack = Product::factory()->for($distributor)->reviewed(ProductReviewStatus::ChangesRequested)->create([
@@ -323,5 +324,28 @@ test('a supplier dashboard carries no supplier progress or attention list', func
             ->where('attention', null)
             ->where('canCreateProduct', false)
             ->where('canInviteSupplier', false),
+        );
+});
+
+/**
+ * Only what the supplier did counts as the supplier's activity: the
+ * distributor reviewing or editing a product does not make an idle supplier
+ * look busy.
+ */
+test('a distributor touching a supplier products does not count as the supplier being active', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $product = Product::factory()->for($distributor)->create(['supplier_connection_id' => $connection->id]);
+    $product->recordEvent(ProductEventType::Updated, $user, $distributor);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('suppliers.0.lastActivity', null)
+            ->where('attention.quietSuppliers.0.id', $connection->id),
         );
 });

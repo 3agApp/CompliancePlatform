@@ -177,6 +177,43 @@ class SupplierConnection extends Model
     }
 
     /**
+     * Add when the supplier last did anything to the connection's products,
+     * as supplier_last_activity_at.
+     *
+     * Read from the product history, counting only what the supplier's own
+     * organization did: a product's last-changed time also moves when the
+     * distributor reviews it or edits it, which would make a supplier who
+     * has done nothing look busy.
+     *
+     * @param  Builder<SupplierConnection>  $query
+     */
+    public function scopeWithSupplierActivity(Builder $query): void
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('supplier_connections.*');
+        }
+
+        $query->addSelect([
+            'supplier_last_activity_at' => ProductEvent::query()
+                ->selectRaw('max(product_events.created_at)')
+                ->join('products', 'products.id', '=', 'product_events.product_id')
+                ->whereColumn('products.supplier_connection_id', 'supplier_connections.id')
+                ->whereColumn('product_events.organization_id', 'supplier_connections.supplier_organization_id'),
+        ]);
+    }
+
+    /**
+     * Get when the supplier last did anything to the connection's products,
+     * once the query has asked for it with withSupplierActivity().
+     */
+    public function supplierLastActivityAt(): ?CarbonImmutable
+    {
+        $value = $this->getAttribute('supplier_last_activity_at');
+
+        return $value === null ? null : CarbonImmutable::parse($value);
+    }
+
+    /**
      * Scope the query to connections a product may be assigned to.
      *
      * @param  Builder<SupplierConnection>  $query

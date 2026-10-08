@@ -9,7 +9,6 @@ use App\Http\Requests\Suppliers\InviteSupplierRequest;
 use App\Models\Organization;
 use App\Models\SupplierConnection;
 use App\Notifications\Suppliers\SupplierConnectionInvitation;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -40,7 +39,7 @@ class SupplierConnectionController extends Controller
                         "products as {$status->value}_count" => fn ($query) => $query->where('review_status', $status),
                     ])->all(),
                 ])
-                ->withMax('products', 'updated_at')
+                ->withSupplierActivity()
                 ->orderBy('company_name')
                 ->get()
                 ->map(fn (SupplierConnection $connection) => $this->toConnectionArray($connection)),
@@ -205,9 +204,7 @@ class SupplierConnectionController extends Controller
     {
         $supplier = $connection->supplierOrganization;
 
-        $lastActivity = ($updated = $connection->getAttribute('products_max_updated_at')) === null
-            ? null
-            : CarbonImmutable::parse($updated);
+        $lastActivity = $connection->supplierLastActivityAt();
 
         return [
             'id' => $connection->id,

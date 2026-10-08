@@ -222,3 +222,22 @@ test('the public page shows released documents grouped by kind, safety informati
         ->assertSee($product->organization->name)
         ->assertNoJavaScriptErrors();
 });
+
+/**
+ * A picture whose file cannot be loaded is dropped rather than left as an
+ * empty frame at the top of the page.
+ */
+test('a product picture that cannot be loaded falls back to the no picture panel', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+
+    ProductDocument::factory()
+        ->for($product)
+        ->ofType(ProductDocumentType::ProductImage)
+        ->create(['name' => 'gone.png', 'path' => 'missing/gone.png', 'mime_type' => 'image/png']);
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertMissing('@product-photo')
+        ->assertPresent('@product-photo-missing');
+});

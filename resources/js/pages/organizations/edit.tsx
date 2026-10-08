@@ -310,6 +310,46 @@ export default function OrganizationEdit({
                             )}
                         />
 
+                        {/*
+                         * Whether it is on at all, said before the form: the
+                         * form looks much the same either way, and the AI
+                         * features on the product page depend on the answer.
+                         */}
+                        {aiProvider !== null ? (
+                            <p
+                                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-900 dark:text-emerald-200"
+                                data-test="ai-provider-status"
+                            >
+                                <span className="font-medium">
+                                    {t('Connected')}
+                                </span>
+                                <span>
+                                    {[
+                                        aiProvider.provider_label,
+                                        aiProvider.model_label,
+                                        t('key ending :hint', {
+                                            hint: aiProvider.key_hint,
+                                        }),
+                                        aiProvider.allow_document_analysis
+                                            ? t('AI check of documents on')
+                                            : t('AI check of documents off'),
+                                    ].join(' · ')}
+                                </span>
+                            </p>
+                        ) : (
+                            <p
+                                className="bg-muted text-muted-foreground rounded-lg px-3 py-2.5 text-sm"
+                                data-test="ai-provider-status"
+                            >
+                                <span className="text-foreground font-medium">
+                                    {t('Not connected.')}
+                                </span>{' '}
+                                {t(
+                                    'Document kinds are picked by hand and the AI check is unavailable until a provider is connected.',
+                                )}
+                            </p>
+                        )}
+
                         <OrganizationAiProviderForm
                             organizationSlug={organization.slug}
                             setting={aiProvider}

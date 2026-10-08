@@ -697,30 +697,11 @@ export default function Dashboard({
                   testId: 'dashboard-distributors',
               },
           ]
-        : [
-              {
-                  label: t('Active suppliers'),
-                  value: stats.activeSuppliers,
-                  href: suppliersIndex(organizationSlug).url,
-                  testId: 'dashboard-suppliers',
-              },
-              {
-                  label: t('Pending invitations'),
-                  value: stats.pendingInvitations,
-                  href: suppliersIndex(organizationSlug).url,
-                  testId: 'dashboard-pending',
-              },
-              ...(stats.notInvited > 0
-                  ? [
-                        {
-                            label: t('Not invited yet'),
-                            value: stats.notInvited,
-                            href: suppliersIndex(organizationSlug).url,
-                            testId: 'dashboard-not-invited',
-                        },
-                    ]
-                  : []),
-          ];
+        : /**
+           * A distributor's suppliers are covered, in more detail, by the
+           * attention list and the progress table, so they get no tiles.
+           */
+          [];
 
     /**
      * Only the one step that actually unblocks the organization is offered.

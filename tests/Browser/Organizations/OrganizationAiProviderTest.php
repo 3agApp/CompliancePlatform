@@ -19,11 +19,16 @@ test('an owner allows the AI check to read product documents', function () {
     $this->actingAs($user);
 
     visit(route('organizations.edit', $organization))
+        /** Whether it is on, and how, before any of the form. */
+        ->assertSeeIn('@ai-provider-status', 'Connected')
+        ->assertSeeIn('@ai-provider-status', 'key ending 6789')
+        ->assertSeeIn('@ai-provider-status', 'AI check of documents off')
         ->assertSee('Allow the AI check to read product documents')
         ->assertAttribute('@ai-allow-document-analysis', 'data-state', 'unchecked')
         ->click('@ai-allow-document-analysis')
         ->click('@save-ai-provider-submit')
         ->assertSee('AI provider saved.')
+        ->assertSeeIn('@ai-provider-status', 'AI check of documents on')
         ->assertAttribute('@ai-allow-document-analysis', 'data-state', 'checked')
         ->assertNoJavaScriptErrors();
 
