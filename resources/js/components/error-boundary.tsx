@@ -23,6 +23,14 @@ export default class ErrorBoundary extends Component<Props, State> {
     componentDidCatch(error: Error, info: ErrorInfo) {
         // Keep the stack in the console for whoever is looking at it.
         console.error('Unhandled render error', error, info.componentStack);
+
+        /**
+         * Caught here, the error never reaches the window, so anything
+         * listening for uncaught errors -- the browser tests' "no JavaScript
+         * errors" check among them -- would take a broken page for a
+         * working one. Report it as uncaught too.
+         */
+        window.reportError(error);
     }
 
     render() {

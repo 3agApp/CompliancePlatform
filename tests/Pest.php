@@ -9,6 +9,7 @@ use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Pest\Browser\Api\AwaitableWebpage;
 use Tests\TestCase;
 
 /*
@@ -137,4 +138,37 @@ function familyTemplate(Organization $organization, string $family = 'Toy', stri
 function carriedBrand(SupplierConnection $connection, string $name = 'Alpro'): Brand
 {
     return $connection->brands()->firstOrCreate(['name' => $name]);
+}
+
+/**
+ * Rewrite the page the way the browser's own translation does: every piece
+ * of text is swapped for a `<font>` holding it, so the text nodes React
+ * placed are no longer in the page. Whatever React does with them next is
+ * what a reader using "Translate this page" runs into.
+ */
+function translateLikeTheBrowser(AwaitableWebpage $page): AwaitableWebpage
+{
+    $page->script(<<<'JS'
+        () => {
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            const texts = [];
+
+            while (walker.nextNode()) {
+                if (walker.currentNode.nodeValue.trim() !== '') {
+                    texts.push(walker.currentNode);
+                }
+            }
+
+            for (const text of texts) {
+                const outer = document.createElement('font');
+                const inner = document.createElement('font');
+
+                inner.textContent = text.nodeValue;
+                outer.appendChild(inner);
+                text.replaceWith(outer);
+            }
+        }
+        JS);
+
+    return $page;
 }
