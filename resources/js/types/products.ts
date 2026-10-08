@@ -117,6 +117,8 @@ export type BrandConnection = {
     label: string;
     status: SupplierConnectionStatus;
     statusLabel: string;
+    /** Invited, never answered, and the link has run out. */
+    isExpired: boolean;
     canAddBrand: boolean;
     brands: Brand[];
 };
@@ -358,6 +360,10 @@ export type Product = {
     connection_status: string | null;
     /** Whether the supplier has been sent the claim link yet. */
     connection_is_invited: boolean;
+    /** Where the trade stands, named the way the suppliers page names it. */
+    connection_status_label: string | null;
+    /** Invited, never answered, and the link has run out. */
+    connection_is_expired: boolean;
     created_at: string | null;
     updated_at: string | null;
     /** The page a buyer reaches from the label on the box. */

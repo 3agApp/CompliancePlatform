@@ -65,6 +65,12 @@ class SupplierConnection extends Model
     public const int CLAIM_EXPIRY_DAYS = 14;
 
     /**
+     * How many days without a change before a supplier with drafts counts
+     * as having gone quiet. One number, so every page agrees on who it is.
+     */
+    public const int QUIET_AFTER_DAYS = 14;
+
+    /**
      * Bootstrap the model and its traits.
      */
     protected static function boot(): void
@@ -253,6 +259,21 @@ class SupplierConnection extends Model
     public function isExpired(): bool
     {
         return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
+    /**
+     * Name where the relationship stands, the way the distributor thinks of
+     * it: a pending connection is told apart by whether the invitation has
+     * gone out, and whether it has run out since.
+     */
+    public function statusLabel(): string
+    {
+        return match (true) {
+            $this->isPending() && ! $this->isInvited() => __('Not invited'),
+            $this->isPending() && $this->isExpired() => __('Invitation expired'),
+            $this->isPending() => __('Invitation pending'),
+            default => $this->status->label(),
+        };
     }
 
     /**

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Suppliers;
 
+use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Suppliers\InviteSupplierRequest;
 use App\Models\Organization;
 use App\Models\SupplierConnection;
 use App\Notifications\Suppliers\SupplierConnectionInvitation;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -31,7 +33,14 @@ class SupplierConnectionController extends Controller
         return Inertia::render('suppliers/index', [
             'connections' => $currentOrganization->supplierConnections()
                 ->with('supplierOrganization')
-                ->withCount('products')
+                ->withCount([
+                    'products',
+                    'brands',
+                    ...collect(ProductReviewStatus::cases())->mapWithKeys(fn (ProductReviewStatus $status) => [
+                        "products as {$status->value}_count" => fn ($query) => $query->where('review_status', $status),
+                    ])->all(),
+                ])
+                ->withMax('products', 'updated_at')
                 ->orderBy('company_name')
                 ->get()
                 ->map(fn (SupplierConnection $connection) => $this->toConnectionArray($connection)),
@@ -190,28 +199,45 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
         $supplier = $connection->supplierOrganization;
+
+        $lastActivity = ($updated = $connection->getAttribute('products_max_updated_at')) === null
+            ? null
+            : CarbonImmutable::parse($updated);
 
         return [
             'id' => $connection->id,
             'companyName' => $supplier !== null ? $supplier->name : $connection->company_name,
             'contactEmail' => $connection->contact_email,
             'status' => $connection->status->value,
-            'statusLabel' => match (true) {
-                $connection->isPending() && ! $connection->isInvited() => __('Not invited'),
-                $connection->isPending() && $connection->isExpired() => __('Expired'),
-                default => $connection->status->label(),
-            },
+            'statusLabel' => $connection->statusLabel(),
             'isClaimed' => $connection->isClaimed(),
             'isInvited' => $connection->isInvited(),
+            'isExpired' => $connection->isPending() && $connection->isInvited() && $connection->isExpired(),
             'isAssignable' => in_array($connection->status, SupplierConnectionStatus::assignable(), strict: true),
             'canResend' => $this->isResendable($connection),
             'canRestore' => $connection->status === SupplierConnectionStatus::Revoked && $connection->isClaimed(),
             'productsCount' => (int) ($connection->products_count ?? 0),
+            'brandsCount' => (int) ($connection->getAttribute('brands_count') ?? 0),
+            /**
+             * How far the supplier's products have got, so the list shows
+             * who is keeping up without a trip to the products page.
+             */
+            'productsByStatus' => collect(ProductReviewStatus::cases())
+                ->mapWithKeys(fn (ProductReviewStatus $status) => [$status->value => (int) ($connection->getAttribute("{$status->value}_count") ?? 0)])
+                ->all(),
+            'lastActivityAt' => $lastActivity?->toIso8601String(),
+            /**
+             * Drafts that have not moved in a while are the sign a supplier
+             * has forgotten them; the dashboard uses the same rule.
+             */
+            'isQuiet' => $connection->isActive()
+                && (int) ($connection->getAttribute('draft_count') ?? 0) > 0
+                && ($lastActivity === null || $lastActivity->lt(now()->subDays(SupplierConnection::QUIET_AFTER_DAYS))),
             'expiresAt' => $connection->expires_at?->toIso8601String(),
             'createdAt' => $connection->created_at?->toIso8601String(),
         ];

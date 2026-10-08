@@ -193,9 +193,12 @@ test('a distributor invites a revoked supplier again from the suppliers table', 
 
     $page = visit(route('suppliers.index', ['current_organization' => $distributor->slug]));
 
+    /** Ended relationships are folded away until asked for. */
     $page->assertSee('Revoked')
+        ->assertMissing('@supplier-resend-button')
+        ->click('@supplier-group-ended-toggle')
         ->click('@supplier-resend-button')
-        ->assertSee('Pending')
+        ->assertSeeIn('@supplier-group-waiting', 'Invitation pending')
         ->assertNoJavaScriptErrors();
 
     expect($connection->fresh()->status)->toBe(SupplierConnectionStatus::Pending);

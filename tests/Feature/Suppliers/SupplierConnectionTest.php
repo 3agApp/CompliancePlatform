@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Product;
 use App\Models\SupplierConnection;
@@ -456,4 +457,102 @@ test('a supplier added from a product form goes back to that form', function () 
             'send_invitation' => '0',
         ])
         ->assertRedirect($form);
+});
+
+/**
+ * Each row carries how far the supplier's products have got, how many
+ * brands they carry and when anything last changed, so the list shows who
+ * is keeping up without opening anything.
+ */
+test('the suppliers list counts each supplier products per review stage, its brands and its last activity', function () {
+    /** The expected timestamp is computed after the request, so the clock must not move. */
+    $this->freezeTime();
+
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    Product::factory()->count(2)->for($distributor)->create([
+        'supplier_connection_id' => $connection->id,
+        'updated_at' => now()->subDays(3),
+    ]);
+    Product::factory()->for($distributor)->reviewed(ProductReviewStatus::Approved)->create([
+        'supplier_connection_id' => $connection->id,
+        'updated_at' => now()->subDay(),
+    ]);
+    carriedBrand($connection, 'Magna-Tiles');
+
+    $this
+        ->actingAs($user)
+        ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.productsCount', 3)
+            ->where('connections.0.productsByStatus', [
+                'draft' => 2,
+                'in_review' => 0,
+                'approved' => 1,
+                'changes_requested' => 0,
+            ])
+            ->where('connections.0.brandsCount', 1)
+            /** Something moved yesterday, so they have not gone quiet. */
+            ->where('connections.0.isQuiet', false)
+            ->where('connections.0.lastActivityAt', now()->subDay()->startOfSecond()->toIso8601String()),
+        );
+});
+
+test('an invitation that ran out is named as expired, and one still open as pending', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies', 'expires_at' => now()->subDay()]);
+    newSupplierConnection($distributor, attributes: ['company_name' => 'Baltic Plastics', 'expires_at' => now()->addDay()]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.statusLabel', 'Invitation expired')
+            ->where('connections.0.isExpired', true)
+            ->where('connections.1.statusLabel', 'Invitation pending')
+            ->where('connections.1.isExpired', false),
+        );
+
+    /** The product list names the trade the same way... */
+    Product::factory()->for($distributor)->create([
+        'supplier_connection_id' => $distributor->supplierConnections()->where('company_name', 'Acme Supplies')->sole()->id,
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('products.index', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.connection_status_label', 'Invitation expired')
+            ->where('products.data.0.connection_is_expired', true),
+        );
+
+    /** ...and so does the brands page. */
+    $this
+        ->actingAs($user)
+        ->get(route('brands.index', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.statusLabel', 'Invitation expired')
+            ->where('connections.0.isExpired', true),
+        );
+});
+
+test('an active supplier whose drafts have not moved for a fortnight is marked quiet', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    Product::factory()->for($distributor)->create([
+        'supplier_connection_id' => $connection->id,
+        'updated_at' => now()->subDays(SupplierConnection::QUIET_AFTER_DAYS + 1),
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn (Assert $page) => $page->where('connections.0.isQuiet', true));
 });

@@ -358,14 +358,16 @@ export default function ProductsIndex({
                                                 'active' ? (
                                                 <Badge
                                                     variant="secondary"
-                                                    className="ml-2"
+                                                    className={cn(
+                                                        'ml-2',
+                                                        product.connection_is_expired &&
+                                                            'bg-red-500/10 text-red-700 dark:text-red-400',
+                                                    )}
+                                                    data-test="product-connection-status"
                                                 >
-                                                    {product.connection_status ===
-                                                    'pending'
-                                                        ? product.connection_is_invited
-                                                            ? t('Pending')
-                                                            : t('Not invited')
-                                                        : t('Revoked')}
+                                                    {
+                                                        product.connection_status_label
+                                                    }
                                                 </Badge>
                                             ) : null}
                                         </TableCell>

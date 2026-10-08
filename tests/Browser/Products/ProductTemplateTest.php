@@ -60,6 +60,45 @@ test('a requirement is turned back off through the edit dialog', function () {
         ->requires_ean->toBeFalse();
 });
 
+/**
+ * The ticks come in the groups a product page answers them in, each with
+ * a way to tick or clear the lot, and the editor warns how many products
+ * a change will reach before it is saved.
+ */
+test('a whole group of requirements is ticked at once, with the products it reaches named first', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $template = ProductTemplate::factory()
+        ->requiring(ProductRequirement::TestReport)
+        ->create([
+            'product_category_id' => legalFamily($distributor)->id,
+            'name' => 'EU toy safety',
+        ]);
+
+    Product::factory()->count(2)->for($distributor)->usingTemplate($template)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('categories.index', ['current_organization' => $distributor->slug]))
+        ->click('[data-test="template-row"]:has-text("EU toy safety") [data-test="template-edit-button"]')
+        ->assertSeeIn('@template-impact', '2 products use this template.')
+        ->assertSeeIn('@template-requirement-total', '1 of 22')
+        ->click('[data-test="template-group-identification"] button:text-is("All")')
+        ->assertSeeIn('@template-requirement-total', '8 of 22')
+        ->click('@save-template-submit')
+        ->assertSee('Template updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($template->fresh())
+        ->requires_test_report->toBeTrue()
+        ->requires_ean->toBeTrue()
+        ->requires_country_of_origin->toBeTrue()
+        ->requires_warning_text->toBeFalse();
+});
+
 test('a template nothing is held to is deleted through the confirmation dialog', function () {
     [$user, $distributor] = newOrganizationMember();
 

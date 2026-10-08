@@ -121,7 +121,7 @@ class BrandController extends Controller
      * apart. A trade with no brands yet is still listed: it is where the
      * first one gets added.
      *
-     * @return array<array{id: int, label: string, status: string, statusLabel: string, canAddBrand: bool, brands: array<array{id: int, name: string, products_count: int}>}>
+     * @return array<array{id: int, label: string, status: string, statusLabel: string, isExpired: bool, canAddBrand: bool, brands: array<array{id: int, name: string, products_count: int}>}>
      */
     protected function connections(Request $request, Organization $organization): array
     {
@@ -134,7 +134,8 @@ class BrandController extends Controller
                     ? $connection->distributorOrganization->name
                     : $this->counterpartyLabel($connection),
                 'status' => $connection->status->value,
-                'statusLabel' => $connection->status->label(),
+                'statusLabel' => $connection->statusLabel(),
+                'isExpired' => $connection->isPending() && $connection->isInvited() && $connection->isExpired(),
                 'canAddBrand' => $request->user()->can('create', [Brand::class, $connection]),
                 'brands' => $connection->brands
                     ->map(fn (Brand $brand) => [
