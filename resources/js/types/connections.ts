@@ -1,3 +1,4 @@
+import type { ProductReviewStatus } from './products';
 export type SupplierConnectionStatus =
     | 'pending'
     | 'active'
@@ -13,10 +14,17 @@ export type SupplierConnection = {
     isClaimed: boolean;
     /** Whether the claim link has ever been mailed. */
     isInvited: boolean;
+    /** Invited, never answered, and the link has run out. */
+    isExpired: boolean;
     isAssignable: boolean;
     canResend: boolean;
     canRestore: boolean;
     productsCount: number;
+    brandsCount: number;
+    /** The supplier's products counted per stage of the review. */
+    productsByStatus: Record<ProductReviewStatus, number>;
+    /** When any of the supplier's products last changed. */
+    lastActivityAt: string | null;
     expiresAt: string | null;
     createdAt: string | null;
 };

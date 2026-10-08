@@ -13,7 +13,7 @@ test('a brand is named under a supplier from the brands page', function () {
     $page = visit(route('brands.index', ['current_organization' => $distributor->slug]));
 
     $page->assertSee('No brands yet')
-        ->click('[data-test="brand-connection"]:has-text("Acme Supplies") [data-test="brand-add-button"]')
+        ->click('@brand-add-button')
         ->assertSee('Add a brand')
         ->fill('@inline-brand-name', 'Magna-Tiles')
         ->click('@inline-brand-submit')
@@ -35,7 +35,7 @@ test('the new brand dialog stays open and shows the message for a duplicate name
 
     $page = visit(route('brands.index', ['current_organization' => $distributor->slug]));
 
-    $page->click('[data-test="brand-connection"]:has-text("Acme Supplies") [data-test="brand-add-button"]')
+    $page->click('@brand-add-button')
         ->fill('@inline-brand-name', 'magna-tiles')
         ->click('@inline-brand-submit')
         ->assertSee('Add a brand')
@@ -54,12 +54,11 @@ test('a supplier names a brand under one of its distributors', function () {
     $this->actingAs($supplierUser);
 
     visit(route('brands.index', ['current_organization' => $supplier->slug]))
-        ->assertSee('Alpine Trading AG')
-        ->click('[data-test="brand-connection"]:has-text("Alpine Trading AG") [data-test="brand-add-button"]')
+        ->click('@brand-add-button')
         ->fill('@inline-brand-name', 'Magna-Tiles')
         ->click('@inline-brand-submit')
         ->assertSee('Brand created.')
-        ->assertSee('Magna-Tiles')
+        ->assertSeeIn('[data-test="brand-row"]:has-text("Magna-Tiles")', 'Alpine Trading AG')
         ->assertNoJavaScriptErrors();
 
     expect($supplier->suppliedBrands()->where('brands.name', 'Magna-Tiles')->exists())->toBeTrue();
@@ -74,7 +73,8 @@ test('a brand is renamed through the edit dialog', function () {
 
     $page = visit(route('brands.index', ['current_organization' => $distributor->slug]));
 
-    $page->click('[data-test="brand-row"]:has-text("Magna Tiles") [data-test="brand-edit-button"]')
+    $page->click('[data-test="brand-row"]:has-text("Magna Tiles") [data-test="brand-actions"]')
+        ->click('@brand-edit-button')
         ->assertSee('Rename brand')
         ->fill('@brand-name', 'Magna-Tiles')
         ->click('@save-brand-submit')
@@ -94,7 +94,8 @@ test('an unused brand is deleted through the confirmation dialog', function () {
 
     $page = visit(route('brands.index', ['current_organization' => $distributor->slug]));
 
-    $page->click('[data-test="brand-row"]:has-text("tigerbox") [data-test="brand-delete-button"]')
+    $page->click('[data-test="brand-row"]:has-text("tigerbox") [data-test="brand-actions"]')
+        ->click('@brand-delete-button')
         ->assertSee('This action cannot be undone.')
         ->click('@delete-brand-confirm')
         ->assertSee('Brand deleted.')
@@ -118,7 +119,8 @@ test('the delete dialog refuses a brand that is still on a product', function ()
 
     $page = visit(route('brands.index', ['current_organization' => $distributor->slug]));
 
-    $page->click('[data-test="brand-row"]:has-text("Magna-Tiles") [data-test="brand-delete-button"]')
+    $page->click('[data-test="brand-row"]:has-text("Magna-Tiles") [data-test="brand-actions"]')
+        ->click('@brand-delete-button')
         ->assertSee('is still carried by 2 products')
         ->assertMissing('@delete-brand-confirm')
         ->assertNoJavaScriptErrors();
@@ -136,8 +138,7 @@ test('a member sees the brand list without the create, rename and delete control
     visit(route('brands.index', ['current_organization' => $distributor->slug]))
         ->assertSee('Magna-Tiles')
         ->assertMissing('@brand-add-button')
-        ->assertMissing('@brand-edit-button')
-        ->assertMissing('@brand-delete-button')
+        ->assertMissing('@brand-actions')
         ->assertNoJavaScriptErrors();
 });
 
@@ -155,5 +156,42 @@ test('a trade that was turned down is labelled declined, not revoked', function 
         ->assertSee('Atlas Novelty')
         ->assertSee('Declined')
         ->assertDontSee('Revoked')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * One list for every trade: narrowed to a supplier from the suppliers
+ * page, and asked which supplier a new brand is for when it could be any.
+ */
+test('the brand list is narrowed to one supplier and a new brand asks which supplier it is for', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    $acme = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme Supplies']);
+    $other = newSupplierConnection($distributor, attributes: ['company_name' => 'Baltic Plastics']);
+
+    carriedBrand($acme, 'Magna-Tiles');
+    carriedBrand($other, 'Saarplast');
+
+    $this->actingAs($user);
+
+    visit(route('brands.index', ['current_organization' => $distributor->slug]))
+        ->assertSee('Magna-Tiles')
+        ->assertSee('Saarplast')
+        ->fill('@brand-search', 'saar')
+        ->assertSee('Saarplast')
+        ->assertDontSee('Magna-Tiles')
+        ->fill('@brand-search', '')
+        ->click('@brand-add-button')
+        ->click('[data-test="brand-add-for"]:has-text("Baltic Plastics")')
+        ->fill('@inline-brand-name', 'Baltica')
+        ->click('@inline-brand-submit')
+        ->assertSee('Brand created.')
+        ->assertNoJavaScriptErrors();
+
+    expect($other->brands()->where('name', 'Baltica')->exists())->toBeTrue();
+
+    visit(route('brands.index', ['current_organization' => $distributor->slug, 'supplier' => $acme->id]))
+        ->assertSee('Magna-Tiles')
+        ->assertDontSee('Saarplast')
         ->assertNoJavaScriptErrors();
 });

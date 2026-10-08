@@ -26,7 +26,7 @@ test('a supplier is invited through the invite supplier dialog', function () {
         ->click('@invite-supplier-submit')
         ->assertSee('Acme Supplies AG')
         ->assertSee('compliance@acme.test')
-        ->assertSee('Pending')
+        ->assertSeeIn('@supplier-group-waiting', 'Invitation pending')
         ->assertNoJavaScriptErrors();
 
     expect(SupplierConnection::sole())
@@ -57,8 +57,10 @@ test('a supplier is added without an invitation and invited later from the list'
         ->assertSee('Not invited')
         ->click('@supplier-invite-button')
         ->assertSee('Invitation sent.')
-        ->assertSee('Pending')
+        ->assertSee('Invitation pending')
         ->assertMissing('@supplier-invite-button')
+        /** Once invited, chasing an answer is the row's spelled-out move. */
+        ->assertSeeIn('@supplier-resend-button', 'Resend invitation')
         ->assertNoJavaScriptErrors();
 
     Notification::assertSentOnDemandTimes(SupplierConnectionInvitation::class, 1);

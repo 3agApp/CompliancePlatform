@@ -117,6 +117,8 @@ export type BrandConnection = {
     label: string;
     status: SupplierConnectionStatus;
     statusLabel: string;
+    /** Invited, never answered, and the link has run out. */
+    isExpired: boolean;
     canAddBrand: boolean;
     brands: Brand[];
 };

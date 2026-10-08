@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { ChevronRight, Inbox, Plus, UserPlus } from 'lucide-react';
 import CompletenessMeter from '@/components/completeness-meter';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
+import ReviewProgress, { STAGE_TONES } from '@/components/review-progress';
 import { Button } from '@/components/ui/button';
 import { formatDay, formatRelative } from '@/lib/format';
 import { t, tc } from '@/lib/i18n';
@@ -41,17 +42,6 @@ type Stat = {
     value: number;
     href: string;
     testId: string;
-};
-
-/**
- * The colour of each stage in the pipeline bar, matched to the status
- * badges so a stage reads the same here as it does on the product.
- */
-const STAGE_TONES: Record<ProductReviewStatus, string> = {
-    draft: 'bg-muted-foreground/30',
-    in_review: 'bg-sky-500 dark:bg-sky-400',
-    changes_requested: 'bg-amber-500 dark:bg-amber-400',
-    approved: 'bg-emerald-500 dark:bg-emerald-400',
 };
 
 /**
@@ -432,11 +422,6 @@ function SupplierProgress({
 
             <ul className="divide-y">
                 {suppliers.map((supplier) => {
-                    const share = (count: number) =>
-                        supplier.products === 0
-                            ? 0
-                            : (count / supplier.products) * 100;
-
                     return (
                         <li
                             key={supplier.id}
@@ -475,59 +460,15 @@ function SupplierProgress({
                                 </span>
                             </div>
 
-                            <div className="grid gap-1.5">
-                                <div
-                                    className="bg-muted flex h-1.5 overflow-hidden rounded-full"
-                                    aria-hidden
-                                >
-                                    <div
-                                        className={STAGE_TONES.approved}
-                                        style={{
-                                            width: `${share(supplier.approved)}%`,
-                                        }}
-                                    />
-                                    <div
-                                        className={STAGE_TONES.in_review}
-                                        style={{
-                                            width: `${share(supplier.inReview)}%`,
-                                        }}
-                                    />
-                                    <div
-                                        className={
-                                            STAGE_TONES.changes_requested
-                                        }
-                                        style={{
-                                            width: `${share(supplier.changesRequested)}%`,
-                                        }}
-                                    />
-                                </div>
-                                <span className="text-muted-foreground text-xs">
-                                    {[
-                                        supplier.approved > 0
-                                            ? t(':count approved', {
-                                                  count: supplier.approved,
-                                              })
-                                            : null,
-                                        supplier.inReview > 0
-                                            ? t(':count in review', {
-                                                  count: supplier.inReview,
-                                              })
-                                            : null,
-                                        supplier.changesRequested > 0
-                                            ? t(':count sent back', {
-                                                  count: supplier.changesRequested,
-                                              })
-                                            : null,
-                                        supplier.draft > 0
-                                            ? t(':count draft', {
-                                                  count: supplier.draft,
-                                              })
-                                            : null,
-                                    ]
-                                        .filter(Boolean)
-                                        .join(' · ') || t('No products yet')}
-                                </span>
-                            </div>
+                            <ReviewProgress
+                                counts={{
+                                    draft: supplier.draft,
+                                    in_review: supplier.inReview,
+                                    changes_requested:
+                                        supplier.changesRequested,
+                                    approved: supplier.approved,
+                                }}
+                            />
 
                             <span className="text-muted-foreground text-sm sm:text-right">
                                 {formatRelative(supplier.lastActivity) ?? '—'}

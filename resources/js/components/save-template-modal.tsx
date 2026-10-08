@@ -1,4 +1,5 @@
 import { Form } from '@inertiajs/react';
+import { Info } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { t } from '@/lib/i18n';
+import { t, tc } from '@/lib/i18n';
 import { store, update } from '@/routes/categories/templates';
 import type {
     ProductCategory,
@@ -60,7 +61,7 @@ export default function SaveTemplateModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-3xl">
                 <Form
                     key={`${template?.id ?? 'new'}-${String(open)}`}
                     {...form}
@@ -100,31 +101,10 @@ export default function SaveTemplateModal({
                                 <InputError message={errors.name} />
                             </div>
 
-                            <div className="grid max-h-[50vh] gap-6 overflow-y-auto pr-1">
-                                <RequirementGroup
-                                    title={t('Documents')}
-                                    description={t(
-                                        'Papers that have to be filed against the product.',
-                                    )}
-                                    options={availableRequirements.filter(
-                                        (requirement) =>
-                                            requirement.group === 'document',
-                                    )}
-                                    template={template}
-                                />
-
-                                <RequirementGroup
-                                    title={t('Product data')}
-                                    description={t(
-                                        'Fields on the product that have to be filled in.',
-                                    )}
-                                    options={availableRequirements.filter(
-                                        (requirement) =>
-                                            requirement.group === 'data',
-                                    )}
-                                    template={template}
-                                />
-                            </div>
+                            <RequirementPicker
+                                availableRequirements={availableRequirements}
+                                template={template}
+                            />
 
                             <DialogFooter className="gap-2">
                                 <Button
@@ -153,68 +133,226 @@ export default function SaveTemplateModal({
     );
 }
 
-function RequirementGroup({
-    title,
-    description,
-    options,
+/**
+ * The requirements that are answers about the product's safety rather
+ * than the numbers it is known by, matching the product page's sections.
+ */
+const COMPLIANCE_REQUIREMENTS: ProductRequirementKey[] = [
+    'requires_age_grading',
+    'requires_safety_notice',
+    'requires_warning_text',
+    'requires_material_information',
+    'requires_usage_restrictions',
+    'requires_safety_instructions',
+    'requires_additional_notes',
+];
+
+/**
+ * Every requirement a template can ask for, in the three groups a product
+ * page answers them in, with what is ticked counted as it changes.
+ *
+ * The ticks live here rather than in each checkbox, so a group can be
+ * ticked or cleared in one go and the totals stay true while the person
+ * works through the list.
+ */
+function RequirementPicker({
+    availableRequirements,
     template,
 }: {
-    title: string;
-    description: string;
-    options: ProductRequirementOption[];
+    availableRequirements: ProductRequirementOption[];
     template?: ProductTemplate;
 }) {
-    return (
-        <fieldset className="grid gap-3">
-            <legend className="grid gap-0.5">
-                <span className="text-sm font-medium">{title}</span>
-                <span className="text-muted-foreground text-xs">
-                    {description}
-                </span>
-            </legend>
+    const [checked, setChecked] = useState<Set<ProductRequirementKey>>(
+        () => new Set(template?.requirements ?? []),
+    );
 
-            <div className="grid gap-2 sm:grid-cols-2">
-                {options.map((option) => (
-                    <RequirementCheckbox
-                        key={option.value}
-                        option={option}
-                        defaultChecked={
-                            template?.requirements.includes(option.value) ??
-                            false
-                        }
-                    />
-                ))}
+    const setMany = (values: ProductRequirementKey[], on: boolean) =>
+        setChecked((current) => {
+            const next = new Set(current);
+
+            for (const value of values) {
+                if (on) {
+                    next.add(value);
+                } else {
+                    next.delete(value);
+                }
+            }
+
+            return next;
+        });
+
+    const groups = [
+        {
+            key: 'documents',
+            title: t('Documents to upload'),
+            options: availableRequirements.filter(
+                (requirement) => requirement.group === 'document',
+            ),
+        },
+        {
+            key: 'identification',
+            title: t('Identification'),
+            options: availableRequirements.filter(
+                (requirement) =>
+                    requirement.group === 'data' &&
+                    !COMPLIANCE_REQUIREMENTS.includes(requirement.value),
+            ),
+        },
+        {
+            key: 'compliance',
+            title: t('Compliance claims'),
+            options: availableRequirements.filter((requirement) =>
+                COMPLIANCE_REQUIREMENTS.includes(requirement.value),
+            ),
+        },
+    ];
+
+    return (
+        <div className="grid gap-4">
+            {template !== undefined && template.products_count > 0 ? (
+                <p
+                    className="flex items-start gap-2 rounded-lg bg-sky-500/10 px-3 py-2.5 text-sm text-sky-900 dark:text-sky-200"
+                    data-test="template-impact"
+                >
+                    <Info className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                        <span className="font-medium">
+                            {tc(
+                                '1 product uses this template.|:count products use this template.',
+                                template.products_count,
+                            )}
+                        </span>{' '}
+                        {t(
+                            'Their checklists and scores change as soon as you save.',
+                        )}
+                    </span>
+                </p>
+            ) : null}
+
+            <p
+                className="text-muted-foreground text-sm"
+                data-test="template-requirement-total"
+            >
+                {t(':checked of :total things asked for', {
+                    checked: checked.size,
+                    total: availableRequirements.length,
+                })}
+            </p>
+
+            <div className="grid max-h-[50vh] auto-rows-max gap-3 overflow-y-auto pr-1">
+                {groups.map((group) => {
+                    const values = group.options.map((option) => option.value);
+                    const ticked = values.filter((value) =>
+                        checked.has(value),
+                    ).length;
+
+                    return (
+                        <fieldset
+                            key={group.key}
+                            className="overflow-hidden rounded-xl border"
+                            data-test={`template-group-${group.key}`}
+                        >
+                            <legend className="sr-only">{group.title}</legend>
+                            <div className="bg-muted/40 flex items-center justify-between gap-3 border-b px-4 py-2.5">
+                                <span className="flex items-center gap-2 text-sm font-medium">
+                                    {group.title}
+                                    <span className="bg-muted-foreground/15 text-muted-foreground rounded-full px-1.5 text-xs tabular-nums">
+                                        {t(':checked of :total', {
+                                            checked: ticked,
+                                            total: values.length,
+                                        })}
+                                    </span>
+                                </span>
+                                <span className="text-muted-foreground flex gap-3 text-xs">
+                                    <button
+                                        type="button"
+                                        className="hover:text-foreground underline underline-offset-2"
+                                        onClick={() => setMany(values, true)}
+                                    >
+                                        {t('All')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="hover:text-foreground underline underline-offset-2"
+                                        onClick={() => setMany(values, false)}
+                                    >
+                                        {t('None')}
+                                    </button>
+                                </span>
+                            </div>
+
+                            <div className="grid sm:grid-cols-2">
+                                {group.options.map((option) => (
+                                    <RequirementCheckbox
+                                        key={option.value}
+                                        option={option}
+                                        checked={checked.has(option.value)}
+                                        onCheckedChange={(on) =>
+                                            setMany([option.value], on)
+                                        }
+                                    />
+                                ))}
+                            </div>
+                        </fieldset>
+                    );
+                })}
             </div>
-        </fieldset>
+        </div>
     );
 }
 
 function RequirementCheckbox({
     option,
-    defaultChecked,
+    checked,
+    onCheckedChange,
 }: {
     option: ProductRequirementOption;
-    defaultChecked: boolean;
+    checked: boolean;
+    onCheckedChange: (checked: boolean) => void;
 }) {
-    const [checked, setChecked] = useState(defaultChecked);
     const id = `template-${option.value}`;
 
+    /**
+     * What the tick does to the score, said only where it is unusual: the
+     * papers that weigh more than a field, and the one that weighs nothing.
+     */
+    const weightHint =
+        option.weight === 0
+            ? t('Not scored')
+            : option.weight > 1
+              ? t('Counts ×:weight', { weight: option.weight })
+              : null;
+
     return (
-        <div className="flex items-center gap-2">
+        <div className="hover:bg-muted/40 flex items-center gap-2.5 border-t px-4 py-2.5 max-sm:first:border-t-0 sm:[&:nth-child(-n+2)]:border-t-0">
             <Checkbox
                 id={id}
                 data-test={`template-${toHandle(option.value)}`}
                 checked={checked}
-                onCheckedChange={(value) => setChecked(value === true)}
+                onCheckedChange={(value) => onCheckedChange(value === true)}
             />
             <input
                 type="hidden"
                 name={option.value}
                 value={checked ? '1' : '0'}
             />
-            <Label htmlFor={id} className="text-sm font-normal">
+            <Label
+                htmlFor={id}
+                className="flex-1 cursor-pointer text-sm font-normal"
+            >
                 {option.label}
             </Label>
+            {weightHint ? (
+                <span
+                    className={
+                        option.weight === 0
+                            ? 'text-muted-foreground text-xs'
+                            : 'text-xs text-sky-700 dark:text-sky-400'
+                    }
+                >
+                    {weightHint}
+                </span>
+            ) : null}
         </div>
     );
 }

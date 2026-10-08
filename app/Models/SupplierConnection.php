@@ -256,6 +256,21 @@ class SupplierConnection extends Model
     }
 
     /**
+     * Name where the relationship stands, the way the distributor thinks of
+     * it: a pending connection is told apart by whether the invitation has
+     * gone out, and whether it has run out since.
+     */
+    public function statusLabel(): string
+    {
+        return match (true) {
+            $this->isPending() && ! $this->isInvited() => __('Not invited'),
+            $this->isPending() && $this->isExpired() => __('Invitation expired'),
+            $this->isPending() => __('Invitation pending'),
+            default => $this->status->label(),
+        };
+    }
+
+    /**
      * Determine if a supplier organization has claimed the connection.
      */
     public function isClaimed(): bool
