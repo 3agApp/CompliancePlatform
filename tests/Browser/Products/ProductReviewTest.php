@@ -294,3 +294,39 @@ test('the catalogue shows where each product stands and can be narrowed to one s
         ->assertQueryStringHas('status', 'in_review')
         ->assertNoJavaScriptErrors();
 });
+
+/**
+ * A supplier works down their to-do without going back to the list: the
+ * bar says where they are, and submitting can carry straight on.
+ */
+test('a supplier submits one product and lands on the next in their to-do', function () {
+    [, $distributor] = newOrganizationMember();
+    [$supplierUser, $supplier] = newSupplierMember();
+
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $first = Product::factory()->for($distributor)->create([
+        'name' => 'Magnetic Building Set',
+        'supplier_connection_id' => $connection->id,
+        'created_at' => now()->subDays(2),
+    ]);
+    Product::factory()->for($distributor)->create([
+        'name' => 'Wooden Train',
+        'supplier_connection_id' => $connection->id,
+        'created_at' => now()->subDay(),
+    ]);
+
+    $this->actingAs($supplierUser);
+
+    visit(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $first->id]))
+        ->assertSeeIn('@product-todo-position', '1 of 2')
+        ->assertSeeIn('@product-todo-next', 'Wooden Train')
+        ->click('@product-submit-and-next')
+        ->assertSee('Submitted Magnetic Building Set. Next up: Wooden Train.')
+        ->assertSee('Wooden Train')
+        /** The submitted one has left the to-do, so this is all that is left. */
+        ->assertSeeIn('@product-todo-position', '1 of 1')
+        ->assertNoJavaScriptErrors();
+
+    expect($first->fresh()->review_status)->toBe(ProductReviewStatus::InReview);
+});

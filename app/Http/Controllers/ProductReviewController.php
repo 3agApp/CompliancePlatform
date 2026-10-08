@@ -7,6 +7,7 @@ use App\Http\Requests\Products\ReopenProductReviewRequest;
 use App\Http\Requests\Products\RequestProductChangesRequest;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Support\ProductQueue;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -39,6 +40,29 @@ class ProductReviewController extends Controller
         abort_unless($product->review_status->isSubmittable(), 409);
 
         $this->review->submit($product, $request->user(), $currentOrganization);
+
+        /**
+         * "Submit and go to next": straight on to the product named, as
+         * long as it is still in the organization's own queue -- anything
+         * else is not the next piece of work, and the page stays put.
+         */
+        $next = $request->integer('next') > 0
+            ? ProductQueue::for($currentOrganization, $currentOrganization->isSupplier())
+                ->whereKey($request->integer('next'))
+                ->first()
+            : null;
+
+        if ($next instanceof Product) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('Submitted :name. Next up: :next.', [
+                'name' => $product->name,
+                'next' => $next->name,
+            ])]);
+
+            return to_route('products.edit', [
+                'current_organization' => $currentOrganization->slug,
+                'product' => $next->id,
+            ]);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Submitted for review.')]);
 

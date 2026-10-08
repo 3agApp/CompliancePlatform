@@ -17,6 +17,7 @@ use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
 use App\Http\Controllers\PublicProductController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SerialLabelController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
 use App\Http\Controllers\Suppliers\SupplierConnectionClaimController;
@@ -81,6 +82,7 @@ Route::prefix('{current_organization}')
     ->middleware(['auth', 'verified', EnsureOrganizationMembership::class])
     ->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
+        Route::get('search', SearchController::class)->name('search');
 
         Route::scopeBindings()->group(function () {
             Route::get('products', [ProductController::class, 'index'])->name('products.index');

@@ -1,5 +1,5 @@
 import { Form } from '@inertiajs/react';
-import { Check, RotateCcw, Send, Undo2 } from 'lucide-react';
+import { Check, ChevronRight, RotateCcw, Send, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import ApproveProductModal from '@/components/approve-product-modal';
 import CompletenessMeter from '@/components/completeness-meter';
@@ -21,6 +21,8 @@ type ActionProps = {
     product: ProductDetail;
     permissions: ProductPermissions;
     completeness: ProductCompleteness;
+    /** The next product in the viewer's to-do, offered after a submit. */
+    nextProduct?: { id: number; name: string } | null;
 };
 
 type StatusProps = {
@@ -209,6 +211,7 @@ export function ProductReviewActions({
     product,
     permissions,
     completeness,
+    nextProduct = null,
 }: ActionProps) {
     const [changesDialogOpen, setChangesDialogOpen] = useState(false);
     const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
@@ -228,12 +231,42 @@ export function ProductReviewActions({
                     {({ processing }) => (
                         <Button
                             type="submit"
+                            variant={nextProduct ? 'outline' : 'default'}
                             data-test="product-submit-review"
                             disabled={processing}
                         >
                             <Send className="h-4 w-4" />{' '}
                             {t('Submit for review')}
                         </Button>
+                    )}
+                </Form>
+            ) : null}
+
+            {/*
+             * The supplier working down a list: hand this one over and land
+             * on the next, without a trip back to the list in between.
+             */}
+            {canSubmit && nextProduct ? (
+                <Form {...submit.form([organizationSlug, product.id])}>
+                    {({ processing }) => (
+                        <>
+                            <input
+                                type="hidden"
+                                name="next"
+                                value={nextProduct.id}
+                            />
+                            <Button
+                                type="submit"
+                                data-test="product-submit-and-next"
+                                disabled={processing}
+                                title={t('Then open :name', {
+                                    name: nextProduct.name,
+                                })}
+                            >
+                                {t('Submit and go to next')}
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </>
                     )}
                 </Form>
             ) : null}

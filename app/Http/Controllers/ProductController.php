@@ -24,6 +24,7 @@ use App\Models\ProductEvent;
 use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
 use App\Support\ProductChanges;
+use App\Support\ProductQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -214,6 +215,11 @@ class ProductController extends Controller
                 ])
                 : null,
             'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($product->organization),
+            /**
+             * Where the product sits in the organization's own to-do, so the
+             * page can step to the next one without a trip back to the list.
+             */
+            'todo' => $this->todo($currentOrganization, $isSupplier, $product),
         ]);
     }
 
@@ -350,6 +356,65 @@ class ProductController extends Controller
         return collect(ProductReviewStatus::cases())
             ->mapWithKeys(fn (ProductReviewStatus $status) => [$status->value => (int) ($counts[$status->value] ?? 0)])
             ->all();
+    }
+
+    /**
+     * Get where a product sits in the organization's queue: its place, the
+     * ones either side of it, and what the queue holds.
+     *
+     * A product that is not in the queue -- approved, or waiting on the
+     * other side -- has no place in it, and "next" is then simply the
+     * head of the queue: the thing to pick up after this one.
+     *
+     * @return array{position: int|null, total: int, previous: array{id: int, name: string}|null, next: array{id: int, name: string}|null, counts: array<string, int>}|null
+     */
+    protected function todo(Organization $organization, bool $asSupplier, Product $product): ?array
+    {
+        /**
+         * The ids alone, in order: enough to find the product's place and
+         * its neighbours without hydrating a model for every draft in a
+         * long backlog. Only the two neighbours are loaded by name.
+         */
+        $ids = ProductQueue::for($organization, $asSupplier)
+            ->toBase()
+            ->pluck('products.id')
+            ->map(fn (mixed $id) => (int) $id)
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return null;
+        }
+
+        $index = $ids->search($product->id, strict: true);
+        $index = $index === false ? null : $index;
+
+        $previousId = $index === null || $index === 0 ? null : $ids->get($index - 1);
+        $nextId = $ids->get($index === null ? 0 : $index + 1);
+
+        $names = Product::query()
+            ->whereKey(array_filter([$previousId, $nextId]))
+            ->pluck('name', 'id');
+
+        $named = fn (?int $id): ?array => $id !== null && $names->has($id)
+            ? ['id' => $id, 'name' => (string) $names->get($id)]
+            : null;
+
+        $counts = ProductQueue::for($organization, $asSupplier)
+            ->reorder()
+            ->toBase()
+            ->selectRaw('products.review_status as status, count(*) as aggregate')
+            ->groupBy('products.review_status')
+            ->pluck('aggregate', 'status')
+            ->map(fn (mixed $count) => (int) $count)
+            ->all();
+
+        return [
+            'position' => $index === null ? null : $index + 1,
+            'total' => $ids->count(),
+            'previous' => $named($previousId),
+            'next' => $named($nextId),
+            'counts' => $counts,
+        ];
     }
 
     /**
