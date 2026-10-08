@@ -193,5 +193,10 @@ test('the brand list is narrowed to one supplier and a new brand asks which supp
     visit(route('brands.index', ['current_organization' => $distributor->slug, 'supplier' => $acme->id]))
         ->assertSee('Magna-Tiles')
         ->assertDontSee('Saarplast')
+        /** Choosing another supplier keeps the choice in the address. */
+        ->click('@brand-connection-filter')
+        ->click('[role="option"]:has-text("Baltic Plastics")')
+        ->assertSee('Saarplast')
+        ->assertQueryStringHas('supplier', (string) $other->id)
         ->assertNoJavaScriptErrors();
 });

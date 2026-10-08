@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Copyright,
     MoreHorizontal,
@@ -8,7 +8,7 @@ import {
     SearchX,
     Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import CreateBrandModal from '@/components/create-brand-modal';
 import DeleteBrandModal from '@/components/delete-brand-modal';
 import RenameBrandModal from '@/components/rename-brand-modal';
@@ -89,6 +89,31 @@ export default function BrandsIndex({
             ? requested
             : ALL;
     });
+
+    /**
+     * Keep the filter in the address without a request, so a reload, a
+     * shared link, or the redirect after a rename comes back to the same
+     * supplier rather than to all of them.
+     */
+    useEffect(() => {
+        if (connectionFromUrl(window.location.href) === connectionFilter) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+
+        if (connectionFilter === ALL) {
+            url.searchParams.delete('supplier');
+        } else {
+            url.searchParams.set('supplier', connectionFilter);
+        }
+
+        router.replace({
+            url: url.pathname + url.search,
+            preserveScroll: true,
+            preserveState: true,
+        });
+    }, [connectionFilter, page.url]);
 
     const [renameOpen, setRenameOpen] = useState(false);
     const [brandToRename, setBrandToRename] = useState<Brand | null>(null);

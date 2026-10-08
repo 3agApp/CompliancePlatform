@@ -199,11 +199,15 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
         $supplier = $connection->supplierOrganization;
+
+        $lastActivity = ($updated = $connection->getAttribute('products_max_updated_at')) === null
+            ? null
+            : CarbonImmutable::parse($updated);
 
         return [
             'id' => $connection->id,
@@ -226,9 +230,14 @@ class SupplierConnectionController extends Controller
             'productsByStatus' => collect(ProductReviewStatus::cases())
                 ->mapWithKeys(fn (ProductReviewStatus $status) => [$status->value => (int) ($connection->getAttribute("{$status->value}_count") ?? 0)])
                 ->all(),
-            'lastActivityAt' => ($updated = $connection->getAttribute('products_max_updated_at')) === null
-                ? null
-                : CarbonImmutable::parse($updated)->toIso8601String(),
+            'lastActivityAt' => $lastActivity?->toIso8601String(),
+            /**
+             * Drafts that have not moved in a while are the sign a supplier
+             * has forgotten them; the dashboard uses the same rule.
+             */
+            'isQuiet' => $connection->isActive()
+                && (int) ($connection->getAttribute('draft_count') ?? 0) > 0
+                && ($lastActivity === null || $lastActivity->lt(now()->subDays(SupplierConnection::QUIET_AFTER_DAYS))),
             'expiresAt' => $connection->expires_at?->toIso8601String(),
             'createdAt' => $connection->created_at?->toIso8601String(),
         ];

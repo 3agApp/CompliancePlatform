@@ -25,12 +25,6 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
-    /**
-     * How many days without a change before a supplier with drafts counts
-     * as having gone quiet.
-     */
-    protected const int QUIET_AFTER_DAYS = 14;
-
     public function __invoke(Request $request, Organization $currentOrganization): Response
     {
         Gate::authorize('viewAny', [Product::class, $currentOrganization]);
@@ -116,7 +110,7 @@ class DashboardController extends Controller
     {
         $sentBack = $organization->products()->inReviewStatus(ProductReviewStatus::ChangesRequested);
 
-        $quietSince = now()->subDays(self::QUIET_AFTER_DAYS);
+        $quietSince = now()->subDays(SupplierConnection::QUIET_AFTER_DAYS);
 
         return [
             'sentBack' => [

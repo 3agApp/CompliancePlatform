@@ -65,6 +65,12 @@ class SupplierConnection extends Model
     public const int CLAIM_EXPIRY_DAYS = 14;
 
     /**
+     * How many days without a change before a supplier with drafts counts
+     * as having gone quiet. One number, so every page agrees on who it is.
+     */
+    public const int QUIET_AFTER_DAYS = 14;
+
+    /**
      * Bootstrap the model and its traits.
      */
     protected static function boot(): void

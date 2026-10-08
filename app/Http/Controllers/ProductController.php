@@ -740,6 +740,8 @@ class ProductController extends Controller
                 : ($asSupplier ? $connection->distributorOrganization->name : $this->connectionLabel($connection)),
             'connection_status' => $connection?->status->value,
             'connection_is_invited' => $connection?->isInvited() ?? false,
+            'connection_status_label' => $connection?->statusLabel(),
+            'connection_is_expired' => $connection !== null && $connection->isPending() && $connection->isInvited() && $connection->isExpired(),
             'created_at' => $product->created_at?->toISOString(),
             'updated_at' => $product->updated_at?->toISOString(),
             'public_url' => $product->publicUrl(),

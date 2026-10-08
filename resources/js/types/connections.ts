@@ -25,6 +25,8 @@ export type SupplierConnection = {
     productsByStatus: Record<ProductReviewStatus, number>;
     /** When any of the supplier's products last changed. */
     lastActivityAt: string | null;
+    /** Active, with drafts that have not moved in a while. */
+    isQuiet: boolean;
     expiresAt: string | null;
     createdAt: string | null;
 };

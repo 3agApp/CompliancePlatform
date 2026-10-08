@@ -43,12 +43,6 @@ type Props = {
     permissions: SupplierConnectionPermissions;
 };
 
-/**
- * How many days without a change before a supplier with drafts reads as
- * having gone quiet, matching the dashboard.
- */
-const QUIET_AFTER_DAYS = 14;
-
 export default function SuppliersIndex({ connections, permissions }: Props) {
     const { currentOrganization } = usePage().props;
     const organizationSlug = currentOrganization?.slug ?? '';
@@ -368,17 +362,6 @@ function SupplierRow({
         query: { supplier: connection.id },
     }).url;
 
-    /**
-     * Drafts that have not moved in a fortnight are the sign a supplier
-     * has forgotten them, so the date says so.
-     */
-    const isQuiet =
-        connection.status === 'active' &&
-        connection.productsByStatus.draft > 0 &&
-        (connection.lastActivityAt === null ||
-            Date.now() - new Date(connection.lastActivityAt).getTime() >
-                QUIET_AFTER_DAYS * 86_400_000);
-
     return (
         <tr data-test="supplier-row" className="border-t">
             <td className="px-6 break-words">
@@ -417,7 +400,7 @@ function SupplierRow({
             <td
                 className={cn(
                     'px-6 whitespace-nowrap',
-                    isQuiet
+                    connection.isQuiet
                         ? 'text-amber-700 dark:text-amber-400'
                         : 'text-muted-foreground',
                 )}
