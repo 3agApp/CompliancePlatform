@@ -829,7 +829,13 @@ export default function Dashboard({
                     />
                 ) : null}
 
-                <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                <div
+                    className={cn(
+                        'grid items-start gap-4',
+                        (tiles.length > 0 || stats.products > 0) &&
+                            'lg:grid-cols-[minmax(0,1fr)_20rem]',
+                    )}
+                >
                     {/*
                      * The review queue leads while it holds anything, since
                      * that is the distributor's own move; when it is empty,
@@ -890,25 +896,26 @@ export default function Dashboard({
                         ) : null}
                     </div>
 
-                    <div
-                        className={cn(
-                            'grid gap-4',
-                            stats.products === 0 &&
-                                suppliers.length === 0 &&
-                                'sm:grid-cols-2 lg:col-span-2 lg:grid-cols-4',
-                        )}
-                    >
-                        {tiles.map((tile) => (
-                            <StatTile key={tile.testId} stat={tile} />
-                        ))}
+                    {/*
+                     * Only laid out when there is something to put in it:
+                     * before the first product a distributor has no tiles
+                     * and no activity, and an empty column reads as a page
+                     * that has not finished loading.
+                     */}
+                    {tiles.length > 0 || stats.products > 0 ? (
+                        <div className="grid gap-4">
+                            {tiles.map((tile) => (
+                                <StatTile key={tile.testId} stat={tile} />
+                            ))}
 
-                        {stats.products > 0 ? (
-                            <Activity
-                                activity={activity}
-                                organizationSlug={organizationSlug}
-                            />
-                        ) : null}
-                    </div>
+                            {stats.products > 0 ? (
+                                <Activity
+                                    activity={activity}
+                                    organizationSlug={organizationSlug}
+                                />
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </>

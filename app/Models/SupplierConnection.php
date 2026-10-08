@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use LogicException;
 
 /**
  * The link between a distributor and one of its suppliers, which doubles as
@@ -208,6 +209,14 @@ class SupplierConnection extends Model
      */
     public function supplierLastActivityAt(): ?CarbonImmutable
     {
+        /**
+         * Without the scope the answer would be null, which reads as "never
+         * did anything" -- the wrong answer, given quietly. Better to fail.
+         */
+        if (! array_key_exists('supplier_last_activity_at', $this->getAttributes())) {
+            throw new LogicException('Load the connection with withSupplierActivity() before asking for its last activity.');
+        }
+
         $value = $this->getAttribute('supplier_last_activity_at');
 
         return $value === null ? null : CarbonImmutable::parse($value);
