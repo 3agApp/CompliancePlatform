@@ -1,3 +1,4 @@
+import type { RequestPayload } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -143,7 +144,7 @@ export default function BulkEditProductsModal({
     );
 
     const submit = () => {
-        const data: Record<string, unknown> = {
+        const data: RequestPayload = {
             ids: products.map((product) => product.id),
         };
 

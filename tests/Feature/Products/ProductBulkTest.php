@@ -9,12 +9,13 @@ use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
  * @param  array<string, mixed>  $payload
  */
-function bulkUpdate(User $user, Organization $organization, array $payload): \Illuminate\Testing\TestResponse
+function bulkUpdate(User $user, Organization $organization, array $payload): TestResponse
 {
     return test()
         ->actingAs($user)
