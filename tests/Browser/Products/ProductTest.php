@@ -244,6 +244,12 @@ test('a save refused from another tab shows the details and says so in the addre
         'current_organization' => $organization->slug,
         'product' => $product->id,
     ]))
+        /**
+         * The history arrives after the page, and its answer puts the plain
+         * address back. Clicked before it lands, the tab can lose the race
+         * for the address bar.
+         */
+        ->waitForEvent('networkidle')
         ->fill('@product-ean', '123')
         ->click('@product-tab-history')
         ->assertQueryStringHas('tab', 'history')
