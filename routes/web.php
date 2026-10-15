@@ -9,6 +9,7 @@ use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\ProductAssessmentController;
+use App\Http\Controllers\ProductBulkController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
@@ -90,6 +91,9 @@ Route::prefix('{current_organization}')
             // Declared before products/{product} so "create" is a page, not a product key.
             Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
             Route::post('products', [ProductController::class, 'store'])->name('products.store');
+            // Likewise, so "bulk" is the selection on the list rather than a product key.
+            Route::patch('products/bulk', [ProductBulkController::class, 'update'])->name('products.bulk.update');
+            Route::delete('products/bulk', [ProductBulkController::class, 'destroy'])->name('products.bulk.destroy');
             Route::get('products/{product}', [ProductController::class, 'edit'])->name('products.edit');
             Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
             Route::delete('products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');

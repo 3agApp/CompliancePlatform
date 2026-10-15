@@ -87,6 +87,14 @@ class ProductController extends Controller
             'counterparties' => $this->counterparties($currentOrganization, $isSupplier),
             'filterableCategories' => $this->filterableCategories($currentOrganization, $isSupplier),
             'filterableBrands' => $this->filterableBrands($currentOrganization, $isSupplier),
+            /**
+             * What a change to the selected products may set. The brands and
+             * families are the filters' own lists, which for a distributor
+             * are already everything it keeps; a supplier is only offered
+             * the active flag and the country, so needs neither.
+             */
+            'availableTemplates' => $this->availableTemplates($currentOrganization),
+            'availableCountries' => CountryOfOrigin::options(),
             'filters' => $filters,
             'availableStatuses' => ProductReviewStatus::options(),
             'statusCounts' => $this->statusCounts($currentOrganization, $isSupplier, $filters),

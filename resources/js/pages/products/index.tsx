@@ -10,8 +10,11 @@ import {
     Plus,
     SearchX,
     Trash2,
+    X,
 } from 'lucide-react';
 import { useState } from 'react';
+import BulkDeleteProductsModal from '@/components/bulk-delete-products-modal';
+import BulkEditProductsModal from '@/components/bulk-edit-products-modal';
 import CompletenessMeter from '@/components/completeness-meter';
 import DeleteProductModal from '@/components/delete-product-modal';
 import ProductFilterBar from '@/components/product-filter-bar';
@@ -19,6 +22,7 @@ import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import { Badge } from '@/components/ui/badge';
 import PaginationArrow from '@/components/pagination-arrow';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -42,7 +46,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatRelative } from '@/lib/format';
-import { t, tn } from '@/lib/i18n';
+import { t, tc, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as categoriesIndex } from '@/routes/categories';
 import { show as productImportShow } from '@/routes/product-import';
@@ -50,6 +54,7 @@ import { create, edit, index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
     BrandOption,
+    CountryOption,
     OrganizationType,
     Paginated,
     Product,
@@ -59,6 +64,7 @@ import type {
     ProductPermissions,
     ProductReviewStatus,
     ProductReviewStatusOption,
+    ProductTemplateOption,
     SupplierConnectionOption,
 } from '@/types';
 
@@ -91,6 +97,8 @@ type Props = {
     counterparties: ProductCounterparty[];
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
+    availableTemplates: ProductTemplateOption[];
+    availableCountries: CountryOption[];
     filters: ProductFilters;
     availableStatuses: ProductReviewStatusOption[];
     /** How many products each tab would show, under the other filters. */
@@ -108,6 +116,8 @@ export default function ProductsIndex({
     counterparties,
     filterableCategories,
     filterableBrands,
+    availableTemplates,
+    availableCountries,
     filters,
     availableStatuses,
     statusCounts,
@@ -187,6 +197,48 @@ export default function ProductsIndex({
         setProductToDelete(product);
         setDeleteDialogOpen(true);
     };
+
+    /**
+     * The rows ticked for a change to many at once. Read against the page
+     * on screen, so a product ticked on another page, or filtered out since,
+     * is never part of a change the reader cannot see.
+     */
+    const canSelect =
+        permissions.canUpdateProduct || permissions.canDeleteProduct;
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const selectedProducts = products.data.filter((product) =>
+        selectedIds.has(product.id),
+    );
+    const allSelected =
+        products.data.length > 0 &&
+        selectedProducts.length === products.data.length;
+
+    const toggleProduct = (id: number, on: boolean) => {
+        setSelectedIds((current) => {
+            const next = new Set(current);
+
+            if (on) {
+                next.add(id);
+            } else {
+                next.delete(id);
+            }
+
+            return next;
+        });
+    };
+
+    const togglePage = (on: boolean) => {
+        setSelectedIds(
+            on
+                ? new Set(products.data.map((product) => product.id))
+                : new Set(),
+        );
+    };
+
+    const clearSelection = () => setSelectedIds(new Set());
+
+    const [bulkEditOpen, setBulkEditOpen] = useState(false);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     return (
         <>
@@ -279,12 +331,81 @@ export default function ProductsIndex({
                     />
                 ) : null}
 
+                {canSelect && selectedProducts.length > 0 ? (
+                    <div
+                        className="workspace-panel flex flex-wrap items-center gap-2 px-4 py-2"
+                        data-test="product-bulk-bar"
+                    >
+                        <p className="mr-auto text-sm font-medium">
+                            {tc(
+                                '1 product selected|:count products selected',
+                                selectedProducts.length,
+                            )}
+                        </p>
+                        {permissions.canUpdateProduct ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                data-test="product-bulk-edit"
+                                onClick={() => setBulkEditOpen(true)}
+                            >
+                                <Pencil /> {t('Edit…')}
+                            </Button>
+                        ) : null}
+                        {permissions.canDeleteProduct ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-destructive"
+                                data-test="product-bulk-delete"
+                                onClick={() => setBulkDeleteOpen(true)}
+                            >
+                                <Trash2 /> {t('Delete…')}
+                            </Button>
+                        ) : null}
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            data-test="product-bulk-clear"
+                            onClick={clearSelection}
+                        >
+                            <X /> {t('Clear selection')}
+                        </Button>
+                    </div>
+                ) : null}
+
                 {products.data.length > 0 ? (
                     <div className="workspace-table">
                         <Table className="md:min-w-3xl">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
-                                    <TableHead className="px-4 md:pl-6">
+                                    {canSelect ? (
+                                        <TableHead className="w-px pr-0 pl-4 md:pl-6">
+                                            <Checkbox
+                                                checked={
+                                                    allSelected
+                                                        ? true
+                                                        : selectedProducts.length >
+                                                            0
+                                                          ? 'indeterminate'
+                                                          : false
+                                                }
+                                                onCheckedChange={(checked) =>
+                                                    togglePage(checked === true)
+                                                }
+                                                aria-label={t(
+                                                    'Select all products on this page',
+                                                )}
+                                                data-test="product-select-all"
+                                            />
+                                        </TableHead>
+                                    ) : null}
+                                    <TableHead
+                                        className={cn(
+                                            'px-4',
+                                            !canSelect && 'md:pl-6',
+                                        )}
+                                    >
                                         {t('Name')}
                                     </TableHead>
                                     <TableHead className="w-px px-4">
@@ -323,8 +444,40 @@ export default function ProductsIndex({
                                     <TableRow
                                         key={product.id}
                                         data-test="product-row"
+                                        data-state={
+                                            selectedIds.has(product.id)
+                                                ? 'selected'
+                                                : undefined
+                                        }
                                     >
-                                        <TableCell className="min-w-48 px-4 font-medium whitespace-normal md:pl-6">
+                                        {canSelect ? (
+                                            <TableCell className="w-px pr-0 pl-4 md:pl-6">
+                                                <Checkbox
+                                                    checked={selectedIds.has(
+                                                        product.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        toggleProduct(
+                                                            product.id,
+                                                            checked === true,
+                                                        )
+                                                    }
+                                                    aria-label={t(
+                                                        'Select :name',
+                                                        { name: product.name },
+                                                    )}
+                                                    data-test="product-select"
+                                                />
+                                            </TableCell>
+                                        ) : null}
+                                        <TableCell
+                                            className={cn(
+                                                'min-w-48 px-4 font-medium whitespace-normal',
+                                                !canSelect && 'md:pl-6',
+                                            )}
+                                        >
                                             <Link
                                                 href={edit([
                                                     organizationSlug,
@@ -629,6 +782,28 @@ export default function ProductsIndex({
                 product={productToDelete}
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
+            />
+
+            <BulkEditProductsModal
+                organizationSlug={organizationSlug}
+                products={selectedProducts}
+                open={bulkEditOpen}
+                onOpenChange={setBulkEditOpen}
+                onSaved={clearSelection}
+                canReassign={!isSupplier}
+                availableConnections={availableConnections}
+                availableBrands={isSupplier ? [] : filterableBrands}
+                availableCategories={isSupplier ? [] : filterableCategories}
+                availableTemplates={availableTemplates}
+                availableCountries={availableCountries}
+            />
+
+            <BulkDeleteProductsModal
+                organizationSlug={organizationSlug}
+                products={selectedProducts}
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                onDeleted={clearSelection}
             />
         </>
     );
