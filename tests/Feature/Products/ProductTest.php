@@ -644,3 +644,37 @@ test('guests are redirected to the login page', function () {
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertRedirect(route('login'));
 });
+
+test('a product keeps its descriptions and whether it is still sold', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+    $product = Product::factory()->for($organization)->create(['supplier_connection_id' => $connection->id]);
+
+    $this
+        ->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection, [
+            'short_description' => 'A hand-painted dolphin.',
+            'long_description' => "Lime wood.\n\nAbout 7 cm tall.",
+            'is_active' => '0',
+        ]))
+        ->assertSessionHasNoErrors();
+
+    $product->refresh();
+
+    expect($product->short_description)->toBe('A hand-painted dolphin.')
+        ->and($product->long_description)->toBe("Lime wood.\n\nAbout 7 cm tall.")
+        ->and($product->is_active)->toBeFalse()
+        ->and($product->events()->latest('id')->first()->changes)->toHaveKey('is_active');
+});
+
+test('a product saved without the webshop flag keeps the one it had', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+    $product = Product::factory()->for($organization)->create(['supplier_connection_id' => $connection->id]);
+    $product->forceFill(['is_active' => false])->save();
+
+    $this
+        ->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection))
+        ->assertSessionHasNoErrors();
+
+    expect($product->fresh()->is_active)->toBeFalse();
+});

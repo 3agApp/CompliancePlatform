@@ -70,9 +70,23 @@ class SupplierConnectionController extends Controller
         $connection = $currentOrganization->supplierConnections()
             ->whereRaw('LOWER(contact_email) = ?', [strtolower($contactEmail)])
             ->whereNull('supplier_organization_id')
-            ->first();
+            ->first()
+            /**
+             * A supplier the product import added knows its name and nothing
+             * else. Adding the same name with an address is how it is
+             * given one, and the products already filed under it stay
+             * with it rather than with a second, empty supplier.
+             */
+            ?? $currentOrganization->supplierConnections()
+                ->whereNull('contact_email')
+                ->whereNull('supplier_organization_id')
+                ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($companyName)])
+                ->orderBy('id')
+                ->first();
 
         if ($connection instanceof SupplierConnection) {
+            $connection->forceFill(['contact_email' => $contactEmail]);
+
             $sendsInvitation
                 ? $connection->reinvite($companyName)
                 : $connection->reopenUninvited($companyName);
@@ -171,7 +185,7 @@ class SupplierConnectionController extends Controller
      */
     protected function isResendable(SupplierConnection $connection): bool
     {
-        return ! $connection->isClaimed() && in_array(
+        return ! $connection->isClaimed() && $connection->contact_email !== null && in_array(
             $connection->status,
             [SupplierConnectionStatus::Pending, SupplierConnectionStatus::Revoked],
             strict: true,
@@ -198,7 +212,7 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{id: int, companyName: string, contactEmail: string, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string|null, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {

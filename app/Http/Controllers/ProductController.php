@@ -162,6 +162,12 @@ class ProductController extends Controller
             'product' => [
                 ...$this->toProductArray($product, $isSupplier),
                 ...$this->toComplianceArray($product),
+                /**
+                 * Prose like the compliance details, so kept off the list
+                 * for the same reason.
+                 */
+                'short_description' => $product->short_description,
+                'long_description' => $product->long_description,
                 'documents' => $this->toDocumentArray($product),
             ],
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
@@ -780,6 +786,7 @@ class ProductController extends Controller
         return [
             'id' => $product->id,
             'name' => $product->name,
+            'is_active' => $product->is_active,
             'brand_id' => $product->brand_id,
             'brand_label' => $product->brand?->name,
             'product_category_id' => $product->product_category_id,

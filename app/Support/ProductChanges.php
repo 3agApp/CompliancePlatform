@@ -109,6 +109,7 @@ class ProductChanges
             'product_category_id' => ProductCategory::query()->whereKey($value)->value('name'),
             'product_template_id' => ProductTemplate::query()->whereKey($value)->value('name'),
             'supplier_connection_id' => self::supplierName($value),
+            'is_active' => (bool) $value ? __('Active') : __('Inactive'),
             default => null,
         };
     }

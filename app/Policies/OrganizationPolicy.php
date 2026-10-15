@@ -53,6 +53,19 @@ class OrganizationPolicy
     }
 
     /**
+     * Determine whether the user can configure and run the product import.
+     *
+     * Only a distributor imports: the products land in its own catalogue,
+     * filed against its own suppliers. Kept apart from updating the
+     * organization for the same reason as the AI provider: it holds a key.
+     */
+    public function manageProductImport(User $user, Organization $organization): bool
+    {
+        return $organization->isDistributor()
+            && $user->hasOrganizationPermission($organization, OrganizationPermission::ManageProductImport);
+    }
+
+    /**
      * Determine whether the user can leave the organization.
      */
     public function leave(User $user, Organization $organization): bool

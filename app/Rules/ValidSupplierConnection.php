@@ -50,7 +50,7 @@ class ValidSupplierConnection implements ValidationRule
             return;
         }
 
-        if (strtolower($value->contact_email) !== strtolower($this->user->email)) {
+        if (strtolower((string) $value->contact_email) !== strtolower($this->user->email)) {
             $fail(__('This invitation was sent to a different email address.'));
         }
     }
