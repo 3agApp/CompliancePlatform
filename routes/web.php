@@ -187,6 +187,8 @@ Route::prefix('{current_organization}')
 
                 Route::get('suppliers', [SupplierConnectionController::class, 'index'])->name('suppliers.index');
                 Route::post('suppliers', [SupplierConnectionController::class, 'store'])->name('suppliers.store');
+                Route::patch('suppliers/{supplier_connection}', [SupplierConnectionController::class, 'update'])->name('suppliers.update');
+                Route::delete('suppliers/{supplier_connection}', [SupplierConnectionController::class, 'destroy'])->name('suppliers.destroy');
                 Route::post('suppliers/{supplier_connection}/resend', [SupplierConnectionController::class, 'resend'])->name('suppliers.resend');
                 Route::patch('suppliers/{supplier_connection}/revoke', [SupplierConnectionController::class, 'revoke'])->name('suppliers.revoke');
                 Route::patch('suppliers/{supplier_connection}/restore', [SupplierConnectionController::class, 'restore'])->name('suppliers.restore');

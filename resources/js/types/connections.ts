@@ -19,6 +19,10 @@ export type SupplierConnection = {
     isAssignable: boolean;
     canResend: boolean;
     canRestore: boolean;
+    /** Not joined yet, so the name and address are still the distributor's to correct. */
+    canEdit: boolean;
+    /** Not joined and nothing filed against it, so it can go entirely. */
+    canDelete: boolean;
     productsCount: number;
     brandsCount: number;
     /** The supplier's products counted per stage of the review. */

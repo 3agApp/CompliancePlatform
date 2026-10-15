@@ -2,15 +2,20 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     Factory,
+    MailPlus,
     MoreHorizontal,
     Package,
+    Pencil,
     Plus,
     RotateCcw,
     Send,
     Tags,
+    Trash2,
     Unplug,
 } from 'lucide-react';
 import { useState } from 'react';
+import DeleteSupplierModal from '@/components/delete-supplier-modal';
+import EditSupplierModal from '@/components/edit-supplier-modal';
 import InviteSupplierModal from '@/components/invite-supplier-modal';
 import ReviewProgress from '@/components/review-progress';
 import RevokeSupplierModal from '@/components/revoke-supplier-modal';
@@ -56,6 +61,24 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
         setRevokeDialogOpen(true);
     };
 
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [connectionToEdit, setConnectionToEdit] =
+        useState<SupplierConnection | null>(null);
+
+    const startEdit = (connection: SupplierConnection) => {
+        setConnectionToEdit(connection);
+        setEditDialogOpen(true);
+    };
+
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [connectionToDelete, setConnectionToDelete] =
+        useState<SupplierConnection | null>(null);
+
+    const confirmDelete = (connection: SupplierConnection) => {
+        setConnectionToDelete(connection);
+        setDeleteDialogOpen(true);
+    };
+
     /**
      * Grouped by what the relationship needs: the ones waiting on an
      * answer come first, because they are the ones with a job to do --
@@ -81,6 +104,8 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
         organizationSlug,
         canManage: permissions.canManageConnection,
         onRevoke: confirmRevoke,
+        onEdit: startEdit,
+        onDelete: confirmDelete,
     };
 
     return (
@@ -171,6 +196,20 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                 open={revokeDialogOpen}
                 onOpenChange={setRevokeDialogOpen}
             />
+
+            <EditSupplierModal
+                organizationSlug={organizationSlug}
+                connection={connectionToEdit}
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+            />
+
+            <DeleteSupplierModal
+                organizationSlug={organizationSlug}
+                connection={connectionToDelete}
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+            />
         </>
     );
 }
@@ -179,6 +218,8 @@ type RowProps = {
     organizationSlug: string;
     canManage: boolean;
     onRevoke: (connection: SupplierConnection) => void;
+    onEdit: (connection: SupplierConnection) => void;
+    onDelete: (connection: SupplierConnection) => void;
 };
 
 function SupplierGroup({
@@ -353,6 +394,8 @@ function SupplierRow({
     organizationSlug,
     canManage,
     onRevoke,
+    onEdit,
+    onDelete,
 }: RowProps & { connection: SupplierConnection }) {
     const productsUrl = productsIndex(organizationSlug, {
         query: { connection: connection.id },
@@ -373,10 +416,7 @@ function SupplierRow({
                     {connection.companyName}
                 </Link>
                 <span className="text-muted-foreground block text-xs break-all">
-                    {connection.contactEmail ??
-                        t(
-                            'No email yet — add this supplier with an address to invite them',
-                        )}
+                    {connection.contactEmail ?? t('No email yet')}
                 </span>
             </td>
             <td className="px-6" data-label={t('Status')}>
@@ -418,6 +458,7 @@ function SupplierRow({
                         organizationSlug={organizationSlug}
                         canManage={canManage}
                         productsUrl={productsUrl}
+                        onEdit={onEdit}
                     />
 
                     <DropdownMenu>
@@ -447,6 +488,28 @@ function SupplierRow({
                                     {t('View brands')}
                                 </Link>
                             </DropdownMenuItem>
+                            {canManage && connection.canEdit ? (
+                                <DropdownMenuItem
+                                    data-test="supplier-edit-button"
+                                    onSelect={() => onEdit(connection)}
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                    {t('Edit supplier…')}
+                                </DropdownMenuItem>
+                            ) : null}
+                            {canManage && connection.canDelete ? (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        data-test="supplier-delete-button"
+                                        onSelect={() => onDelete(connection)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                        {t('Delete supplier…')}
+                                    </DropdownMenuItem>
+                                </>
+                            ) : null}
                             {canManage && connection.status !== 'revoked' ? (
                                 <>
                                     <DropdownMenuSeparator />
@@ -479,11 +542,13 @@ function PrimaryAction({
     organizationSlug,
     canManage,
     productsUrl,
+    onEdit,
 }: {
     connection: SupplierConnection;
     organizationSlug: string;
     canManage: boolean;
     productsUrl: string;
+    onEdit: (connection: SupplierConnection) => void;
 }) {
     if (canManage && connection.canRestore) {
         return (
@@ -526,6 +591,25 @@ function PrimaryAction({
                     </Button>
                 )}
             </Form>
+        );
+    }
+
+    /**
+     * A supplier the import added has no address to invite, so the move
+     * that unblocks it is giving it one.
+     */
+    if (canManage && connection.canEdit && connection.contactEmail === null) {
+        return (
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-test="supplier-add-email-button"
+                onClick={() => onEdit(connection)}
+            >
+                <MailPlus className="h-4 w-4" />
+                {t('Add email')}
+            </Button>
         );
     }
 

@@ -4,6 +4,7 @@ namespace App\Rules;
 
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
+use App\Models\SupplierConnection;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Translation\PotentiallyTranslatedString;
@@ -16,7 +17,10 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  */
 class UniqueSupplierConnection implements ValidationRule
 {
-    public function __construct(protected Organization $distributor)
+    /**
+     * @param  SupplierConnection|null  $ignore  The connection being edited, which may keep its own address.
+     */
+    public function __construct(protected Organization $distributor, protected ?SupplierConnection $ignore = null)
     {
         //
     }
@@ -31,6 +35,7 @@ class UniqueSupplierConnection implements ValidationRule
         $exists = $this->distributor->supplierConnections()
             ->whereRaw('LOWER(contact_email) = ?', [strtolower((string) $value)])
             ->whereIn('status', SupplierConnectionStatus::assignableValues())
+            ->when($this->ignore, fn ($query, SupplierConnection $ignore) => $query->whereKeyNot($ignore->id))
             ->exists();
 
         if ($exists) {
