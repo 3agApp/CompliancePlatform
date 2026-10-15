@@ -6,6 +6,7 @@ use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Suppliers\InviteSupplierRequest;
+use App\Http\Requests\Suppliers\UpdateSupplierRequest;
 use App\Models\Organization;
 use App\Models\SupplierConnection;
 use App\Notifications\Suppliers\SupplierConnectionInvitation;
@@ -13,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -118,6 +120,67 @@ class SupplierConnectionController extends Controller
     }
 
     /**
+     * Correct the name or address of a supplier that has not joined yet.
+     *
+     * Once a supplier has claimed the connection, its name is the one its own
+     * organization carries and the address no longer matters, so there is
+     * nothing here to edit.
+     *
+     * A link already mailed was mailed to the old address, and only that
+     * address can claim it. Changing the address takes the invitation back,
+     * so the row says "not invited yet" and the next one goes to the right
+     * person.
+     */
+    public function update(UpdateSupplierRequest $request, Organization $currentOrganization, SupplierConnection $supplierConnection): RedirectResponse
+    {
+        Gate::authorize('update', $supplierConnection);
+
+        abort_if($supplierConnection->isClaimed(), 404);
+
+        $contactEmail = $request->validated('contact_email');
+        $addressChanged = mb_strtolower((string) $contactEmail) !== mb_strtolower((string) $supplierConnection->contact_email);
+
+        $supplierConnection->forceFill([
+            'company_name' => $request->validated('company_name'),
+            'contact_email' => $contactEmail,
+        ]);
+
+        if ($addressChanged && $supplierConnection->isInvited()) {
+            $supplierConnection->forceFill([
+                'code' => Str::random(64),
+                'invited_at' => null,
+                'expires_at' => null,
+            ]);
+        }
+
+        $supplierConnection->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Supplier updated.')]);
+
+        return to_route('suppliers.index', ['current_organization' => $currentOrganization->slug]);
+    }
+
+    /**
+     * Remove a supplier added by mistake.
+     *
+     * Only one that has not joined and has nothing filed against it: a
+     * supplier with products is disconnected instead, so the products keep
+     * the supplier they were assigned to. Its brands go with it.
+     */
+    public function destroy(Organization $currentOrganization, SupplierConnection $supplierConnection): RedirectResponse
+    {
+        Gate::authorize('update', $supplierConnection);
+
+        abort_unless($this->isDeletable($supplierConnection), 404);
+
+        $supplierConnection->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Supplier deleted.')]);
+
+        return to_route('suppliers.index', ['current_organization' => $currentOrganization->slug]);
+    }
+
+    /**
      * Send the claim link, for the first time or again, with a fresh token.
      *
      * A connection revoked before anybody claimed it is re-opened the same
@@ -193,6 +256,14 @@ class SupplierConnectionController extends Controller
     }
 
     /**
+     * Determine if the connection can be deleted outright.
+     */
+    protected function isDeletable(SupplierConnection $connection): bool
+    {
+        return ! $connection->isClaimed() && ! $connection->products()->exists();
+    }
+
+    /**
      * Mail the claim link to the contact address.
      *
      * Written in the distributor's language: the recipient has no account
@@ -212,7 +283,7 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{id: int, companyName: string, contactEmail: string|null, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string|null, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, canEdit: bool, canDelete: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
@@ -232,6 +303,12 @@ class SupplierConnectionController extends Controller
             'isAssignable' => in_array($connection->status, SupplierConnectionStatus::assignable(), strict: true),
             'canResend' => $this->isResendable($connection),
             'canRestore' => $connection->status === SupplierConnectionStatus::Revoked && $connection->isClaimed(),
+            'canEdit' => ! $connection->isClaimed(),
+            /**
+             * Read from the count the list already loaded rather than asked
+             * again per row.
+             */
+            'canDelete' => ! $connection->isClaimed() && (int) ($connection->products_count ?? 0) === 0,
             'productsCount' => (int) ($connection->products_count ?? 0),
             'brandsCount' => (int) ($connection->getAttribute('brands_count') ?? 0),
             /**

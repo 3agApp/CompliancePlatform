@@ -562,3 +562,197 @@ test('an active supplier whose drafts have not moved for a fortnight is marked q
         ->get(route('suppliers.index', ['current_organization' => $distributor->slug]))
         ->assertInertia(fn (Assert $page) => $page->where('connections.0.isQuiet', true));
 });
+
+test('a distributor corrects the name and address of a supplier that has not joined', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, attributes: ['company_name' => 'Acme', 'contact_email' => 'old@acme.test']);
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => 'Acme Supplies AG',
+            'contact_email' => 'compliance@acme.test',
+        ])
+        ->assertRedirect(route('suppliers.index', $distributor))
+        ->assertSessionHasNoErrors();
+
+    $connection->refresh();
+
+    expect($connection->company_name)->toBe('Acme Supplies AG')
+        ->and($connection->contact_email)->toBe('compliance@acme.test');
+});
+
+test('changing the address takes back the invitation already sent', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, attributes: ['contact_email' => 'old@acme.test']);
+    $oldCode = $connection->code;
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => $connection->company_name,
+            'contact_email' => 'new@acme.test',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $connection->refresh();
+
+    expect($connection->isInvited())->toBeFalse()
+        ->and($connection->expires_at)->toBeNull()
+        ->and($connection->code)->not->toBe($oldCode);
+});
+
+test('renaming an invited supplier leaves the invitation alone', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, attributes: ['contact_email' => 'same@acme.test']);
+    $oldCode = $connection->code;
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => 'Renamed',
+            'contact_email' => 'SAME@acme.test',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $connection->refresh();
+
+    expect($connection->isInvited())->toBeTrue()
+        ->and($connection->code)->toBe($oldCode);
+});
+
+test('an imported supplier is given its first address', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, attributes: ['contact_email' => null, 'invited_at' => null, 'expires_at' => null]);
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => 'Grimms',
+            'contact_email' => '',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($connection->fresh()->contact_email)->toBeNull();
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => 'Grimms',
+            'contact_email' => 'sales@grimms.test',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($connection->fresh()->contact_email)->toBe('sales@grimms.test');
+});
+
+test('a supplier that has an address cannot have it cleared', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => $connection->company_name,
+            'contact_email' => '',
+        ])
+        ->assertSessionHasErrors('contact_email');
+});
+
+test('a supplier cannot be given the address of another live supplier', function () {
+    [$user, $distributor] = newOrganizationMember();
+    newSupplierConnection($distributor, attributes: ['contact_email' => 'taken@acme.test']);
+    $connection = newSupplierConnection($distributor);
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => $connection->company_name,
+            'contact_email' => 'taken@acme.test',
+        ])
+        ->assertSessionHasErrors('contact_email');
+});
+
+test('a supplier that has joined cannot be edited or deleted', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $this->actingAs($user)
+        ->patch(route('suppliers.update', [$distributor, $connection]), [
+            'company_name' => 'Renamed',
+            'contact_email' => 'new@acme.test',
+        ])
+        ->assertNotFound();
+
+    $this->actingAs($user)
+        ->delete(route('suppliers.destroy', [$distributor, $connection]))
+        ->assertNotFound();
+
+    expect($connection->fresh())->not->toBeNull();
+});
+
+test('a distributor deletes a supplier with no products, and its brands go with it', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+    $brand = carriedBrand($connection);
+
+    $this->actingAs($user)
+        ->delete(route('suppliers.destroy', [$distributor, $connection]))
+        ->assertRedirect(route('suppliers.index', $distributor));
+
+    expect($connection->fresh())->toBeNull()
+        ->and($brand->fresh())->toBeNull();
+});
+
+test('a supplier with products cannot be deleted', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $connection->id]);
+
+    $this->actingAs($user)
+        ->delete(route('suppliers.destroy', [$distributor, $connection]))
+        ->assertNotFound();
+
+    expect($connection->fresh())->not->toBeNull();
+});
+
+test('members cannot edit or delete suppliers', function () {
+    [, $distributor] = newOrganizationMember();
+    [$member] = newOrganizationMember(OrganizationRole::Member);
+    $distributor->members()->attach($member, ['role' => OrganizationRole::Member->value]);
+    $member->switchOrganization($distributor);
+    $connection = newSupplierConnection($distributor);
+
+    $this->actingAs($member)
+        ->patch(route('suppliers.update', [$distributor, $connection]), ['company_name' => 'X', 'contact_email' => 'x@acme.test'])
+        ->assertForbidden();
+
+    $this->actingAs($member)
+        ->delete(route('suppliers.destroy', [$distributor, $connection]))
+        ->assertForbidden();
+});
+
+test('a distributor cannot edit or delete another distributor supplier', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $other] = newOrganizationMember();
+    $connection = newSupplierConnection($other);
+
+    $this->actingAs($user)
+        ->delete(route('suppliers.destroy', [$distributor, $connection]))
+        ->assertNotFound();
+
+    expect($connection->fresh())->not->toBeNull();
+});
+
+test('the suppliers list says which suppliers can be edited and deleted', function () {
+    [$user, $distributor] = newOrganizationMember();
+    [, $supplier] = newSupplierMember();
+    $empty = newSupplierConnection($distributor, attributes: ['company_name' => 'A empty']);
+    $withProducts = newSupplierConnection($distributor, attributes: ['company_name' => 'B with products']);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $withProducts->id]);
+    newSupplierConnection($distributor, $supplier, ['company_name' => 'C joined']);
+
+    $this->actingAs($user)
+        ->get(route('suppliers.index', $distributor))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.canEdit', true)
+            ->where('connections.0.canDelete', true)
+            ->where('connections.1.canEdit', true)
+            ->where('connections.1.canDelete', false)
+            ->where('connections.2.canEdit', false)
+            ->where('connections.2.canDelete', false));
+});

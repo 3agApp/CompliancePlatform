@@ -252,3 +252,73 @@ test('the sidebar shows distributors for a supplier', function () {
         ->assertSee('Assigned products')
         ->assertNoJavaScriptErrors();
 });
+
+test('an imported supplier is given an address and then invited', function () {
+    Notification::fake();
+
+    [$user, $distributor] = newOrganizationMember();
+    newSupplierConnection($distributor, attributes: ['company_name' => 'Grimms', 'contact_email' => null, 'invited_at' => null, 'expires_at' => null]);
+
+    $this->actingAs($user);
+
+    visit(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->assertSee('No email yet')
+        ->click('@supplier-add-email-button')
+        ->fill('@edit-supplier-contact-email', 'sales@grimms.test')
+        ->click('@edit-supplier-submit')
+        ->assertSee('Supplier updated.')
+        ->assertSee('sales@grimms.test')
+        ->click('@supplier-invite-button')
+        ->assertSee('Invitation sent.')
+        ->assertNoJavaScriptErrors();
+
+    Notification::assertSentOnDemandTimes(SupplierConnectionInvitation::class, 1);
+});
+
+test('a supplier is renamed from the row actions', function () {
+    [$user, $distributor] = newOrganizationMember();
+    newSupplierConnection($distributor, attributes: ['company_name' => 'Acme']);
+
+    $this->actingAs($user);
+
+    visit(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->click('@supplier-actions')
+        ->click('@supplier-edit-button')
+        ->fill('@edit-supplier-company-name', 'Acme Supplies AG')
+        ->click('@edit-supplier-submit')
+        ->assertSee('Supplier updated.')
+        ->assertSeeIn('@supplier-products-link', 'Acme Supplies AG')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a supplier with no products is deleted from the row actions', function () {
+    [$user, $distributor] = newOrganizationMember();
+    newSupplierConnection($distributor, attributes: ['company_name' => 'Added by mistake']);
+
+    $this->actingAs($user);
+
+    visit(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->click('@supplier-actions')
+        ->click('@supplier-delete-button')
+        ->assertSee('Delete Added by mistake?')
+        ->click('@delete-supplier-confirm')
+        ->assertSee('Supplier deleted.')
+        ->assertDontSee('Added by mistake')
+        ->assertNoJavaScriptErrors();
+
+    expect(SupplierConnection::query()->count())->toBe(0);
+});
+
+test('a supplier with products offers no delete', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => $connection->id]);
+
+    $this->actingAs($user);
+
+    visit(route('suppliers.index', ['current_organization' => $distributor->slug]))
+        ->click('@supplier-actions')
+        ->assertPresent('@supplier-edit-button')
+        ->assertMissing('@supplier-delete-button')
+        ->assertNoJavaScriptErrors();
+});
