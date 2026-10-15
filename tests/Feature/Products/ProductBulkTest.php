@@ -45,7 +45,7 @@ test('a distributor can change the active flag and country of many products at o
     bulkUpdate($user, $organization, [
         'ids' => $products->pluck('id')->all(),
         'is_active' => false,
-        'country_of_origin' => 'CN',
+        'country_of_origin' => 'CH',
     ])
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('products.index', ['current_organization' => $organization->slug]));
@@ -54,7 +54,7 @@ test('a distributor can change the active flag and country of many products at o
         $product->refresh();
 
         expect($product->is_active)->toBeFalse()
-            ->and($product->country_of_origin)->toBe(CountryOfOrigin::from('CN'));
+            ->and($product->country_of_origin)->toBe(CountryOfOrigin::from('CH'));
 
         $event = $product->events()->sole();
 
@@ -250,7 +250,7 @@ test('a supplier bulk change puts a submitted product back in draft', function (
         'submitted_at' => now(),
     ]);
 
-    bulkUpdate($supplierUser, $supplier, ['ids' => [$product->id], 'country_of_origin' => 'CN'])
+    bulkUpdate($supplierUser, $supplier, ['ids' => [$product->id], 'country_of_origin' => 'CH'])
         ->assertSessionHasNoErrors();
 
     expect($product->fresh()->review_status)->toBe(ProductReviewStatus::Draft);
