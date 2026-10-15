@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
+    DatabaseZap,
     ChevronLeft,
     ChevronRight,
     ExternalLink,
@@ -44,6 +45,7 @@ import { formatRelative } from '@/lib/format';
 import { t, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as categoriesIndex } from '@/routes/categories';
+import { show as productImportShow } from '@/routes/product-import';
 import { create, edit, index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
@@ -147,6 +149,15 @@ export default function ProductsIndex({
         permissions.canCreateProduct && !needsSupplier && !needsTemplate;
 
     /**
+     * Offered whether or not a supplier exists yet: the import brings its
+     * own, one per manufacturer.
+     */
+    const canImportProducts =
+        viewerType === 'distributor' &&
+        (currentOrganization?.role === 'owner' ||
+            currentOrganization?.role === 'admin');
+
+    /**
      * The page size lives in the URL beside the filters, so changing it is a
      * visit like any other -- and one that starts again from the first page,
      * since the row the reader was looking at sits elsewhere once the page
@@ -204,34 +215,46 @@ export default function ProductsIndex({
                         </p>
                     </div>
 
-                    {canAddProducts ? (
-                        <Button asChild>
-                            <Link
-                                href={create(organizationSlug)}
-                                data-test="products-new-product-button"
-                            >
-                                <Plus /> {t('New product')}
-                            </Link>
-                        </Button>
-                    ) : needsSupplier ? (
-                        <Button variant="outline" asChild>
-                            <Link
-                                href={suppliersIndex(organizationSlug)}
-                                data-test="products-invite-supplier-button"
-                            >
-                                <Plus /> {t('Invite a supplier')}
-                            </Link>
-                        </Button>
-                    ) : needsTemplate ? (
-                        <Button variant="outline" asChild>
-                            <Link
-                                href={categoriesIndex(organizationSlug)}
-                                data-test="products-add-template-button"
-                            >
-                                <Plus /> {t('Add a template')}
-                            </Link>
-                        </Button>
-                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                        {canImportProducts ? (
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={productImportShow(organizationSlug)}
+                                    data-test="products-product-import-button"
+                                >
+                                    <DatabaseZap /> {t('Import products')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {canAddProducts ? (
+                            <Button asChild>
+                                <Link
+                                    href={create(organizationSlug)}
+                                    data-test="products-new-product-button"
+                                >
+                                    <Plus /> {t('New product')}
+                                </Link>
+                            </Button>
+                        ) : needsSupplier ? (
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={suppliersIndex(organizationSlug)}
+                                    data-test="products-invite-supplier-button"
+                                >
+                                    <Plus /> {t('Invite a supplier')}
+                                </Link>
+                            </Button>
+                        ) : needsTemplate ? (
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={categoriesIndex(organizationSlug)}
+                                    data-test="products-add-template-button"
+                                >
+                                    <Plus /> {t('Add a template')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
 
                 {showFilters ? (
@@ -312,6 +335,15 @@ export default function ProductsIndex({
                                             >
                                                 {product.name}
                                             </Link>
+                                            {!product.is_active ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-muted-foreground ml-2 align-middle font-normal"
+                                                    data-test="product-inactive-badge"
+                                                >
+                                                    {t('Inactive')}
+                                                </Badge>
+                                            ) : null}
                                             {product.internal_article_number ? (
                                                 <span
                                                     className="text-muted-foreground block font-mono text-xs font-normal"

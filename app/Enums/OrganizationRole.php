@@ -28,6 +28,7 @@ enum OrganizationRole: string
             self::Admin => [
                 OrganizationPermission::UpdateOrganization,
                 OrganizationPermission::ManageAiProvider,
+                OrganizationPermission::ManageProductImport,
                 OrganizationPermission::CreateInvitation,
                 OrganizationPermission::CancelInvitation,
                 OrganizationPermission::ViewConnection,

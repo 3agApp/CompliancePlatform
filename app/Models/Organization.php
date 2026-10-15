@@ -29,6 +29,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, OrganizationInvitation> $invitations
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, Product> $products
+ * @property-read ImportSource|null $importSource
+ * @property-read Collection<int, ImportRun> $importRuns
  * @property-read Collection<int, ProductCategory> $productCategories
  * @property-read Collection<int, Brand> $brands
  * @property-read Collection<int, Brand> $suppliedBrands
@@ -168,6 +170,26 @@ class Organization extends Model
     public function aiSetting(): HasOne
     {
         return $this->hasOne(OrganizationAiSetting::class);
+    }
+
+    /**
+     * Get the source the organization imports its catalogue from.
+     *
+     * @return HasOne<ImportSource, $this>
+     */
+    public function importSource(): HasOne
+    {
+        return $this->hasOne(ImportSource::class);
+    }
+
+    /**
+     * Get the organization's imports from its source system, newest first.
+     *
+     * @return HasMany<ImportRun, $this>
+     */
+    public function importRuns(): HasMany
+    {
+        return $this->hasMany(ImportRun::class)->latest('id');
     }
 
     /**

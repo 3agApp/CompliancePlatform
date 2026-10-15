@@ -110,3 +110,50 @@ export type AiProviderOption = {
     models: AiModelOption[];
     default_model: string;
 };
+
+export type ImportOption = {
+    value: string;
+    label: string;
+};
+
+export type ImportSourceSettings = {
+    provider: string;
+    apiUrl: string;
+    keyHint: string;
+    fileUrlPrefix: string | null;
+    matchKey: string;
+    onExisting: string;
+    defaultProductTemplateId: number | null;
+    useAiForTemplates: boolean;
+};
+
+export type ImportManufacturerChoice = {
+    externalId: string;
+    name: string;
+    supplierConnectionId: number | null;
+    productTemplateId: number | null;
+};
+
+export type ImportFailure = {
+    article: string;
+    reason: string;
+};
+
+export type ImportRunSummary = {
+    id: number;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    statusLabel: string;
+    isPending: boolean;
+    total: number | null;
+    processed: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+    aiAssigned: number;
+    failures: ImportFailure[];
+    failureReason: string | null;
+    triggeredBy: string | null;
+    createdAt: string | null;
+    finishedAt: string | null;
+};

@@ -83,6 +83,15 @@ class SaveProductRequest extends FormRequest
             'usage_restrictions' => ['nullable', 'string', 'max:5000'],
             'safety_instructions' => ['nullable', 'string', 'max:5000'],
             'additional_notes' => ['nullable', 'string', 'max:5000'],
+
+            /**
+             * Usually written by the product import, but a product kept by hand
+             * has as much need of them. Left out of the request, a field is
+             * left as it is: the create page does not ask for them.
+             */
+            'is_active' => ['sometimes', 'boolean'],
+            'short_description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'long_description' => ['sometimes', 'nullable', 'string', 'max:65000'],
         ];
 
         /**
@@ -212,6 +221,8 @@ class SaveProductRequest extends FormRequest
             'usage_restrictions' => __('usage restrictions'),
             'safety_instructions' => __('safety instructions'),
             'additional_notes' => __('additional notes'),
+            'short_description' => __('short description'),
+            'long_description' => __('long description'),
         ];
     }
 }

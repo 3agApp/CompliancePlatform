@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
  * @property ProductDocumentType $type
  * @property string $name
  * @property string $path
+ * @property string|null $source_url
  * @property string $mime_type
  * @property int $size
  * @property bool $is_public
@@ -34,7 +35,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read Product $product
  * @property-read User|null $uploader
  */
-#[Fillable(['type', 'name', 'path', 'mime_type', 'size', 'uploaded_by'])]
+#[Fillable(['type', 'name', 'path', 'source_url', 'mime_type', 'size', 'uploaded_by'])]
 class ProductDocument extends Model
 {
     /** @use HasFactory<ProductDocumentFactory> */

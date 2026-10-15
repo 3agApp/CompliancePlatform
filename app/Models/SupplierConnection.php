@@ -31,7 +31,7 @@ use LogicException;
  * @property int $distributor_organization_id
  * @property int|null $supplier_organization_id
  * @property string $company_name
- * @property string $contact_email
+ * @property string|null $contact_email
  * @property SupplierConnectionStatus $status
  * @property CarbonImmutable|null $invited_at
  * @property int $invited_by

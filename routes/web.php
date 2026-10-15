@@ -13,6 +13,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentController;
 use App\Http\Controllers\ProductDocumentVisibilityController;
+use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
@@ -172,6 +173,17 @@ Route::prefix('{current_organization}')
                 Route::post('categories/{product_category}/templates', [ProductTemplateController::class, 'store'])->name('categories.templates.store');
                 Route::patch('categories/{product_category}/templates/{template}', [ProductTemplateController::class, 'update'])->name('categories.templates.update');
                 Route::delete('categories/{product_category}/templates/{template}', [ProductTemplateController::class, 'destroy'])->name('categories.templates.destroy');
+
+                Route::get('product-import', [ProductImportController::class, 'show'])->name('product-import.show');
+                Route::put('product-import/source', [ProductImportController::class, 'updateSource'])->name('product-import.source.update');
+                Route::delete('product-import/source', [ProductImportController::class, 'destroySource'])->name('product-import.source.destroy');
+                Route::get('product-import/manufacturers', [ProductImportController::class, 'manufacturers'])
+                    ->middleware('throttle:30,1')
+                    ->name('product-import.manufacturers.index');
+                Route::put('product-import/manufacturers', [ProductImportController::class, 'updateManufacturers'])->name('product-import.manufacturers.update');
+                Route::post('product-import/runs', [ProductImportController::class, 'start'])
+                    ->middleware('throttle:10,1')
+                    ->name('product-import.runs.store');
 
                 Route::get('suppliers', [SupplierConnectionController::class, 'index'])->name('suppliers.index');
                 Route::post('suppliers', [SupplierConnectionController::class, 'store'])->name('suppliers.store');

@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     Copyright,
+    DatabaseZap,
     Factory,
     LayoutGrid,
     Mail,
@@ -30,6 +31,7 @@ import { edit as editOrganization } from '@/routes/organizations';
 import { index as brandsIndex } from '@/routes/brands';
 import { index as categoriesIndex } from '@/routes/categories';
 import { index as distributorsIndex } from '@/routes/distributors';
+import { show as productImportShow } from '@/routes/product-import';
 import { index as productsIndex } from '@/routes/products';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type { NavItem } from '@/types';
@@ -95,6 +97,23 @@ export function AppSidebar() {
                       testId: 'nav-suppliers',
                   },
         );
+
+        /**
+         * Only for whoever may hold the source's key: the page is nothing but
+         * that key and what is done with it.
+         */
+        if (
+            !isSupplier &&
+            (currentOrganization.role === 'owner' ||
+                currentOrganization.role === 'admin')
+        ) {
+            mainNavItems.push({
+                title: t('Product import'),
+                href: productImportShow(currentOrganization.slug),
+                icon: DatabaseZap,
+                testId: 'nav-product-import',
+            });
+        }
 
         mainNavItems.push({
             title: t('Organization settings'),

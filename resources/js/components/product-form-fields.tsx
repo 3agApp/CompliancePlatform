@@ -3,6 +3,7 @@ import { useState } from 'react';
 import CreateBrandModal from '@/components/create-brand-modal';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -12,11 +13,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import type {
     BrandOption,
     CountryOfOrigin,
     CountryOption,
-    Product,
+    ProductDetail,
     ProductRequirementKey,
 } from '@/types';
 import { t } from '@/lib/i18n';
@@ -30,7 +32,10 @@ type FieldName =
     | 'supplier_article_number'
     | 'order_number'
     | 'customs_tariff_number'
-    | 'country_of_origin';
+    | 'country_of_origin'
+    | 'is_active'
+    | 'short_description'
+    | 'long_description';
 
 type Props = {
     errors: Partial<Record<FieldName, string>>;
@@ -53,7 +58,7 @@ type Props = {
      * which turns the marker on those fields into a call to fill them in.
      */
     outstanding?: ProductRequirementKey[];
-    product?: Product;
+    product?: ProductDetail;
     disabled?: boolean;
     idPrefix?: string;
 };
@@ -155,6 +160,7 @@ export default function ProductFormFields({
     );
 
     const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+    const [isActive, setIsActive] = useState(product?.is_active ?? true);
 
     const needs = (requirement: ProductRequirementKey) =>
         requirements.includes(requirement);
@@ -444,6 +450,66 @@ export default function ProductFormFields({
                     value={country ?? ''}
                 />
                 <InputError message={errors.country_of_origin} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-short-description`}>
+                    {t('Short description')} <Optional />
+                </Label>
+                <Textarea
+                    id={`${idPrefix}-short-description`}
+                    name="short_description"
+                    data-test="product-short-description"
+                    defaultValue={product?.short_description ?? ''}
+                    rows={3}
+                    disabled={disabled}
+                />
+                <InputError message={errors.short_description} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-long-description`}>
+                    {t('Long description')} <Optional />
+                </Label>
+                <Textarea
+                    id={`${idPrefix}-long-description`}
+                    name="long_description"
+                    data-test="product-long-description"
+                    defaultValue={product?.long_description ?? ''}
+                    rows={6}
+                    disabled={disabled}
+                />
+                <InputError message={errors.long_description} />
+            </div>
+
+            <div className="flex items-start gap-3">
+                <Checkbox
+                    id={`${idPrefix}-is-active`}
+                    data-test="product-is-active"
+                    checked={isActive}
+                    onCheckedChange={(value) => setIsActive(value === true)}
+                    disabled={disabled}
+                    className="mt-0.5"
+                />
+                <input
+                    type="hidden"
+                    name="is_active"
+                    value={isActive ? '1' : '0'}
+                />
+                <div className="grid gap-1">
+                    <Label
+                        htmlFor={`${idPrefix}-is-active`}
+                        className="font-normal"
+                    >
+                        {t('Active — still sold in the webshop')}
+                    </Label>
+                    <p className="text-muted-foreground text-sm">
+                        {t(
+                            'Turn off for a product that is no longer sold. It keeps its documents and history.',
+                        )}
+                    </p>
+                    <InputError message={errors.is_active} />
+                </div>
             </div>
         </div>
     );

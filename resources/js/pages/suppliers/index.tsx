@@ -373,7 +373,10 @@ function SupplierRow({
                     {connection.companyName}
                 </Link>
                 <span className="text-muted-foreground block text-xs break-all">
-                    {connection.contactEmail}
+                    {connection.contactEmail ??
+                        t(
+                            'No email yet — add this supplier with an address to invite them',
+                        )}
                 </span>
             </td>
             <td className="px-6" data-label={t('Status')}>

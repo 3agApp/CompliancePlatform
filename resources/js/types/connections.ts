@@ -8,7 +8,7 @@ export type SupplierConnectionStatus =
 export type SupplierConnection = {
     id: number;
     companyName: string;
-    contactEmail: string;
+    contactEmail: string | null;
     status: SupplierConnectionStatus;
     statusLabel: string;
     isClaimed: boolean;

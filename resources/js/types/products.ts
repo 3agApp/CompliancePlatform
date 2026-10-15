@@ -336,6 +336,8 @@ export type LabelUnitOverview = {
 export type Product = {
     id: number;
     name: string;
+    /** Still sold in the webshop, as the source or a person last said. */
+    is_active: boolean;
     brand_id: number | null;
     brand_label: string | null;
     product_category_id: number;
@@ -461,6 +463,8 @@ export type ProductDocument = {
  */
 export type ProductDetail = Product &
     ProductComplianceDetails & {
+        short_description: string | null;
+        long_description: string | null;
         documents: ProductDocument[];
     };
 

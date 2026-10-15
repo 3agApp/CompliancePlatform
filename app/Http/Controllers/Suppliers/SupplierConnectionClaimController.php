@@ -31,7 +31,7 @@ class SupplierConnectionClaimController extends Controller
     {
         $user = $request->user();
 
-        if (! $connection->isClaimable() || strtolower($connection->contact_email) !== strtolower($user->email)) {
+        if (! $connection->isClaimable() || strtolower((string) $connection->contact_email) !== strtolower($user->email)) {
             Inertia::flash('toast', ['type' => 'error', 'message' => __('This invitation is no longer available.')]);
 
             return to_route('invitations.index');

@@ -27,6 +27,9 @@ use Illuminate\Support\Str;
  * @property int $organization_id
  * @property int $supplier_connection_id
  * @property string $name
+ * @property bool $is_active
+ * @property string|null $short_description
+ * @property string|null $long_description
  * @property int|null $brand_id
  * @property int $product_category_id
  * @property int $product_template_id
@@ -65,6 +68,9 @@ use Illuminate\Support\Str;
  */
 #[Fillable([
     'name',
+    'is_active',
+    'short_description',
+    'long_description',
     'brand_id',
     'product_category_id',
     'product_template_id',
@@ -114,6 +120,7 @@ class Product extends Model
     protected function casts(): array
     {
         return [
+            'is_active' => 'boolean',
             'country_of_origin' => CountryOfOrigin::class,
             'review_status' => ProductReviewStatus::class,
             'seal_override' => ProductSealStatus::class,

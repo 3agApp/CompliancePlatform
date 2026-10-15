@@ -152,6 +152,9 @@ class ProductEvent extends Model
             'supplier_connection_id' => __('Supplier'),
             'product_category_id' => __('Category'),
             'product_template_id' => __('Template'),
+            'is_active' => __('Webshop status'),
+            'short_description' => __('Short description'),
+            'long_description' => __('Long description'),
             default => ProductRequirement::labelForAttribute($field) ?? $field,
         };
     }

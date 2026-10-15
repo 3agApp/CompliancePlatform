@@ -172,3 +172,48 @@ function translateLikeTheBrowser(AwaitableWebpage $page): AwaitableWebpage
 
     return $page;
 }
+
+/**
+ * A Kontor product row, as the API sends it.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function kontorRow(array $overrides = []): array
+{
+    return [
+        'Artnr' => 'gri04040',
+        'Artean' => '4048565040402',
+        'Herstellerid' => '038',
+        'Hersteller' => 'Grimms',
+        'Mpn' => '04040',
+        'Bez1' => 'Steckfigur zwei Delphine',
+        'Shoptitel' => 'Steckfigur zwei Delphine',
+        'Kurztext' => 'Diese kleine handbemalte Steckfigur.',
+        'Langtext' => '<p>Holz: Lindenholz handbemalt.</p><p>Masse: Höhe ca.7cm.</p>',
+        'Ek' => 7.4,
+        'UVP' => 7.4,
+        'Ws_aktiv' => true,
+        'MainImageURL' => 'gri04040.jpg',
+        'ImageURL_1' => null,
+        'ImageURL_2' => 'gri04040_2.JPG',
+        ...$overrides,
+    ];
+}
+
+/**
+ * Kontor's envelope around some rows.
+ *
+ * @param  array<int, mixed>  $rows
+ * @return array<string, mixed>
+ */
+function kontorEnvelope(array $rows, ?int $total = null): array
+{
+    return [
+        'success' => true,
+        'message' => 'OK',
+        'meta' => ['rowCount' => count($rows), 'totalCount' => $total ?? count($rows)],
+        'data' => $rows,
+        'errorCode' => null,
+    ];
+}
