@@ -10,6 +10,7 @@ enum ProductDocumentType: string
     case Certificate = 'certificate';
     case ProductImage = 'product_image';
     case SafetyImage = 'safety_image';
+    case PackagingPhoto = 'packaging_photo';
     case RegulatoryDocument = 'regulatory_document';
     case Other = 'other';
 
@@ -24,7 +25,8 @@ enum ProductDocumentType: string
             self::ManualOrInstructions => __('Manual or instructions'),
             self::Certificate => __('Certificate'),
             self::ProductImage => __('Product image'),
-            self::SafetyImage => __('Safety image'),
+            self::SafetyImage => __('Warning pictogram'),
+            self::PackagingPhoto => __('Packaging close-up'),
             self::RegulatoryDocument => __('Regulatory document'),
             self::Other => __('Other'),
         };

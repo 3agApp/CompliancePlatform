@@ -262,11 +262,16 @@ export default function ProductAssessmentPanel({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {assessment.runs.map((run, index) => (
+                            {assessment.runs.map((run) => (
                                 <SelectItem key={run.id} value={String(run.id)}>
                                     {when(run.created_at)} ·{' '}
+                                    {run.document !== null
+                                        ? `${t('Document: :name', { name: run.document.name })} · `
+                                        : ''}
                                     {run.overall_label ?? run.status_label}
-                                    {index === 0 ? ` · ${t('latest')}` : ''}
+                                    {run.id === latest?.id
+                                        ? ` · ${t('latest')}`
+                                        : ''}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -338,7 +343,7 @@ export default function ProductAssessmentPanel({
 /**
  * One run: where it stands, what it concluded, and every gap it found.
  */
-function AssessmentRun({
+export function AssessmentRun({
     run,
     organizationSlug,
     productId,
@@ -376,6 +381,17 @@ function AssessmentRun({
     return (
         <div className="space-y-4" data-test="assessment-result">
             <div className="space-y-2">
+                {run.document !== null ? (
+                    <p
+                        className="text-muted-foreground flex items-center gap-1.5 text-xs"
+                        data-test="assessment-document-scope"
+                    >
+                        <FileText className="h-3.5 w-3.5" />
+                        {t('Only :name was read, on its own.', {
+                            name: run.document.name,
+                        })}
+                    </p>
+                ) : null}
                 <div className="flex flex-wrap items-center gap-2">
                     <span
                         className={cn(

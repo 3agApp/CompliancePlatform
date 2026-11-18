@@ -39,7 +39,7 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
      * could change an answer, so two runs that disagree can be told apart
      * from a run that changed its mind.
      */
-    public const string PROMPT_VERSION = '2';
+    public const string PROMPT_VERSION = '3';
 
     /**
      * The document_index given for a finding about the product as a whole.
@@ -57,8 +57,9 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
 
     /**
      * @param  string  $language  The language a person will read the answer in.
+     * @param  bool  $singleDocument  Whether one paper is being read on its own, rather than the product's whole set.
      */
-    public function __construct(public string $language = 'English')
+    public function __construct(public string $language = 'English', public bool $singleDocument = false)
     {
         //
     }
@@ -155,7 +156,34 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
           evidence. Assess it.
         - Write the summary, every finding and the factory request in {$this->language}.
           Keep standard names and quotes from the documents as they are.
+        {$this->singleDocumentRules()}
         PROMPT;
+    }
+
+    /**
+     * The rules added when one paper is read on its own.
+     *
+     * The rest of the product's papers exist but were deliberately not
+     * sent, so a gap that only the full set could answer is not a gap here.
+     */
+    protected function singleDocumentRules(): string
+    {
+        if (! $this->singleDocument) {
+            return '';
+        }
+
+        return <<<'RULES'
+
+        This check is of ONE document on its own:
+
+        - The reviewer chose to check only this document. The product's other
+          documents exist but were not attached. Do not report that a declaration,
+          test report, certificate or any other document is missing.
+        - Judge whether this document is complete, correct, current and about this
+          product. Use "insufficient_documents" only when this document itself is
+          unreadable or too thin to judge.
+        - Use document_index 0 for findings about this document.
+        RULES;
     }
 
     /**

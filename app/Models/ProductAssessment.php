@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id
  * @property int $product_id
+ * @property int|null $product_document_id
  * @property int $organization_id
  * @property int|null $requested_by
  * @property int|null $previous_assessment_id
@@ -41,6 +42,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Product $product
+ * @property-read ProductDocument|null $document
  * @property-read Organization $organization
  * @property-read User|null $requester
  * @property-read ProductAssessment|null $previousAssessment
@@ -48,6 +50,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read int|null $findings_count
  */
 #[Fillable([
+    'product_document_id',
     'organization_id',
     'requested_by',
     'previous_assessment_id',
@@ -68,6 +71,24 @@ class ProductAssessment extends Model
 {
     /** @use HasFactory<ProductAssessmentFactory> */
     use HasFactory;
+
+    /**
+     * The one paper the run read, when it read only one.
+     *
+     * @return BelongsTo<ProductDocument, $this>
+     */
+    public function document(): BelongsTo
+    {
+        return $this->belongsTo(ProductDocument::class, 'product_document_id');
+    }
+
+    /**
+     * Determine if the run read one paper on its own rather than all of them.
+     */
+    public function isOfOneDocument(): bool
+    {
+        return $this->product_document_id !== null;
+    }
 
     /**
      * The product whose papers were read.

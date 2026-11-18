@@ -234,7 +234,7 @@ test('the documents of a product are shared with its page', function () {
             ->where('product.documents.0.name', 'doc.pdf')
             ->where('product.documents.0.size', 2048)
             ->where('product.documents.0.uploaded_by', $user->name)
-            ->has('availableDocumentTypes', 8),
+            ->has('availableDocumentTypes', count(ProductDocumentType::cases())),
         );
 });
 

@@ -1,3 +1,4 @@
+import type { CompanyProfile } from './organizations';
 import type { ProductReviewStatus } from './products';
 export type SupplierConnectionStatus =
     | 'pending'
@@ -33,6 +34,8 @@ export type SupplierConnection = {
     isQuiet: boolean;
     expiresAt: string | null;
     createdAt: string | null;
+    /** The supplier's own company details; null until it has joined. */
+    supplierProfile: CompanyProfile | null;
 };
 
 export type DistributorConnection = {

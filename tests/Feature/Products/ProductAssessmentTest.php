@@ -689,3 +689,125 @@ test('the report says what was fixed since the run before', function () {
         ->toContain('1 still open')
         ->toContain('Still open, was Critical');
 });
+
+/**
+ * Ask for a run of one paper on its own.
+ */
+function startDocumentAssessment(Organization $organization, Product $product, ProductDocument $document): TestResponse
+{
+    return test()->post(route('products.documents.assessments.store', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'document' => $document->id,
+    ]));
+}
+
+test('a reviewer can have one paper read on its own, and only that paper is sent', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    fileAssessedDocument($product, 'DoC.pdf', 'application/pdf', ProductDocumentType::DeclarationOfConformity);
+    $report = fileAssessedDocument($product, 'EN71-3.pdf', 'application/pdf', ProductDocumentType::TestReport);
+
+    DocumentAssessmentAgent::fake([assessmentAnswer(documentIndex: 0)])->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    startDocumentAssessment($organization, $product, $report)->assertRedirect()->assertSessionHasNoErrors();
+
+    $assessment = $product->assessments()->sole();
+
+    expect($assessment->product_document_id)->toBe($report->id)
+        ->and($assessment->status)->toBe(AssessmentStatus::Completed)
+        ->and(array_column($assessment->documents, 'name'))->toBe(['EN71-3.pdf'])
+        ->and($assessment->skipped_documents)->toBe([])
+        ->and($assessment->findings()->sole()->product_document_id)->toBe($report->id);
+
+    DocumentAssessmentAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->attachments->count() === 1
+        && $prompt->contains('EN71-3.pdf')
+        && ! $prompt->contains('DoC.pdf')
+        && $prompt->contains('Assess this one document on its own.')
+        && str_contains((string) $prompt->agent->instructions(), 'This check is of ONE document on its own'));
+});
+
+test('a Word or Excel paper cannot be read on its own', function () {
+    Queue::fake();
+
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+    $spreadsheet = fileAssessedDocument($product, 'materials.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ProductDocumentType::Other);
+
+    $this->actingAs($user);
+
+    startDocumentAssessment($organization, $product, $spreadsheet)->assertSessionHasErrors('assessment');
+
+    expect($product->assessments()->exists())->toBeFalse();
+    Queue::assertNothingPushed();
+});
+
+test('runs of a paper and of the whole product neither block nor compare with each other', function () {
+    Queue::fake();
+
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+    $report = fileAssessedDocument($product, 'EN71-3.pdf', 'application/pdf', ProductDocumentType::TestReport);
+    $declaration = fileAssessedDocument($product, 'DoC.pdf', 'application/pdf', ProductDocumentType::DeclarationOfConformity);
+
+    $productRun = ProductAssessment::factory()->for($product)->for($organization)->completed()->create();
+    $reportRun = ProductAssessment::factory()->for($product)->for($organization)->completed()->create(['product_document_id' => $report->id]);
+    ProductAssessment::factory()->for($product)->for($organization)->create(['product_document_id' => $declaration->id, 'status' => AssessmentStatus::Running]);
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product)->assertSessionHasNoErrors();
+    startDocumentAssessment($organization, $product, $report)->assertSessionHasNoErrors();
+    startDocumentAssessment($organization, $product, $declaration)->assertSessionHasErrors('assessment');
+
+    $runs = $product->assessments()->where('status', AssessmentStatus::Queued)->get();
+
+    expect($runs->firstWhere('product_document_id', null)->previous_assessment_id)->toBe($productRun->id)
+        ->and($runs->firstWhere('product_document_id', $report->id)->previous_assessment_id)->toBe($reportRun->id);
+});
+
+test('the product page check stays the whole-product run, and each paper shows its own', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+    $report = fileAssessedDocument($product, 'EN71-3.pdf', 'application/pdf', ProductDocumentType::TestReport);
+
+    $productRun = ProductAssessment::factory()->for($product)->for($organization)->completed()->create();
+    $reportRun = ProductAssessment::factory()->for($product)->for($organization)->completed()->create(['product_document_id' => $report->id]);
+
+    expect($product->fresh()->latestAssessment->id)->toBe($productRun->id)
+        ->and(ProductAssessmentView::latestPerDocument($product))->toHaveKey($report->id)
+        ->and(ProductAssessmentView::latestPerDocument($product)[$report->id]['id'])->toBe($reportRun->id)
+        ->and(ProductAssessmentView::detail($reportRun)['document'])->toBe(['id' => $report->id, 'name' => 'EN71-3.pdf']);
+});
+
+test('a member may not have a paper read', function () {
+    [, $organization, $product] = reviewerWithDocumentAnalysis();
+    $report = fileAssessedDocument($product, 'EN71-3.pdf', 'application/pdf', ProductDocumentType::TestReport);
+
+    $member = User::factory()->create();
+    $organization->members()->attach($member, ['role' => OrganizationRole::Member->value]);
+    $member->switchOrganization($organization);
+
+    $this->actingAs($member);
+
+    startDocumentAssessment($organization, $product, $report)->assertForbidden();
+});
+
+test('a paper of another product cannot be read through this one', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+    $other = Product::factory()->for($organization)->create(['supplier_connection_id' => $product->supplier_connection_id]);
+    $report = fileAssessedDocument($other, 'EN71-3.pdf', 'application/pdf', ProductDocumentType::TestReport);
+
+    $this->actingAs($user);
+
+    startDocumentAssessment($organization, $product, $report)->assertNotFound();
+});
+
+test('deleting a paper takes its own runs with it', function () {
+    [, $organization, $product] = reviewerWithDocumentAnalysis();
+    $report = fileAssessedDocument($product, 'EN71-3.pdf', 'application/pdf', ProductDocumentType::TestReport);
+    ProductAssessment::factory()->for($product)->for($organization)->completed()->create(['product_document_id' => $report->id]);
+
+    $report->delete();
+
+    expect($product->assessments()->exists())->toBeFalse();
+});

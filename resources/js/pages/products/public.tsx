@@ -7,6 +7,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    Eye,
     FileText,
     Hash,
     ImageOff,
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
+import DocumentViewerDialog from '@/components/document-viewer-dialog';
+import ImporterDetailsDialog from '@/components/importer-details-dialog';
 import ProductUnitCheck from '@/components/product-unit-check';
 import PublicHeader from '@/components/public-header';
 import { formatPublicDate, usePublicLocale } from '@/lib/public-i18n';
@@ -25,6 +28,7 @@ import type {
     ProductDocumentType,
     ProductSeal,
     ProductSealStatus,
+    PublicImporter,
     PublicProduct,
     PublicProductDocument,
     PublicProductImage,
@@ -37,8 +41,9 @@ type Props = {
     safety: PublicProductSafety;
     seal: ProductSeal;
     images: PublicProductImage[];
+    warningPictograms: PublicProductImage[];
     documents: PublicProductDocument[];
-    importer: string;
+    importer: PublicImporter;
     locale: string;
     checkUrl: string;
     /**
@@ -92,6 +97,7 @@ export default function PublicProduct({
     safety,
     seal,
     images,
+    warningPictograms,
     documents,
     importer,
     locale: initialLocale,
@@ -101,6 +107,11 @@ export default function PublicProduct({
     checkResult,
 }: Props) {
     const { locale, setLocale, t } = usePublicLocale(initialLocale);
+    const [importerOpen, setImporterOpen] = useState(false);
+    const [viewing, setViewing] = useState<PublicProductDocument | null>(null);
+    const importerHasDetails = Object.values(importer.profile).some(
+        (value) => value !== null && value !== '',
+    );
 
     return (
         <>
@@ -186,7 +197,11 @@ export default function PublicProduct({
                             />
                         ) : null}
 
-                        <Safety safety={safety} t={t} />
+                        <Safety
+                            safety={safety}
+                            pictograms={warningPictograms}
+                            t={t}
+                        />
 
                         {documents.length > 0 ? (
                             <section
@@ -209,6 +224,7 @@ export default function PublicProduct({
                                                     key={type}
                                                     type={type}
                                                     documents={group}
+                                                    onView={setViewing}
                                                     t={t}
                                                 />
                                             ),
@@ -222,21 +238,31 @@ export default function PublicProduct({
                             className="overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-sm"
                             data-test="product-importer"
                         >
-                            <div className="p-5">
-                                <p className="mb-4 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-                                    {t('importedBy')}
-                                </p>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-md">
-                                        {importer.charAt(0).toUpperCase() || (
-                                            <Building2 className="size-6" />
-                                        )}
-                                    </div>
-                                    <p className="text-base font-bold text-gray-900">
-                                        {importer}
-                                    </p>
+                            {/*
+                             * A button only when there is an imprint to open;
+                             * otherwise the name alone, as before.
+                             */}
+                            {importerHasDetails ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setImporterOpen(true)}
+                                    className="block w-full p-5 text-left transition-colors hover:bg-gray-50"
+                                    data-test="product-importer-open"
+                                >
+                                    <ImporterSummary
+                                        importer={importer}
+                                        withChevron
+                                        t={t}
+                                    />
+                                </button>
+                            ) : (
+                                <div className="p-5">
+                                    <ImporterSummary
+                                        importer={importer}
+                                        t={t}
+                                    />
                                 </div>
-                            </div>
+                            )}
                         </section>
 
                         <p className="px-4 pt-2 text-center text-xs text-gray-400">
@@ -244,6 +270,61 @@ export default function PublicProduct({
                         </p>
                     </div>
                 </main>
+            </div>
+
+            <ImporterDetailsDialog
+                importer={importer}
+                open={importerOpen}
+                onOpenChange={setImporterOpen}
+                locale={locale}
+                t={t}
+            />
+
+            <DocumentViewerDialog
+                document={viewing}
+                onClose={() => setViewing(null)}
+                t={t}
+            />
+        </>
+    );
+}
+
+/**
+ * Who places the product on the market: their initial and their name.
+ */
+function ImporterSummary({
+    importer,
+    withChevron = false,
+    t,
+}: {
+    importer: PublicImporter;
+    withChevron?: boolean;
+    t: PublicTranslate;
+}) {
+    return (
+        <>
+            <p className="mb-4 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
+                {t('importedBy')}
+            </p>
+            <div className="flex items-center gap-4">
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-md">
+                    {importer.name.charAt(0).toUpperCase() || (
+                        <Building2 className="size-6" />
+                    )}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="text-base font-bold text-gray-900">
+                        {importer.name}
+                    </p>
+                    {withChevron ? (
+                        <p className="text-xs text-emerald-700">
+                            {t('importerDetails')}
+                        </p>
+                    ) : null}
+                </div>
+                {withChevron ? (
+                    <ChevronRight className="size-5 shrink-0 text-gray-300" />
+                ) : null}
             </div>
         </>
     );
@@ -480,9 +561,11 @@ function Gallery({
  */
 function Safety({
     safety,
+    pictograms,
     t,
 }: {
     safety: PublicProductSafety;
+    pictograms: PublicProductImage[];
     t: PublicTranslate;
 }) {
     const notes = (
@@ -494,7 +577,12 @@ function Safety({
         ] as const
     ).filter((key) => safety[key]);
 
-    if (!safety.age_grading && !safety.warning_text && notes.length === 0) {
+    if (
+        !safety.age_grading &&
+        !safety.warning_text &&
+        notes.length === 0 &&
+        pictograms.length === 0
+    ) {
         return null;
     }
 
@@ -527,7 +615,7 @@ function Safety({
                     </div>
                 ) : null}
 
-                {safety.warning_text ? (
+                {safety.warning_text || pictograms.length > 0 ? (
                     <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                         <div className="mb-2 flex items-center gap-2">
                             <AlertTriangle className="size-4 shrink-0 text-red-500" />
@@ -535,9 +623,31 @@ function Safety({
                                 {t('warning_text')}
                             </p>
                         </div>
-                        <p className="text-sm leading-relaxed whitespace-pre-line text-red-700">
-                            {safety.warning_text}
-                        </p>
+                        {pictograms.length > 0 ? (
+                            <ul
+                                className="mb-3 flex flex-wrap gap-2"
+                                aria-label={t('warningPictograms')}
+                                data-test="product-warning-pictograms"
+                            >
+                                {pictograms.map((pictogram) => (
+                                    <li
+                                        key={pictogram.id}
+                                        className="flex size-20 items-center justify-center rounded-lg border border-red-100 bg-white p-1.5"
+                                    >
+                                        <img
+                                            src={pictogram.url}
+                                            alt={pictogram.name}
+                                            className="max-h-full max-w-full object-contain"
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                        {safety.warning_text ? (
+                            <p className="text-sm leading-relaxed whitespace-pre-line text-red-700">
+                                {safety.warning_text}
+                            </p>
+                        ) : null}
                     </div>
                 ) : null}
 
@@ -573,6 +683,7 @@ const DOCUMENT_ORDER: ProductDocumentType[] = [
     'regulatory_document',
     'manual_or_instructions',
     'safety_image',
+    'packaging_photo',
     'product_image',
     'other',
 ];
@@ -599,10 +710,12 @@ function groupByType(
 function DocumentGroup({
     type,
     documents,
+    onView,
     t,
 }: {
     type: ProductDocumentType;
     documents: PublicProductDocument[];
+    onView: (document: PublicProductDocument) => void;
     t: PublicTranslate;
 }) {
     return (
@@ -640,14 +753,32 @@ function DocumentGroup({
                                 {humanSize(document.size)}
                             </p>
                         </div>
-                        <a
-                            href={document.url}
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
-                            aria-label={`${t('download')} ${document.name}`}
-                        >
-                            <Download className="size-3.5" />
-                            {t('download')}
-                        </a>
+                        {/*
+                         * A PDF or a picture opens in the viewer as
+                         * watermarked pages; only a file that cannot be
+                         * drawn is offered as a download.
+                         */}
+                        {document.viewable ? (
+                            <button
+                                type="button"
+                                onClick={() => onView(document)}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
+                                aria-label={`${t('view')} ${document.name}`}
+                                data-test="product-public-document-view"
+                            >
+                                <Eye className="size-3.5" />
+                                {t('view')}
+                            </button>
+                        ) : (
+                            <a
+                                href={document.url}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
+                                aria-label={`${t('download')} ${document.name}`}
+                            >
+                                <Download className="size-3.5" />
+                                {t('download')}
+                            </a>
+                        )}
                     </li>
                 ))}
             </ul>

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Organizations;
 use App\Enums\Locale;
 use App\Enums\OrganizationType;
 use App\Rules\OrganizationName;
+use App\Support\Countries;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,15 @@ class SaveOrganizationRequest extends FormRequest
                 ? ['required', Rule::enum(OrganizationType::class)]
                 : ['prohibited'],
             'locale' => ['sometimes', Rule::enum(Locale::class)],
+            'street' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'city' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'country' => ['sometimes', 'nullable', 'string', Rule::in(Countries::codes())],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'email' => ['sometimes', 'nullable', 'string', 'email', 'max:255'],
+            'website' => ['sometimes', 'nullable', 'string', 'url:http,https', 'max:255'],
+            'vat_number' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'represented_by' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }
 

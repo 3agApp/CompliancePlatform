@@ -24,6 +24,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $slug
  * @property OrganizationType $type
  * @property Locale $locale
+ * @property string|null $street
+ * @property string|null $postal_code
+ * @property string|null $city
+ * @property string|null $country
+ * @property string|null $phone
+ * @property string|null $email
+ * @property string|null $website
+ * @property string|null $vat_number
+ * @property string|null $represented_by
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, OrganizationInvitation> $invitations
@@ -39,7 +48,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, SupplierConnection> $distributorConnections
  * @property-read Collection<int, Product> $suppliedProducts
  */
-#[Fillable(['name', 'slug', 'type', 'locale'])]
+#[Fillable([
+    'name', 'slug', 'type', 'locale',
+    'street', 'postal_code', 'city', 'country', 'phone', 'email', 'website', 'vat_number', 'represented_by',
+])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
@@ -109,6 +121,38 @@ class Organization extends Model
     public function isSupplier(): bool
     {
         return $this->type === OrganizationType::Supplier;
+    }
+
+    /**
+     * The company details an organization keeps about itself.
+     */
+    public const array COMPANY_PROFILE_FIELDS = [
+        'street', 'postal_code', 'city', 'country', 'phone', 'email', 'website', 'vat_number', 'represented_by',
+    ];
+
+    /**
+     * Get the organization's company details, with every field present.
+     *
+     * The same shape goes to the settings form, to a distributor reading
+     * its supplier and to the public product page, so each of them shows
+     * an empty field the same way: as null.
+     *
+     * @return array{street: string|null, postal_code: string|null, city: string|null, country: string|null, phone: string|null, email: string|null, website: string|null, vat_number: string|null, represented_by: string|null}
+     */
+    public function companyProfile(): array
+    {
+        /** @var array{street: string|null, postal_code: string|null, city: string|null, country: string|null, phone: string|null, email: string|null, website: string|null, vat_number: string|null, represented_by: string|null} */
+        return collect(self::COMPANY_PROFILE_FIELDS)
+            ->mapWithKeys(fn (string $field) => [$field => $this->getAttribute($field)])
+            ->all();
+    }
+
+    /**
+     * Determine if the organization has filled in any company details.
+     */
+    public function hasCompanyProfile(): bool
+    {
+        return collect($this->companyProfile())->contains(fn (?string $value) => filled($value));
     }
 
     /**

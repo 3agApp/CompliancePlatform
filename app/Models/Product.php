@@ -259,13 +259,17 @@ class Product extends Model
     }
 
     /**
-     * Get the most recent AI reading of the product's papers.
+     * Get the most recent AI reading of all of the product's papers.
+     *
+     * A reading of one paper on its own is left out: the product page's
+     * check is about the whole set, and each paper shows its own.
      *
      * @return HasOne<ProductAssessment, $this>
      */
     public function latestAssessment(): HasOne
     {
-        return $this->hasOne(ProductAssessment::class)->latestOfMany();
+        return $this->hasOne(ProductAssessment::class)
+            ->ofMany(['id' => 'max'], fn ($query) => $query->whereNull('product_document_id'));
     }
 
     /**

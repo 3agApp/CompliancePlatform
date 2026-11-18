@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DocumentPreviewKind;
 use App\Enums\ProductDocumentType;
+use App\Support\PublicDocumentRenderer;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductDocumentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -69,6 +70,17 @@ class ProductDocument extends Model
     {
         static::deleted(function (ProductDocument $document) {
             Storage::disk(self::DISK)->delete($document->path);
+            PublicDocumentRenderer::clear($document);
+        });
+
+        /**
+         * Taking a document off the public page also throws away the
+         * pictures drawn of it for readers, so none outlive the release.
+         */
+        static::updated(function (ProductDocument $document) {
+            if ($document->wasChanged('is_public') && ! $document->is_public) {
+                PublicDocumentRenderer::clear($document);
+            }
         });
     }
 

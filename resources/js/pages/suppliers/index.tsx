@@ -1,5 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import {
+    Building2,
     ChevronDown,
     Factory,
     MailPlus,
@@ -16,6 +17,7 @@ import {
 import { useState } from 'react';
 import DeleteSupplierModal from '@/components/delete-supplier-modal';
 import EditSupplierModal from '@/components/edit-supplier-modal';
+import SupplierDetailsModal from '@/components/supplier-details-modal';
 import InviteSupplierModal from '@/components/invite-supplier-modal';
 import ReviewProgress from '@/components/review-progress';
 import RevokeSupplierModal from '@/components/revoke-supplier-modal';
@@ -70,6 +72,15 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
         setEditDialogOpen(true);
     };
 
+    const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+    const [connectionToShow, setConnectionToShow] =
+        useState<SupplierConnection | null>(null);
+
+    const showDetails = (connection: SupplierConnection) => {
+        setConnectionToShow(connection);
+        setDetailsDialogOpen(true);
+    };
+
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [connectionToDelete, setConnectionToDelete] =
         useState<SupplierConnection | null>(null);
@@ -106,6 +117,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
         onRevoke: confirmRevoke,
         onEdit: startEdit,
         onDelete: confirmDelete,
+        onShowDetails: showDetails,
     };
 
     return (
@@ -204,6 +216,12 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                 onOpenChange={setEditDialogOpen}
             />
 
+            <SupplierDetailsModal
+                connection={connectionToShow}
+                open={detailsDialogOpen}
+                onOpenChange={setDetailsDialogOpen}
+            />
+
             <DeleteSupplierModal
                 organizationSlug={organizationSlug}
                 connection={connectionToDelete}
@@ -220,6 +238,7 @@ type RowProps = {
     onRevoke: (connection: SupplierConnection) => void;
     onEdit: (connection: SupplierConnection) => void;
     onDelete: (connection: SupplierConnection) => void;
+    onShowDetails: (connection: SupplierConnection) => void;
 };
 
 function SupplierGroup({
@@ -396,6 +415,7 @@ function SupplierRow({
     onRevoke,
     onEdit,
     onDelete,
+    onShowDetails,
 }: RowProps & { connection: SupplierConnection }) {
     const productsUrl = productsIndex(organizationSlug, {
         query: { connection: connection.id },
@@ -476,6 +496,13 @@ function SupplierRow({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuItem
+                                data-test="supplier-details-button"
+                                onSelect={() => onShowDetails(connection)}
+                            >
+                                <Building2 className="h-4 w-4" />
+                                {t('Company details')}
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                                 <Link href={productsUrl}>
                                     <Package className="h-4 w-4" />

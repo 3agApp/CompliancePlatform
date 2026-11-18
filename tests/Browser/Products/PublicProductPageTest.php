@@ -241,3 +241,67 @@ test('a product picture that cannot be loaded falls back to the no picture panel
         ->assertMissing('@product-photo')
         ->assertPresent('@product-photo-missing');
 });
+
+test('the importer opens to the imprint they keep about themselves', function () {
+    $product = publishableProduct();
+    $product->organization->update([
+        'street' => 'Bahnhofstrasse 1',
+        'postal_code' => '8001',
+        'city' => 'Zürich',
+        'country' => 'CH',
+        'vat_number' => 'CHE-123.456.789 MWST',
+        'represented_by' => 'Jane Doe',
+    ]);
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->click('@product-importer-open')
+        ->assertVisible('@importer-details')
+        ->assertSee('Bahnhofstrasse 1')
+        ->assertSee('8001 Zürich')
+        ->assertSee('Switzerland')
+        ->assertSee('Jane Doe')
+        ->assertSee('CHE-123.456.789 MWST')
+        ->assertNoJavaScriptErrors();
+});
+
+test('an importer without an imprint is a name, not a button', function () {
+    $product = publishableProduct();
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertSee($product->organization->name)
+        ->assertMissing('@product-importer-open')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a released document opens as watermarked pages with nothing to download', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+    $scan = aStoredImage($product, 'certificate.png');
+    $scan->forceFill(['type' => ProductDocumentType::Certificate, 'is_public' => true])->save();
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertSee('certificate.png')
+        ->assertDontSee('Download')
+        ->click('@product-public-document-view')
+        ->assertVisible('@document-viewer')
+        ->assertSee('Shown for reading only')
+        ->assertCount('@document-viewer-page', 1)
+        ->assertSee('Page 1 of 1')
+        ->assertNoJavaScriptErrors();
+});
+
+test('released warning pictograms sit in the warning beside its text', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct(['warning_text' => 'Not suitable for children under 3 years.']);
+    $pictogram = aStoredImage($product, 'age-warning.png');
+    $pictogram->forceFill(['type' => ProductDocumentType::SafetyImage, 'is_public' => true])->save();
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertVisible('@product-warning-pictograms')
+        ->assertSee('Not suitable for children under 3 years.')
+        ->assertPresent('[data-test="product-warning-pictograms"] img[alt="age-warning.png"]')
+        ->assertMissing('@product-public-documents')
+        ->assertNoJavaScriptErrors();
+});

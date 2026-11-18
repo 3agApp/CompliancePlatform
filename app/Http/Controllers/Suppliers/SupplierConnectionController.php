@@ -283,7 +283,7 @@ class SupplierConnectionController extends Controller
      * page, so the button a distributor sees and the request the controller
      * accepts can never drift apart.
      *
-     * @return array{id: int, companyName: string, contactEmail: string|null, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, canEdit: bool, canDelete: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null}
+     * @return array{id: int, companyName: string, contactEmail: string|null, status: string, statusLabel: string, isClaimed: bool, isInvited: bool, isExpired: bool, isAssignable: bool, canResend: bool, canRestore: bool, canEdit: bool, canDelete: bool, productsCount: int, brandsCount: int, productsByStatus: array<string, int>, lastActivityAt: string|null, isQuiet: bool, expiresAt: string|null, createdAt: string|null, supplierProfile: array<string, string|null>|null}
      */
     protected function toConnectionArray(SupplierConnection $connection): array
     {
@@ -328,6 +328,12 @@ class SupplierConnectionController extends Controller
                 && ($lastActivity === null || $lastActivity->lt(now()->subDays(SupplierConnection::QUIET_AFTER_DAYS))),
             'expiresAt' => $connection->expires_at?->toIso8601String(),
             'createdAt' => $connection->created_at?->toIso8601String(),
+            /**
+             * The supplier's own company details, once it has joined and
+             * keeps them itself. Before then there is nobody to have
+             * written them, so the page says so rather than showing blanks.
+             */
+            'supplierProfile' => $supplier?->companyProfile(),
         ];
     }
 }

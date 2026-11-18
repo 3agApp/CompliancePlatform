@@ -9,6 +9,23 @@ export type OrganizationTypeOption = {
     description: string;
 };
 
+/**
+ * The company details an organization keeps about itself. Every field is
+ * optional; one nobody has filled in is null.
+ */
+export type CompanyProfile = {
+    street: string | null;
+    postal_code: string | null;
+    city: string | null;
+    /** ISO 3166-1 alpha-2. */
+    country: string | null;
+    phone: string | null;
+    email: string | null;
+    website: string | null;
+    vat_number: string | null;
+    represented_by: string | null;
+};
+
 export type Organization = {
     id: number;
     name: string;
@@ -17,6 +34,7 @@ export type Organization = {
     typeLabel: string;
     /** The language the organization speaks by default. */
     locale: Locale;
+    profile?: CompanyProfile;
     role?: OrganizationRole;
     roleLabel?: string;
     isCurrent?: boolean;

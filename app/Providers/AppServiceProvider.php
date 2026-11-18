@@ -53,8 +53,9 @@ class AppServiceProvider extends ServiceProvider
 
         /**
          * Reading a product's papers is the most expensive thing an
-         * organization's key is used for, and one run already covers every
-         * document, so a few an hour is plenty.
+         * organization's key is used for. A run of the whole product reads
+         * every document and a run of one paper reads just that one; both
+         * draw on the same allowance, so a few an hour is plenty.
          */
         RateLimiter::for('ai-assessments', function (Request $request): array {
             $organization = $request->route('current_organization');

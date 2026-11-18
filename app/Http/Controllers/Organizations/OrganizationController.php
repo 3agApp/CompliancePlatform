@@ -15,6 +15,7 @@ use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\OrganizationInvitation;
 use App\Models\User;
+use App\Support\Countries;
 use App\Support\OrganizationHealth;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\RedirectResponse;
@@ -70,7 +71,9 @@ class OrganizationController extends Controller
                 'type' => $organization->type->value,
                 'typeLabel' => $organization->type->label(),
                 'locale' => $organization->locale->value,
+                'profile' => $organization->companyProfile(),
             ],
+            'countries' => Countries::codes(),
             'members' => $organization->members()->get()->map(function (User $member) {
                 /** @var Membership $membership */
                 $membership = $member->getRelation('pivot');
@@ -166,7 +169,7 @@ class OrganizationController extends Controller
         $organization = DB::transaction(function () use ($request, $organization) {
             $organization = Organization::whereKey($organization->id)->lockForUpdate()->firstOrFail();
 
-            $organization->update($request->safe()->only(['name', 'locale']));
+            $organization->update($request->safe()->only(['name', 'locale', ...Organization::COMPANY_PROFILE_FIELDS]));
 
             return $organization;
         });

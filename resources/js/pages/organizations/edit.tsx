@@ -2,6 +2,10 @@ import { Form, Head, router, usePage } from '@inertiajs/react';
 import { ChevronDown, Mail, Send, UserPlus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AttentionList from '@/components/attention-list';
+import CompanyProfileDetails, {
+    hasCompanyProfile,
+} from '@/components/company-profile-details';
+import CompanyProfileFields from '@/components/company-profile-fields';
 import CancelInvitationModal from '@/components/cancel-invitation-modal';
 import ChangeMemberRoleModal from '@/components/change-member-role-modal';
 import DangerZone from '@/components/danger-zone';
@@ -62,6 +66,7 @@ type Props = {
     availableRoles: RoleOption[];
     aiProvider: AiProviderSetting | null;
     availableAiProviders: AiProviderOption[];
+    countries: string[];
 };
 
 export default function OrganizationEdit({
@@ -73,6 +78,7 @@ export default function OrganizationEdit({
     availableRoles,
     aiProvider,
     availableAiProviders,
+    countries,
 }: Props) {
     const getInitials = useInitials();
     const { auth, availableLocales } = usePage().props;
@@ -242,6 +248,32 @@ export default function OrganizationEdit({
                                             />
                                         </div>
 
+                                        {organization.profile ? (
+                                            <div className="space-y-4 pt-2">
+                                                <Heading
+                                                    variant="small"
+                                                    title={t('Company details')}
+                                                    description={
+                                                        organization.type ===
+                                                        'supplier'
+                                                            ? t(
+                                                                  'Where your company is based and how to reach it. The distributors you supply see these details.',
+                                                              )
+                                                            : t(
+                                                                  'Where your company is based and how to reach it. Shoppers see these details when they open your name on a public product page.',
+                                                              )
+                                                    }
+                                                />
+                                                <CompanyProfileFields
+                                                    profile={
+                                                        organization.profile
+                                                    }
+                                                    countries={countries}
+                                                    errors={errors}
+                                                />
+                                            </div>
+                                        ) : null}
+
                                         <SaveButton
                                             processing={processing}
                                             isDirty={isDirty}
@@ -292,6 +324,12 @@ export default function OrganizationEdit({
                                     </dd>
                                 </div>
                             </dl>
+                            {organization.profile &&
+                            hasCompanyProfile(organization.profile) ? (
+                                <CompanyProfileDetails
+                                    profile={organization.profile}
+                                />
+                            ) : null}
                         </>
                     )}
                 </div>

@@ -252,7 +252,7 @@ test('the public page shows the pictures of the article and serves them without 
     $this
         ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
         ->assertOk()
-        ->assertHeader('Content-Type', 'image/png')
+        ->assertHeader('Content-Type', 'image/webp')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
 });
 

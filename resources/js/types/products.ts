@@ -1,3 +1,4 @@
+import type { CompanyProfile } from './organizations';
 import type { SupplierConnectionStatus } from './connections';
 
 export type CountryOfOrigin = 'DE' | 'CH';
@@ -291,6 +292,20 @@ export type PublicProductDocument = {
     name: string;
     size: number;
     url: string;
+    /**
+     * Opens in the page viewer as watermarked pages. A Word or Excel file
+     * cannot be drawn, so it is a plain download instead.
+     */
+    viewable: boolean;
+};
+
+/**
+ * The company that places the product on the market, with the imprint it
+ * keeps about itself.
+ */
+export type PublicImporter = {
+    name: string;
+    profile: CompanyProfile;
 };
 
 /**
@@ -431,6 +446,7 @@ export type ProductDocumentType =
     | 'certificate'
     | 'product_image'
     | 'safety_image'
+    | 'packaging_photo'
     | 'regulatory_document'
     | 'other';
 
@@ -453,6 +469,8 @@ export type ProductDocument = {
     size: number;
     preview_kind: DocumentPreviewKind | null;
     is_public: boolean;
+    /** Whether an AI provider can read it on its own: PDFs and pictures only. */
+    ai_readable: boolean;
     uploaded_by: string | null;
     created_at: string | null;
 };
@@ -494,6 +512,8 @@ export type ProductFindingSeverity = 'critical' | 'major' | 'minor' | 'info';
  */
 export type ProductAssessmentSummary = {
     id: number;
+    /** The one paper the run read, or null for a run of the whole set. */
+    document: { id: number; name: string } | null;
     status: ProductAssessmentStatus;
     status_label: string;
     is_pending: boolean;
@@ -569,6 +589,8 @@ export type ProductAssessmentDetail = ProductAssessmentSummary & {
 export type ProductAssessmentState = {
     latest: ProductAssessmentDetail | null;
     runs: ProductAssessmentSummary[];
+    /** The latest run of each paper read on its own, by document id. */
+    documents: Record<number, ProductAssessmentSummary>;
 };
 
 /**

@@ -226,6 +226,7 @@ class ProductController extends Controller
                         ? null
                         : ProductAssessmentView::detail($product->latestAssessment),
                     'runs' => ProductAssessmentView::history($product),
+                    'documents' => ProductAssessmentView::latestPerDocument($product),
                 ])
                 : null,
             'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($product->organization),
@@ -699,7 +700,7 @@ class ProductController extends Controller
      * the download link itself, so nothing here is a URL that could be
      * mistaken for one that works on its own.
      *
-     * @return array<array{id: int, type: string, type_label: string, name: string, size: int, preview_kind: string|null, uploaded_by: string|null, created_at: string|null}>
+     * @return array<array{id: int, type: string, type_label: string, is_public: bool, name: string, size: int, preview_kind: string|null, ai_readable: bool, uploaded_by: string|null, created_at: string|null}>
      */
     protected function toDocumentArray(Product $product): array
     {
@@ -717,6 +718,11 @@ class ProductController extends Controller
                  * and the one decision that rests on it is made in one place.
                  */
                 'preview_kind' => $document->previewKind()?->value,
+                /**
+                 * Whether an AI provider can read the file on its own: only
+                 * PDFs and pictures can be sent.
+                 */
+                'ai_readable' => AssessProductDocuments::isReadable($document),
                 'uploaded_by' => $document->uploader?->name,
                 'created_at' => $document->created_at?->toISOString(),
             ])

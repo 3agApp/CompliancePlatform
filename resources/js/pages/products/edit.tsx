@@ -758,6 +758,11 @@ export default function ProductEdit({
                             canUpload={permissions.canUpdateProduct}
                             canPublish={permissions.canPublishDocuments}
                             canGuessKinds={canGuessDocumentKinds}
+                            canAssess={
+                                assessment !== null &&
+                                assessmentUnavailableReason === null
+                            }
+                            documentAssessments={assessment?.documents}
                         />
                     </section>
                 </TabPanel>

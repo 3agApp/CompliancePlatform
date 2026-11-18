@@ -30,7 +30,7 @@ class ProductAssessmentView
      */
     public static function detail(ProductAssessment $assessment): array
     {
-        $assessment->loadMissing(['findings.previousFinding', 'requester', 'previousAssessment.findings']);
+        $assessment->loadMissing(['findings.previousFinding', 'requester', 'previousAssessment.findings', 'document']);
 
         $compared = self::isCompared($assessment);
 
@@ -195,6 +195,7 @@ class ProductAssessmentView
     public static function history(Product $product): array
     {
         return $product->assessments()
+            ->with('document')
             ->withCount('findings')
             ->limit(self::HISTORY_LIMIT)
             ->get()
@@ -203,14 +204,42 @@ class ProductAssessmentView
     }
 
     /**
+     * The latest run of each paper read on its own, keyed by the paper.
+     *
+     * @return array<int|string, array<string, mixed>>
+     */
+    public static function latestPerDocument(Product $product): array
+    {
+        return $product->assessments()
+            ->whereNotNull('product_document_id')
+            ->with('document')
+            ->withCount('findings')
+            ->get()
+            ->unique('product_document_id')
+            ->mapWithKeys(fn (ProductAssessment $assessment): array => [
+                $assessment->product_document_id => self::summary($assessment),
+            ])
+            ->all();
+    }
+
+    /**
      * The parts of a run that a list of runs shows.
      *
-     * @return array{id: int, status: string, status_label: string, is_pending: bool, overall: string|null, overall_label: string|null, findings_count: int, created_at: string|null, completed_at: string|null}
+     * @return array{id: int, document: array{id: int, name: string}|null, status: string, status_label: string, is_pending: bool, overall: string|null, overall_label: string|null, findings_count: int, created_at: string|null, completed_at: string|null}
      */
-    private static function summary(ProductAssessment $assessment): array
+    public static function summary(ProductAssessment $assessment): array
     {
         return [
             'id' => $assessment->id,
+            /**
+             * The one paper the run read, when it read only one. The name
+             * is the one it has now, since the paper is still on file: a
+             * run of a paper is deleted along with it.
+             */
+            'document' => $assessment->product_document_id === null ? null : [
+                'id' => $assessment->product_document_id,
+                'name' => $assessment->document->name ?? '',
+            ],
             'status' => $assessment->status->value,
             'status_label' => $assessment->status->label(),
             'is_pending' => $assessment->status->isPending(),

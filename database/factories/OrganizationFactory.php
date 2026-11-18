@@ -37,4 +37,22 @@ class OrganizationFactory extends Factory
             'type' => OrganizationType::Supplier,
         ]);
     }
+
+    /**
+     * Indicate that the organization has filled in its company details.
+     */
+    public function withCompanyProfile(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'street' => fake()->streetAddress(),
+            'postal_code' => fake()->postcode(),
+            'city' => fake()->city(),
+            'country' => 'CH',
+            'phone' => fake()->phoneNumber(),
+            'email' => fake()->companyEmail(),
+            'website' => 'https://'.fake()->domainName(),
+            'vat_number' => 'CHE-'.fake()->numerify('###.###.###').' MWST',
+            'represented_by' => fake()->name(),
+        ]);
+    }
 }

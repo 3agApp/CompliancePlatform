@@ -18,6 +18,7 @@ use App\Models\ProductAssessmentFinding;
 use App\Models\ProductDocument;
 use App\Models\User;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -82,6 +83,10 @@ class AssessProductDocuments
 
     public const string ALREADY_RUNNING = 'already_running';
 
+    public const string ALREADY_RUNNING_FOR_DOCUMENT = 'already_running_for_document';
+
+    public const string UNREADABLE_DOCUMENT = 'unreadable_document';
+
     public function __construct(private OrganizationProvider $provider)
     {
         //
@@ -107,13 +112,42 @@ class AssessProductDocuments
     }
 
     /**
+     * Get the reason one paper cannot be read on its own, or null if it can.
+     *
+     * Providers only take PDFs and pictures. A Word or Excel file would be
+     * skipped by the run anyway, so it is refused before anybody waits.
+     */
+    public static function documentUnavailableReason(Organization $organization, ProductDocument $document): ?string
+    {
+        return self::unavailableReason($organization)
+            ?? (self::isReadable($document) ? null : self::UNREADABLE_DOCUMENT);
+    }
+
+    /**
+     * Determine if a provider can read the paper.
+     */
+    public static function isReadable(ProductDocument $document): bool
+    {
+        return $document->mime_type === 'application/pdf'
+            || in_array($document->mime_type, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true);
+    }
+
+    /**
      * Ask for a run, and put it on the queue.
+     *
+     * Given a document, the run reads that paper alone. Runs of the whole
+     * set and runs of each paper are separate lines: each waits only on a
+     * run of its own kind, and is compared only with the last one of its
+     * own kind, so a reading of one test report is never set against a
+     * reading of everything.
      *
      * @throws ValidationException when the organization cannot run one, or one is already going.
      */
-    public function start(Product $product, User $actor, Organization $organization): ProductAssessment
+    public function start(Product $product, User $actor, Organization $organization, ?ProductDocument $document = null): ProductAssessment
     {
-        $reason = self::unavailableReason($organization);
+        $reason = $document === null
+            ? self::unavailableReason($organization)
+            : self::documentUnavailableReason($organization, $document);
 
         if ($reason !== null) {
             throw ValidationException::withMessages(['assessment' => $this->messageFor($reason)]);
@@ -121,20 +155,22 @@ class AssessProductDocuments
 
         $setting = $organization->aiSetting;
 
-        $assessment = DB::transaction(function () use ($product, $actor, $organization, $setting): ?ProductAssessment {
+        $assessment = DB::transaction(function () use ($product, $actor, $organization, $setting, $document): ?ProductAssessment {
             /**
              * Locked so two reviewers pressing the button together get one
              * run between them rather than two bills.
              */
             Product::query()->whereKey($product->id)->lockForUpdate()->first();
 
-            $product->assessments()
+            $runs = fn () => $product->assessments()->where('product_document_id', $document?->id);
+
+            $runs()
                 ->whereIn('status', [AssessmentStatus::Queued, AssessmentStatus::Running])
                 ->where('created_at', '<', now()->subMinutes(self::STALE_AFTER_MINUTES))
                 ->get()
                 ->each(fn (ProductAssessment $stale) => $this->fail($stale, __('The check never finished and was given up on. Try again.')));
 
-            $pending = $product->assessments()
+            $pending = $runs()
                 ->whereIn('status', [AssessmentStatus::Queued, AssessmentStatus::Running])
                 ->exists();
 
@@ -146,11 +182,12 @@ class AssessProductDocuments
              * The run this one is read against: the last one that finished.
              * A failed run found nothing, so there is nothing to compare.
              */
-            $previous = $product->assessments()
+            $previous = $runs()
                 ->where('status', AssessmentStatus::Completed)
                 ->value('id');
 
             $assessment = $product->assessments()->create([
+                'product_document_id' => $document?->id,
                 'organization_id' => $organization->id,
                 'requested_by' => $actor->id,
                 'previous_assessment_id' => $previous,
@@ -168,7 +205,7 @@ class AssessProductDocuments
         });
 
         if ($assessment === null) {
-            throw ValidationException::withMessages(['assessment' => $this->messageFor(self::ALREADY_RUNNING)]);
+            throw ValidationException::withMessages(['assessment' => $this->messageFor($document === null ? self::ALREADY_RUNNING : self::ALREADY_RUNNING_FOR_DOCUMENT)]);
         }
 
         RunProductAssessment::dispatch($assessment);
@@ -207,7 +244,11 @@ class AssessProductDocuments
             return;
         }
 
-        [$sent, $attachments, $skipped] = $this->attachmentsFor($product);
+        $documents = $assessment->isOfOneDocument()
+            ? $product->documents->where('id', $assessment->product_document_id)
+            : $product->documents;
+
+        [$sent, $attachments, $skipped] = $this->attachmentsFor($documents);
 
         $previous = $assessment->previousAssessment?->findings()->get()->values()->all() ?? [];
 
@@ -219,8 +260,8 @@ class AssessProductDocuments
         try {
             $response = $this->provider->using(
                 $setting,
-                fn (string $provider): mixed => (new DocumentAssessmentAgent($this->languageFor($organization)))->prompt(
-                    $this->promptFor($product, $sent, $skipped, $assessment->previousAssessment, $previous),
+                fn (string $provider): mixed => (new DocumentAssessmentAgent($this->languageFor($organization), singleDocument: $assessment->isOfOneDocument()))->prompt(
+                    $this->promptFor($product, $sent, $skipped, $assessment->previousAssessment, $previous, $assessment->isOfOneDocument()),
                     attachments: $attachments,
                     provider: $provider,
                     model: $setting->model,
@@ -349,19 +390,19 @@ class AssessProductDocuments
     }
 
     /**
-     * Sort the product's papers into those that can be read and those that
-     * cannot.
+     * Sort the papers into those that can be read and those that cannot.
      *
+     * @param  Collection<int, ProductDocument>  $documents
      * @return array{0: array<int, array{id: int, name: string, type: string, mime_type: string, size: int}>, 1: array<int, Document|Image>, 2: array<int, array{id: int, name: string, reason: string}>}
      */
-    private function attachmentsFor(Product $product): array
+    private function attachmentsFor(Collection $documents): array
     {
         $sent = [];
         $attachments = [];
         $skipped = [];
         $budget = self::SIZE_BUDGET;
 
-        foreach ($product->documents->sortBy('id') as $document) {
+        foreach ($documents->sortBy('id') as $document) {
             $attachment = $this->attachmentFor($document);
 
             $reason = match (true) {
@@ -399,6 +440,10 @@ class AssessProductDocuments
      */
     private function attachmentFor(ProductDocument $document): Document|Image|null
     {
+        if (! self::isReadable($document)) {
+            return null;
+        }
+
         return match (true) {
             $document->mime_type === 'application/pdf' => Document::fromStorage($document->path, ProductDocument::DISK)
                 ->withMimeType('application/pdf')
@@ -418,7 +463,7 @@ class AssessProductDocuments
      * @param  array<int, array{id: int, name: string, reason: string}>  $skipped
      * @param  array<int, ProductAssessmentFinding>  $previous
      */
-    private function promptFor(Product $product, array $sent, array $skipped, ?ProductAssessment $previousAssessment, array $previous): string
+    private function promptFor(Product $product, array $sent, array $skipped, ?ProductAssessment $previousAssessment, array $previous, bool $singleDocument = false): string
     {
         $details = collect([
             'Name' => $product->name,
@@ -470,7 +515,7 @@ class AssessProductDocuments
                     ->implode("\n"));
         }
 
-        return $prompt."\n\nAssess these documents.";
+        return $prompt.($singleDocument ? "\n\nAssess this one document on its own." : "\n\nAssess these documents.");
     }
 
     /**
@@ -493,6 +538,8 @@ class AssessProductDocuments
             self::NOT_CONFIGURED => __('Connect an AI provider in the organization settings first.'),
             self::ANALYSIS_DISABLED => __('An admin has to allow document analysis in the organization settings first.'),
             self::ALREADY_RUNNING => __('A check is already running for this product.'),
+            self::ALREADY_RUNNING_FOR_DOCUMENT => __('A check is already running for this document.'),
+            self::UNREADABLE_DOCUMENT => __('Only PDFs and images can be checked by AI.'),
             default => __('The AI check is not available.'),
         };
     }

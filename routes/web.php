@@ -12,6 +12,7 @@ use App\Http\Controllers\ProductAssessmentController;
 use App\Http\Controllers\ProductBulkController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductDocumentAssessmentController;
 use App\Http\Controllers\ProductDocumentController;
 use App\Http\Controllers\ProductDocumentVisibilityController;
 use App\Http\Controllers\ProductImportController;
@@ -61,6 +62,11 @@ Route::middleware(['throttle:public-product', SetPublicLocale::class])->group(fu
     Route::get('p/{product:uuid}/documents/{document}', [PublicProductController::class, 'document'])
         ->scopeBindings()
         ->name('products.public.document');
+
+    Route::get('p/{product:uuid}/documents/{document}/pages/{page}', [PublicProductController::class, 'page'])
+        ->scopeBindings()
+        ->whereNumber('page')
+        ->name('products.public.document.page');
 });
 
 /**
@@ -125,6 +131,9 @@ Route::prefix('{current_organization}')
                 ->name('products.assessments.store');
             Route::get('products/{product}/assessments/{assessment}', [ProductAssessmentController::class, 'show'])->name('products.assessments.show');
             Route::get('products/{product}/assessments/{assessment}/report', [ProductAssessmentController::class, 'report'])->name('products.assessments.report');
+            Route::post('products/{product}/documents/{document}/assessments', [ProductDocumentAssessmentController::class, 'store'])
+                ->middleware('throttle:ai-assessments')
+                ->name('products.documents.assessments.store');
 
             /**
              * The public seal, set by hand. A distributor-only move, and one

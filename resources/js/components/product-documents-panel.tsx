@@ -1,7 +1,17 @@
 import { router } from '@inertiajs/react';
-import { Download, FileText, ImageOff, Trash2, Upload } from 'lucide-react';
+import {
+    Download,
+    FileText,
+    ImageOff,
+    Loader2,
+    Sparkles,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import DeleteProductDocumentModal from '@/components/delete-product-document-modal';
+import DocumentAssessmentModal from '@/components/document-assessment-modal';
 import Heading from '@/components/heading';
 import PreviewDocumentModal from '@/components/preview-document-modal';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
@@ -10,14 +20,20 @@ import { formatDay, formatFileSize } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { preview, show, visibility } from '@/routes/products/documents';
+import { store as storeDocumentAssessment } from '@/routes/products/documents/assessments';
 import type {
+    ProductAssessmentSummary,
     ProductDocument,
     ProductDocumentType,
     ProductDocumentTypeOption,
 } from '@/types';
 
 /** The kinds shown as pictures rather than as rows. */
-const GALLERY_TYPES: ProductDocumentType[] = ['product_image', 'safety_image'];
+const GALLERY_TYPES: ProductDocumentType[] = [
+    'product_image',
+    'packaging_photo',
+    'safety_image',
+];
 
 type Props = {
     organizationSlug: string;
@@ -35,6 +51,10 @@ type Props = {
     canPublish?: boolean;
     /** Whether the organization has an AI provider to ask for kinds. */
     canGuessKinds?: boolean;
+    /** Whether the viewer may have a paper read by AI on its own. */
+    canAssess?: boolean;
+    /** The latest AI reading of each paper on its own, by document id. */
+    documentAssessments?: Record<number, ProductAssessmentSummary>;
 };
 
 /**
@@ -69,6 +89,8 @@ export default function ProductDocumentsPanel({
     canUpload,
     canPublish = false,
     canGuessKinds = false,
+    canAssess = false,
+    documentAssessments = {},
 }: Props) {
     const [uploadOpen, setUploadOpen] = useState(false);
     const [presetType, setPresetType] = useState<ProductDocumentType | null>(
@@ -78,6 +100,11 @@ export default function ProductDocumentsPanel({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [documentToDelete, setDocumentToDelete] =
         useState<ProductDocument | null>(null);
+    const [documentToAssess, setDocumentToAssess] =
+        useState<ProductDocument | null>(null);
+    const [startingAssessment, setStartingAssessment] = useState<number | null>(
+        null,
+    );
     const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
     const [documentToPreview, setDocumentToPreview] =
         useState<ProductDocument | null>(null);
@@ -104,6 +131,31 @@ export default function ProductDocumentsPanel({
             setDocumentToDelete(document);
             setDeleteDialogOpen(true);
         },
+        canAssess,
+        assessments: documentAssessments,
+        startingAssessment,
+        onAssess: (document) => {
+            router.post(
+                storeDocumentAssessment.url([
+                    organizationSlug,
+                    productId,
+                    document.id,
+                ]),
+                {},
+                {
+                    preserveScroll: true,
+                    onStart: () => setStartingAssessment(document.id),
+                    onFinish: () => setStartingAssessment(null),
+                    onSuccess: () => setDocumentToAssess(document),
+                    onError: (errors) => {
+                        if (errors.assessment) {
+                            toast.error(errors.assessment);
+                        }
+                    },
+                },
+            );
+        },
+        onShowAssessment: setDocumentToAssess,
     };
 
     /**
@@ -258,6 +310,22 @@ export default function ProductDocumentsPanel({
                 />
             ) : null}
 
+            <DocumentAssessmentModal
+                organizationSlug={organizationSlug}
+                productId={productId}
+                document={documentToAssess}
+                summary={
+                    documentToAssess !== null
+                        ? (documentAssessments[documentToAssess.id] ?? null)
+                        : null
+                }
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDocumentToAssess(null);
+                    }
+                }}
+            />
+
             <DeleteProductDocumentModal
                 organizationSlug={organizationSlug}
                 productId={productId}
@@ -284,6 +352,12 @@ type DocumentActions = {
     canPublish: boolean;
     onPreview: (document: ProductDocument) => void;
     onDelete: (document: ProductDocument) => void;
+    canAssess: boolean;
+    assessments: Record<number, ProductAssessmentSummary>;
+    /** The paper whose AI check is being asked for right now. */
+    startingAssessment: number | null;
+    onAssess: (document: ProductDocument) => void;
+    onShowAssessment: (document: ProductDocument) => void;
 };
 
 /**
@@ -511,8 +585,35 @@ function DocumentButtons({
     document: ProductDocument;
     actions: DocumentActions;
 }) {
+    const latest = actions.assessments[document.id];
+    const canCheck = actions.canAssess && document.ai_readable;
+
     return (
         <div className="flex items-center justify-end">
+            {canCheck ? (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    data-test="product-document-assess-button"
+                    title={t('Check :name with AI', { name: document.name })}
+                    disabled={
+                        actions.startingAssessment !== null ||
+                        (latest?.is_pending ?? false)
+                    }
+                    onClick={() => actions.onAssess(document)}
+                >
+                    {actions.startingAssessment === document.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <Sparkles className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                        {t('Check :name with AI', { name: document.name })}
+                    </span>
+                </Button>
+            ) : null}
+
             <Button variant="ghost" size="icon" className="size-8" asChild>
                 <a
                     href={show.url([
@@ -546,6 +647,55 @@ function DocumentButtons({
                 </Button>
             ) : null}
         </div>
+    );
+}
+
+/**
+ * Where the paper's own AI check stands, as a chip that opens it.
+ */
+function AssessmentBadge({
+    document,
+    actions,
+}: {
+    document: ProductDocument;
+    actions: DocumentActions;
+}) {
+    const latest = actions.assessments[document.id];
+
+    if (latest === undefined) {
+        return null;
+    }
+
+    const tone = latest.is_pending
+        ? 'bg-muted text-muted-foreground'
+        : latest.status === 'failed'
+          ? 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300'
+          : latest.overall === 'no_gaps_found'
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+            : 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300';
+
+    return (
+        <button
+            type="button"
+            onClick={() => actions.onShowAssessment(document)}
+            className={cn(
+                'inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium hover:opacity-80',
+                tone,
+            )}
+            data-test="product-document-assessment-badge"
+        >
+            {latest.is_pending ? (
+                <Loader2 className="size-3 animate-spin" />
+            ) : (
+                <Sparkles className="size-3" />
+            )}
+            {latest.is_pending
+                ? latest.status_label
+                : (latest.overall_label ?? latest.status_label)}
+            {!latest.is_pending && latest.findings_count > 0
+                ? ` · ${latest.findings_count}`
+                : ''}
+        </button>
     );
 }
 
@@ -585,6 +735,7 @@ function DocumentRow({
                     <span className="text-muted-foreground hidden text-xs md:inline">
                         {formatFileSize(document.size)}
                     </span>
+                    <AssessmentBadge document={document} actions={actions} />
                 </div>
             </div>
 
@@ -663,6 +814,7 @@ function ImageCard({
                             formatFileSize(document.size),
                         ].join(' · ')}
                     </span>
+                    <AssessmentBadge document={document} actions={actions} />
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
