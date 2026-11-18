@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Data\ProductCompleteness;
 use App\Data\ProductSeal;
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Enums\ProductSealStatus;
@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Str;
 
 /**
@@ -38,7 +39,7 @@ use Illuminate\Support\Str;
  * @property string|null $supplier_article_number
  * @property string|null $order_number
  * @property string|null $customs_tariff_number
- * @property CountryOfOrigin|null $country_of_origin
+ * @property Country|null $country_of_origin
  * @property string|null $age_grading
  * @property string|null $safety_notice
  * @property string|null $warning_text
@@ -121,7 +122,7 @@ class Product extends Model
     {
         return [
             'is_active' => 'boolean',
-            'country_of_origin' => CountryOfOrigin::class,
+            'country_of_origin' => Country::class,
             'review_status' => ProductReviewStatus::class,
             'seal_override' => ProductSealStatus::class,
             'seal_overridden_at' => 'datetime',
@@ -197,6 +198,16 @@ class Product extends Model
     public function supplierConnection(): BelongsTo
     {
         return $this->belongsTo(SupplierConnection::class);
+    }
+
+    /**
+     * The countries this product may come from, or null for any.
+     *
+     * @return SupportCollection<int, Country>|null
+     */
+    public function allowedCountriesOfOrigin(): ?SupportCollection
+    {
+        return $this->supplierConnection?->allowedCountriesOfOrigin();
     }
 
     /**

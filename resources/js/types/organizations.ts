@@ -22,6 +22,25 @@ export type Organization = {
     isCurrent?: boolean;
 };
 
+/** The company behind an organization, as its settings page edits it. */
+export type OrganizationProfile = {
+    logoUrl: string | null;
+    street: string | null;
+    addressLine2: string | null;
+    postalCode: string | null;
+    city: string | null;
+    country: string | null;
+    countryLabel: string | null;
+    mapUrl: string | null;
+    representedBy: string | null;
+    phone: string | null;
+    email: string | null;
+    website: string | null;
+    vatNumber: string | null;
+    /** Null for a distributor, which does not produce. */
+    productionCountries: string[] | null;
+};
+
 export type OrganizationMember = {
     id: number;
     name: string;
@@ -47,7 +66,7 @@ export type OrganizationAttentionItem = {
     tone: 'warning' | 'danger';
     title: string;
     description: string;
-    target: 'invitations' | 'ai-provider';
+    target: 'invitations' | 'ai-provider' | 'profile';
 };
 
 export type OrganizationInvitationContext = {

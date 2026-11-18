@@ -58,6 +58,23 @@ class OrganizationHealth
             }
         }
 
+        /**
+         * A distributor's address is what a product page shows the public
+         * as the company placing the product on the market, so an empty
+         * one is worth a nudge. Last, because nothing breaks without it.
+         */
+        if ($this->permissions->canUpdateOrganization
+            && $this->organization->isDistributor()
+            && ! $this->organization->hasAddress()) {
+            $items[] = [
+                'key' => 'incomplete-profile',
+                'tone' => 'warning',
+                'title' => __('Complete your company profile'),
+                'description' => __('Your address and contact details are shown on your products\' public pages.'),
+                'target' => 'profile',
+            ];
+        }
+
         return $items;
     }
 }

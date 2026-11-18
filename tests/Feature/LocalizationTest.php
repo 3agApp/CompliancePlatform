@@ -197,7 +197,7 @@ test('every string the application shows has a German translation', function () 
      * The public pages read by buyers keep their own dictionary, and the
      * generated and vendored folders hold no strings of ours.
      */
-    $ownDictionary = ['public-i18n.ts', 'products/public.tsx', 'pages/check.tsx', 'product-unit-check.tsx', 'public-header.tsx', 'captcha-field.tsx'];
+    $ownDictionary = ['public-i18n.ts', 'products/public.tsx', 'pages/check.tsx', 'product-unit-check.tsx', 'public-header.tsx', 'public-company-card.tsx', 'captcha-field.tsx'];
     $generated = ['/actions/', '/routes/', '/wayfinder/', '/components/ui/'];
 
     foreach (File::allFiles(resource_path('js')) as $file) {

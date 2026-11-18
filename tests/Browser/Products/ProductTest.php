@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\Country;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductRequirement;
 use App\Models\Brand;
+use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductTemplate;
@@ -630,4 +632,57 @@ test('a supplier invited from the products page can be assigned without a refres
         ->click('@product-supplier')
         ->assertSee('Acme Supplies AG (invitation pending)')
         ->assertNoJavaScriptErrors();
+});
+
+test('a supplier that produces in one country fills it in on the product', function () {
+    [$user, $organization] = newOrganizationMember();
+    $supplier = Organization::factory()->supplier()->create([
+        'name' => 'Toy Works',
+        'production_countries' => [Country::Vietnam],
+    ]);
+    $connection = newSupplierConnection($organization, $supplier);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'country_of_origin' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSeeIn('@product-country-of-origin', 'Vietnam')
+        ->assertSee('Toy Works produces only in this country, so it is filled in. Save to keep it.')
+        ->fill('@product-internal-article-number', 'ART-1')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->country_of_origin)->toBe(Country::Vietnam);
+});
+
+test('the country of origin offers only the countries the supplier produces in', function () {
+    [$user, $organization] = newOrganizationMember();
+    $supplier = Organization::factory()->supplier()->create([
+        'name' => 'Toy Works',
+        'production_countries' => [Country::China, Country::Vietnam],
+    ]);
+    $connection = newSupplierConnection($organization, $supplier);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'country_of_origin' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSee('Limited to the countries Toy Works produces in.')
+        ->click('@product-country-of-origin')
+        ->assertCount('[role="option"]', 2)
+        ->click('@country-option-CN')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->country_of_origin)->toBe(Country::China);
 });

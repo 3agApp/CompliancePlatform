@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
@@ -54,7 +54,7 @@ test('a distributor can change the active flag and country of many products at o
         $product->refresh();
 
         expect($product->is_active)->toBeFalse()
-            ->and($product->country_of_origin)->toBe(CountryOfOrigin::from('CH'));
+            ->and($product->country_of_origin)->toBe(Country::from('CH'));
 
         $event = $product->events()->sole();
 
@@ -64,6 +64,32 @@ test('a distributor can change the active flag and country of many products at o
 
     expect($untouched->fresh()->is_active)->toBeTrue()
         ->and($untouched->events()->exists())->toBeFalse();
+});
+
+test('a bulk change cannot give products a country their supplier does not produce in', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $supplier = Organization::factory()->supplier()->create(['production_countries' => [Country::China]]);
+    $narrowed = newSupplierConnection($organization, $supplier);
+    $open = newSupplierConnection($organization);
+
+    $restricted = Product::factory()->for($organization)->for($narrowed)->create(['name' => 'Wooden Train', 'country_of_origin' => null]);
+    $free = Product::factory()->for($organization)->for($open)->create(['country_of_origin' => null]);
+
+    bulkUpdate($user, $organization, [
+        'ids' => [$restricted->id, $free->id],
+        'country_of_origin' => 'DE',
+    ])->assertSessionHasErrors(['country_of_origin' => 'Wooden Train comes from a supplier that does not produce in this country.']);
+
+    expect($free->fresh()->country_of_origin)->toBeNull();
+
+    bulkUpdate($user, $organization, [
+        'ids' => [$restricted->id, $free->id],
+        'country_of_origin' => 'CN',
+    ])->assertSessionHasNoErrors();
+
+    expect($restricted->fresh()->country_of_origin)->toBe(Country::China)
+        ->and($free->fresh()->country_of_origin)->toBe(Country::China);
 });
 
 test('a field left out of a bulk change is left as each product has it', function () {
@@ -76,7 +102,7 @@ test('a field left out of a bulk change is left as each product has it', functio
 
     expect($product->fresh())
         ->is_active->toBeFalse()
-        ->country_of_origin->toBe(CountryOfOrigin::from('DE'));
+        ->country_of_origin->toBe(Country::from('DE'));
 });
 
 test('a bulk change can move products to another category and template', function () {

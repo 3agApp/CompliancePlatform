@@ -1,5 +1,7 @@
-import { Plus } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { Factory, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { CountryCombobox, countryFlag } from '@/components/country-combobox';
 import CreateBrandModal from '@/components/create-brand-modal';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -18,11 +20,13 @@ import type {
     BrandOption,
     CountryOfOrigin,
     CountryOption,
+    CountryRestriction,
     ProductDetail,
     ProductRequirementKey,
 } from '@/types';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { edit as editOrganization } from '@/routes/organizations';
 
 type FieldName =
     | 'name'
@@ -61,7 +65,21 @@ type Props = {
     product?: ProductDetail;
     disabled?: boolean;
     idPrefix?: string;
+    /**
+     * The supplier's own list of countries it produces in, when it keeps
+     * one. The offered countries are already narrowed to it; this is for
+     * saying why, and for filling in the only one there is.
+     */
+    countryRestriction?: CountryRestriction | null;
+    /** Whether the person looking is the supplier, who can change the list. */
+    viewerIsSupplier?: boolean;
 };
+
+/**
+ * Up to this many countries are offered as a plain select; past it, as a
+ * searchable list.
+ */
+const SHORT_COUNTRY_LIST = 8;
 
 /**
  * Everything but the name is optional, so the marker is worth factoring out
@@ -150,9 +168,22 @@ export default function ProductFormFields({
     product,
     disabled = false,
     idPrefix = 'product',
+    countryRestriction = null,
+    viewerIsSupplier = false,
 }: Props) {
+    /**
+     * A supplier that produces in one country only has answered the
+     * question already, so an empty field starts on that country and a save
+     * keeps it.
+     */
+    const onlyCountry =
+        countryRestriction?.countries.length === 1
+            ? countryRestriction.countries[0]
+            : undefined;
+    const preselected =
+        !product?.country_of_origin && onlyCountry !== undefined;
     const [country, setCountry] = useState<CountryOfOrigin | undefined>(
-        product?.country_of_origin ?? undefined,
+        product?.country_of_origin ?? onlyCountry,
     );
 
     const [brandId, setBrandId] = useState<string | undefined>(
@@ -414,41 +445,78 @@ export default function ProductFormFields({
                         missing={owes('requires_country_of_origin')}
                     />
                 </Label>
-                <Select
-                    value={country}
-                    onValueChange={(value) =>
-                        setCountry(value as CountryOfOrigin)
-                    }
-                    disabled={disabled}
-                >
-                    <SelectTrigger
+                {availableCountries.length > SHORT_COUNTRY_LIST ? (
+                    <CountryCombobox
                         id={`${idPrefix}-country-of-origin`}
-                        data-test="product-country-of-origin"
-                        className={cn(
-                            'w-full',
-                            neededControlClass(
-                                owes('requires_country_of_origin'),
-                            ),
+                        name="country_of_origin"
+                        options={availableCountries}
+                        value={country ?? null}
+                        onChange={(value) => setCountry(value ?? undefined)}
+                        disabled={disabled}
+                        invalid={errors.country_of_origin !== undefined}
+                        className={neededControlClass(
+                            owes('requires_country_of_origin'),
                         )}
-                    >
-                        <SelectValue placeholder={t('Select a country')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {availableCountries.map((availableCountry) => (
-                            <SelectItem
-                                key={availableCountry.value}
-                                value={availableCountry.value}
+                        data-test="product-country-of-origin"
+                    />
+                ) : (
+                    <>
+                        <Select
+                            value={country}
+                            onValueChange={(value) =>
+                                setCountry(value as CountryOfOrigin)
+                            }
+                            disabled={disabled}
+                        >
+                            <SelectTrigger
+                                id={`${idPrefix}-country-of-origin`}
+                                data-test="product-country-of-origin"
+                                className={cn(
+                                    'w-full',
+                                    neededControlClass(
+                                        owes('requires_country_of_origin'),
+                                    ),
+                                )}
                             >
-                                {availableCountry.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <input
-                    type="hidden"
-                    name="country_of_origin"
-                    value={country ?? ''}
-                />
+                                <SelectValue
+                                    placeholder={t('Select a country')}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableCountries.map((availableCountry) => (
+                                    <SelectItem
+                                        key={availableCountry.value}
+                                        value={availableCountry.value}
+                                        data-test={`country-option-${availableCountry.value}`}
+                                    >
+                                        <span aria-hidden="true">
+                                            {countryFlag(
+                                                availableCountry.value,
+                                            )}
+                                        </span>
+                                        {availableCountry.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <input
+                            type="hidden"
+                            name="country_of_origin"
+                            value={country ?? ''}
+                        />
+                    </>
+                )}
+                {countryRestriction && (
+                    <CountryRestrictionHint
+                        restriction={countryRestriction}
+                        preselected={preselected && country === onlyCountry}
+                        settingsUrl={
+                            viewerIsSupplier
+                                ? `${editOrganization.url(organizationSlug)}#profile`
+                                : null
+                        }
+                    />
+                )}
                 <InputError message={errors.country_of_origin} />
             </div>
 
@@ -512,5 +580,54 @@ export default function ProductFormFields({
                 </div>
             </div>
         </div>
+    );
+}
+
+/**
+ * Why the country list is short, and where to change that.
+ */
+function CountryRestrictionHint({
+    restriction,
+    preselected,
+    settingsUrl,
+}: {
+    restriction: CountryRestriction;
+    preselected: boolean;
+    settingsUrl: string | null;
+}) {
+    const message =
+        restriction.countries.length === 1
+            ? preselected
+                ? t(
+                      ':supplier produces only in this country, so it is filled in. Save to keep it.',
+                      {
+                          supplier: restriction.supplier,
+                      },
+                  )
+                : t(':supplier produces only in this country.', {
+                      supplier: restriction.supplier,
+                  })
+            : t('Limited to the countries :supplier produces in.', {
+                  supplier: restriction.supplier,
+              });
+
+    return (
+        <p
+            className="text-muted-foreground flex items-start gap-1.5 text-xs"
+            data-test="product-country-restriction"
+        >
+            <Factory className="mt-px size-3.5 shrink-0" />
+            <span>
+                {message}{' '}
+                {settingsUrl && (
+                    <Link
+                        href={settingsUrl}
+                        className="text-foreground underline underline-offset-4"
+                    >
+                        {t('Change your countries')}
+                    </Link>
+                )}
+            </span>
+        </p>
     );
 }

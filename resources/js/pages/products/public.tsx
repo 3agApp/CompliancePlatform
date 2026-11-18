@@ -2,7 +2,6 @@ import { Head } from '@inertiajs/react';
 import {
     AlertTriangle,
     Barcode,
-    Building2,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
@@ -17,6 +16,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import ProductUnitCheck from '@/components/product-unit-check';
+import PublicCompanyCard from '@/components/public-company-card';
 import PublicHeader from '@/components/public-header';
 import { formatPublicDate, usePublicLocale } from '@/lib/public-i18n';
 import type { PublicLocale, PublicTranslate } from '@/lib/public-i18n';
@@ -25,6 +25,7 @@ import type {
     ProductDocumentType,
     ProductSeal,
     ProductSealStatus,
+    PublicCompany,
     PublicProduct,
     PublicProductDocument,
     PublicProductImage,
@@ -38,7 +39,7 @@ type Props = {
     seal: ProductSeal;
     images: PublicProductImage[];
     documents: PublicProductDocument[];
-    importer: string;
+    importer: PublicCompany;
     locale: string;
     checkUrl: string;
     /**
@@ -218,26 +219,11 @@ export default function PublicProduct({
                             </section>
                         ) : null}
 
-                        <section
-                            className="overflow-hidden rounded-2xl border border-gray-100/80 bg-white shadow-sm"
-                            data-test="product-importer"
-                        >
-                            <div className="p-5">
-                                <p className="mb-4 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-                                    {t('importedBy')}
-                                </p>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-md">
-                                        {importer.charAt(0).toUpperCase() || (
-                                            <Building2 className="size-6" />
-                                        )}
-                                    </div>
-                                    <p className="text-base font-bold text-gray-900">
-                                        {importer}
-                                    </p>
-                                </div>
-                            </div>
-                        </section>
+                        <PublicCompanyCard
+                            company={importer}
+                            locale={locale}
+                            t={t}
+                        />
 
                         <p className="px-4 pt-2 text-center text-xs text-gray-400">
                             {t('footer')}

@@ -73,6 +73,36 @@ test('the public page says nothing about the trade behind the product', function
         );
 });
 
+test('the public page shows the company details of who places the product on the market', function () {
+    [, $organization, $product] = productWithTemplate();
+    $organization->update([
+        'street' => 'Tramstrasse 66',
+        'postal_code' => '4142',
+        'city' => 'Münchenstein',
+        'country' => 'CH',
+        'map_url' => 'https://maps.app.goo.gl/abc123XYZ',
+        'phone' => '+41 61 683 47 57',
+        'vat_number' => 'CHE-103.107.876',
+    ]);
+
+    $supplier = $product->supplierConnection;
+
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('importer.name', $organization->name)
+            ->where('importer.street', 'Tramstrasse 66')
+            ->where('importer.city', 'Münchenstein')
+            ->where('importer.country', 'Switzerland')
+            ->where('importer.mapUrl', 'https://maps.app.goo.gl/abc123XYZ')
+            ->where('importer.phone', '+41 61 683 47 57')
+            ->where('importer.vatNumber', 'CHE-103.107.876')
+            ->where('importer.logoUrl', null)
+            ->missing('supplier'),
+        )
+        ->assertDontSee($supplier->company_name);
+});
+
 test('a uuid nobody holds is not a page', function () {
     $this->get(route('products.public', ['product' => '3f2504e0-4f89-11d3-9a0c-0305e82c3301']))->assertNotFound();
 });

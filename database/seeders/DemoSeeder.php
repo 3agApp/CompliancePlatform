@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
 use App\Enums\ProductDocumentType;
@@ -567,7 +567,7 @@ class DemoSeeder extends Seeder
      * filling everything regardless would make every product look the same.
      *
      * @param  SupportCollection<int, ProductRequirement>  $satisfied
-     * @return array<string, string|CountryOfOrigin>
+     * @return array<string, string|Country>
      */
     protected function fieldValues(SupportCollection $satisfied, int $index): array
     {
@@ -577,7 +577,7 @@ class DemoSeeder extends Seeder
             'supplier_article_number' => sprintf('SUP-%05d', 7000 + $index),
             'order_number' => sprintf('PO-2026-%04d', 100 + $index),
             'customs_tariff_number' => ['95030075', '84212300', '63026000', '85167100'][$index % 4],
-            'country_of_origin' => [CountryOfOrigin::Germany, CountryOfOrigin::Switzerland][$index % 2],
+            'country_of_origin' => [Country::Germany, Country::Switzerland][$index % 2],
             'age_grading' => ['0+', '3+', '6+', '8+', '14+'][$index % 5],
             'safety_notice' => 'Keep the packaging and this notice until the product has been checked on delivery.',
             'warning_text' => 'Not suitable for children under 3 years. Small parts may be swallowed.',

@@ -207,7 +207,7 @@ class PublicProductController extends Controller
     /**
      * Get what the public page shows about the product itself.
      *
-     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string}>, importer: string, locale: string, checkUrl: string, checkable: bool}
+     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string}>, importer: array<string, string|float|null>, locale: string, checkUrl: string, checkable: bool}
      */
     protected function toPageArray(Product $product): array
     {
@@ -243,9 +243,10 @@ class PublicProductController extends Controller
             'documents' => $this->toDocumentArray($product),
             /**
              * Who places the product on the market, as the packet already
-             * has to say. Only the name: who supplies them stays theirs.
+             * has to say, with the company details it chose to publish.
+             * Only the distributor: who supplies them stays theirs.
              */
-            'importer' => $product->organization->name,
+            'importer' => $product->organization->toPublicProfile(),
             'locale' => App::getLocale(),
             'checkUrl' => route('products.public.check', ['product' => $product->uuid]),
             /**

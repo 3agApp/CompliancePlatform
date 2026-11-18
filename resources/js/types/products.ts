@@ -1,6 +1,33 @@
 import type { SupplierConnectionStatus } from './connections';
 
-export type CountryOfOrigin = 'DE' | 'CH';
+/** A country's ISO 3166-1 alpha-2 code. */
+export type CountryOfOrigin = string;
+
+/** The company placing a product on the market, as its public page shows it. */
+export type PublicCompany = {
+    name: string;
+    logoUrl: string | null;
+    street: string | null;
+    addressLine2: string | null;
+    postalCode: string | null;
+    city: string | null;
+    /** The country's name in the language the page was first served in. */
+    country: string | null;
+    countryCode: string | null;
+    /** A Google Maps link the company chose to share. */
+    mapUrl: string | null;
+    representedBy: string | null;
+    phone: string | null;
+    email: string | null;
+    website: string | null;
+    vatNumber: string | null;
+};
+
+/** The supplier's own list of countries its products may come from. */
+export type CountryRestriction = {
+    supplier: string;
+    countries: CountryOfOrigin[];
+};
 
 export type CountryOption = {
     value: CountryOfOrigin;

@@ -10,6 +10,7 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import InviteMemberModal from '@/components/invite-member-modal';
 import OrganizationAiProviderForm from '@/components/organization-ai-provider-form';
+import OrganizationProfileForm from '@/components/organization-profile-form';
 import RemoveMemberModal from '@/components/remove-member-modal';
 import SaveButton from '@/components/save-button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -51,10 +52,14 @@ import type {
     OrganizationInvitation,
     OrganizationMember,
     OrganizationPermissions,
+    OrganizationProfile,
 } from '@/types';
+import type { CountryOption } from '@/types/products';
 
 type Props = {
     organization: Organization;
+    profile: OrganizationProfile;
+    availableCountries: CountryOption[];
     members: OrganizationMember[];
     invitations: OrganizationInvitation[];
     attention: OrganizationAttentionItem[];
@@ -66,6 +71,8 @@ type Props = {
 
 export default function OrganizationEdit({
     organization,
+    profile,
+    availableCountries,
     members,
     invitations,
     attention,
@@ -107,7 +114,7 @@ export default function OrganizationEdit({
 
     const attentionItems = attention.map((item) => ({
         ...item,
-        href: item.target === 'invitations' ? '#invitations' : '#ai-provider',
+        href: `#${item.target}`,
     }));
 
     const currentMember = members.find((member) => member.id === auth.user.id);
@@ -294,6 +301,15 @@ export default function OrganizationEdit({
                             </dl>
                         </>
                     )}
+                </div>
+
+                <div className="border-t pt-8">
+                    <OrganizationProfileForm
+                        organization={organization}
+                        profile={profile}
+                        availableCountries={availableCountries}
+                        canUpdate={permissions.canUpdateOrganization}
+                    />
                 </div>
 
                 {permissions.canManageAiProvider ? (

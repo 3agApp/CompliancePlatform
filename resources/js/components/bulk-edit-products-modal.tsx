@@ -2,6 +2,7 @@ import type { RequestPayload } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { CountryCombobox } from '@/components/country-combobox';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -378,27 +379,14 @@ export default function BulkEditProductsModal({
                         enabled={enabled}
                         onToggle={toggle}
                     >
-                        <Select value={country} onValueChange={setCountry}>
-                            <SelectTrigger
-                                className="w-full"
-                                data-test="bulk-country"
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={NONE}>
-                                    {t('Not set')}
-                                </SelectItem>
-                                {availableCountries.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <CountryCombobox
+                            options={availableCountries}
+                            value={country === NONE ? null : country}
+                            onChange={(value) => setCountry(value ?? NONE)}
+                            placeholder={t('Not set')}
+                            invalid={errors.country_of_origin !== undefined}
+                            data-test="bulk-country"
+                        />
                         <InputError message={errors.country_of_origin} />
                     </BulkField>
 

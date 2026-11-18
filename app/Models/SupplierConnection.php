@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Country;
 use App\Enums\SupplierConnectionStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\SupplierConnectionFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -103,6 +105,19 @@ class SupplierConnection extends Model
     public function supplierOrganization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'supplier_organization_id');
+    }
+
+    /**
+     * The countries a product under this trade may come from.
+     *
+     * Whatever the supplier says it produces in, once it has joined and
+     * said so. Null leaves every country open.
+     *
+     * @return SupportCollection<int, Country>|null
+     */
+    public function allowedCountriesOfOrigin(): ?SupportCollection
+    {
+        return $this->supplierOrganization?->allowedCountriesOfOrigin();
     }
 
     /**

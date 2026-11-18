@@ -6,7 +6,7 @@ use App\Actions\Products\AssessProductDocuments;
 use App\Actions\Products\ReviewProduct;
 use App\Data\ProductAssessmentView;
 use App\Data\ProductFilters;
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
 use App\Enums\ProductRequirement;
@@ -94,7 +94,7 @@ class ProductController extends Controller
              * the active flag and the country, so needs neither.
              */
             'availableTemplates' => $this->availableTemplates($currentOrganization),
-            'availableCountries' => CountryOfOrigin::options(),
+            'availableCountries' => Country::options(),
             'filters' => $filters,
             'availableStatuses' => ProductReviewStatus::options(),
             'statusCounts' => $this->statusCounts($currentOrganization, $isSupplier, $filters),
@@ -139,7 +139,24 @@ class ProductController extends Controller
     {
         Gate::authorize('create', [Product::class, $currentOrganization]);
 
-        $product = $currentOrganization->products()->create($request->validated());
+        $attributes = $request->validated();
+
+        /**
+         * A supplier that produces in one country only has already answered
+         * where the product comes from, so nobody is asked again.
+         */
+        if (empty($attributes['country_of_origin']) && is_numeric($attributes['supplier_connection_id'] ?? null)) {
+            $allowed = SupplierConnection::with('supplierOrganization')
+                ->whereKey((int) $attributes['supplier_connection_id'])
+                ->first()
+                ?->allowedCountriesOfOrigin();
+
+            if ($allowed !== null && $allowed->count() === 1) {
+                $attributes['country_of_origin'] = $allowed->first();
+            }
+        }
+
+        $product = $currentOrganization->products()->create($attributes);
 
         /**
          * The first line of the product's history, so the record starts
@@ -153,6 +170,50 @@ class ProductController extends Controller
             'current_organization' => $currentOrganization->slug,
             'product' => $product->id,
         ]);
+    }
+
+    /**
+     * The countries the product may be said to come from.
+     *
+     * The supplier's own list when it keeps one, with whatever the product
+     * already carries added back so an older answer still shows.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function availableCountries(Product $product): array
+    {
+        $allowed = $product->allowedCountriesOfOrigin();
+
+        if ($allowed === null) {
+            return Country::options();
+        }
+
+        if ($product->country_of_origin !== null && ! $allowed->contains($product->country_of_origin)) {
+            $allowed = $allowed->push($product->country_of_origin);
+        }
+
+        return Country::options($allowed);
+    }
+
+    /**
+     * Who narrowed the product's countries down, for the hint beside the
+     * field, or null when every country is open.
+     *
+     * @return array{supplier: string, countries: list<string>}|null
+     */
+    private function countryRestriction(Product $product): ?array
+    {
+        $allowed = $product->allowedCountriesOfOrigin();
+        $supplier = $product->supplierConnection?->supplierOrganization;
+
+        if ($allowed === null || $supplier === null) {
+            return null;
+        }
+
+        return [
+            'supplier' => $supplier->name,
+            'countries' => array_values($allowed->map(fn (Country $country): string => $country->value)->all()),
+        ];
     }
 
     /**
@@ -179,7 +240,8 @@ class ProductController extends Controller
                 'documents' => $this->toDocumentArray($product),
             ],
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
-            'availableCountries' => CountryOfOrigin::options(),
+            'availableCountries' => $this->availableCountries($product),
+            'countryRestriction' => $this->countryRestriction($product),
             'availableDocumentTypes' => ProductDocumentType::options(),
             'availableCategories' => $this->availableCategories($product->organization),
             'availableTemplates' => $this->availableTemplates($product->organization),
