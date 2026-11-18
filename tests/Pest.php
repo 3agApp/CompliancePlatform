@@ -10,6 +10,7 @@ use App\Models\SupplierConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Pest\Browser\Api\AwaitableWebpage;
+use Pest\Browser\Api\PendingAwaitablePage;
 use Tests\TestCase;
 
 /*
@@ -167,6 +168,34 @@ function translateLikeTheBrowser(AwaitableWebpage $page): AwaitableWebpage
                 outer.appendChild(inner);
                 text.replaceWith(outer);
             }
+        }
+        JS);
+
+    return $page;
+}
+
+/**
+ * Stop counting the browser's "ResizeObserver loop" notice as a page error.
+ *
+ * Chromium raises it as an error event when a resize notification has to
+ * wait for the next frame -- nothing is lost, and the spec calls it benign.
+ * A Radix select opening inside a dialog, while the scroll lock shifts the
+ * layout, sets it off now and then depending on how busy the machine is,
+ * which made assertNoJavaScriptErrors() fail at random on CI. Every other
+ * error is still recorded. Call it right after visit(); it lasts as long as
+ * the page is not fully reloaded.
+ */
+function ignoreResizeObserverLoopNotices(PendingAwaitablePage|AwaitableWebpage $page): PendingAwaitablePage|AwaitableWebpage
+{
+    $page->script(<<<'JS'
+        () => {
+            const errors = window.__pestBrowser.jsErrors;
+            const push = errors.push.bind(errors);
+
+            errors.push = (...entries) =>
+                push(...entries.filter((entry) => !String(entry.message).startsWith('ResizeObserver loop')));
+
+            errors.splice(0, errors.length, ...errors.filter((entry) => !String(entry.message).startsWith('ResizeObserver loop')));
         }
         JS);
 
