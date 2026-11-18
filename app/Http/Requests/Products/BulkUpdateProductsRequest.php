@@ -7,7 +7,6 @@ use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
-use App\Models\SupplierConnection;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -123,62 +122,7 @@ class BulkUpdateProductsRequest extends FormRequest
                     $validator->errors()->add('brand_id', __('Select one of the brands this supplier carries.'));
                 }
             },
-            function (Validator $validator) {
-                if (! $this->filled('country_of_origin') || $validator->errors()->isNotEmpty()) {
-                    return;
-                }
-
-                $refused = $this->productRefusingCountry(Country::from((string) $this->input('country_of_origin')));
-
-                if ($refused !== null) {
-                    $validator->errors()->add('country_of_origin', __(':product comes from a supplier that does not produce in this country.', [
-                        'product' => $refused->name,
-                    ]));
-                }
-            },
         ];
-    }
-
-    /**
-     * The first selected product whose supplier does not produce in the
-     * given country, if any. A product that already carries the country
-     * keeps it, the same as when it is saved on its own.
-     *
-     * @phpstan-return Product|null
-     */
-    protected function productRefusingCountry(Country $country): ?Product
-    {
-        $connection = $this->filled('supplier_connection_id')
-            ? SupplierConnection::with('supplierOrganization')->find((int) $this->input('supplier_connection_id'))
-            : null;
-
-        $organization = $this->route('current_organization');
-
-        if (! $organization instanceof Organization) {
-            return null;
-        }
-
-        /**
-         * Read through the side the list is, so the message never names a
-         * product from somebody else's catalogue.
-         */
-        $relation = $organization->isSupplier()
-            ? $organization->suppliedProducts()
-            : $organization->products();
-
-        return $relation
-            ->whereIn('products.id', array_map('intval', (array) $this->input('ids', [])))
-            ->with('supplierConnection.supplierOrganization')
-            ->get()
-            ->first(function (Product $product) use ($country, $connection): bool {
-                if ($connection === null && $product->country_of_origin === $country) {
-                    return false;
-                }
-
-                $allowed = ($connection ?? $product->supplierConnection)?->allowedCountriesOfOrigin();
-
-                return $allowed !== null && ! $allowed->contains($country);
-            });
     }
 
     /**

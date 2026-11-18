@@ -32,7 +32,8 @@ test('the product list offers what a bulk change may set', function () {
         ->get(route('products.index', ['current_organization' => $organization->slug]))
         ->assertInertia(fn (Assert $page) => $page
             ->has('availableTemplates', 1)
-            ->has('availableCountries'),
+            ->has('availableCountries')
+            ->has('countryRestrictions'),
         );
 });
 

@@ -131,7 +131,7 @@ class Organization extends Model
     }
 
     /**
-     * The public address of the organization's logo, or null without one.
+     * The address of the organization's logo, or null without one.
      *
      * Versioned by the last change, so a new logo is not hidden behind a
      * cached old one.

@@ -92,7 +92,7 @@ type Props = {
     product: ProductDetail;
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
-    countryRestriction: CountryRestriction | null;
+    countryRestrictions: Record<number, CountryRestriction>;
     availableDocumentTypes: ProductDocumentTypeOption[];
     availableCategories: ProductCategoryOption[];
     availableTemplates: ProductTemplateOption[];
@@ -153,7 +153,7 @@ export default function ProductEdit({
     product,
     permissions,
     availableCountries,
-    countryRestriction,
+    countryRestrictions,
     availableDocumentTypes,
     availableCategories,
     availableTemplates,
@@ -659,8 +659,8 @@ export default function ProductEdit({
                                                 !permissions.canUpdateProduct
                                             }
                                             idPrefix="edit-product"
-                                            countryRestriction={
-                                                countryRestriction
+                                            countryRestrictions={
+                                                countryRestrictions
                                             }
                                             viewerIsSupplier={
                                                 viewerType === 'supplier'

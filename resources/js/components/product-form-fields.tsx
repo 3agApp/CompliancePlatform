@@ -66,11 +66,11 @@ type Props = {
     disabled?: boolean;
     idPrefix?: string;
     /**
-     * The supplier's own list of countries it produces in, when it keeps
-     * one. The offered countries are already narrowed to it; this is for
-     * saying why, and for filling in the only one there is.
+     * Each trade's own list of countries its supplier produces in, keyed by
+     * connection, for the trades that keep one. Looked up by the supplier
+     * picked on the form, so changing it changes what is offered.
      */
-    countryRestriction?: CountryRestriction | null;
+    countryRestrictions?: Record<number, CountryRestriction>;
     /** Whether the person looking is the supplier, who can change the list. */
     viewerIsSupplier?: boolean;
 };
@@ -168,9 +168,18 @@ export default function ProductFormFields({
     product,
     disabled = false,
     idPrefix = 'product',
-    countryRestriction = null,
+    countryRestrictions = {},
     viewerIsSupplier = false,
 }: Props) {
+    const countryRestriction =
+        countryRestrictions[supplierConnectionId] ?? null;
+    const offeredCountries = countryRestriction
+        ? availableCountries.filter(
+              (option) =>
+                  countryRestriction.countries.includes(option.value) ||
+                  option.value === product?.country_of_origin,
+          )
+        : availableCountries;
     /**
      * A supplier that produces in one country only has answered the
      * question already, so an empty field starts on that country and a save
@@ -185,6 +194,25 @@ export default function ProductFormFields({
     const [country, setCountry] = useState<CountryOfOrigin | undefined>(
         product?.country_of_origin ?? onlyCountry,
     );
+
+    /**
+     * Picking another supplier re-asks the question its list answers: a
+     * country the new supplier does not produce in is dropped, and a
+     * supplier with only one fills it in.
+     */
+    const [countriesFor, setCountriesFor] = useState(supplierConnectionId);
+
+    if (countriesFor !== supplierConnectionId) {
+        setCountriesFor(supplierConnectionId);
+
+        if (
+            countryRestriction &&
+            (country === undefined ||
+                !countryRestriction.countries.includes(country))
+        ) {
+            setCountry(onlyCountry);
+        }
+    }
 
     const [brandId, setBrandId] = useState<string | undefined>(
         product?.brand_id ? String(product.brand_id) : undefined,
@@ -445,16 +473,16 @@ export default function ProductFormFields({
                         missing={owes('requires_country_of_origin')}
                     />
                 </Label>
-                {availableCountries.length > SHORT_COUNTRY_LIST ? (
+                {offeredCountries.length > SHORT_COUNTRY_LIST ? (
                     <CountryCombobox
                         id={`${idPrefix}-country-of-origin`}
                         name="country_of_origin"
-                        options={availableCountries}
+                        options={offeredCountries}
                         value={country ?? null}
                         onChange={(value) => setCountry(value ?? undefined)}
                         disabled={disabled}
                         invalid={errors.country_of_origin !== undefined}
-                        className={neededControlClass(
+                        triggerClassName={neededControlClass(
                             owes('requires_country_of_origin'),
                         )}
                         data-test="product-country-of-origin"
@@ -483,7 +511,7 @@ export default function ProductFormFields({
                                 />
                             </SelectTrigger>
                             <SelectContent>
-                                {availableCountries.map((availableCountry) => (
+                                {offeredCountries.map((availableCountry) => (
                                     <SelectItem
                                         key={availableCountry.value}
                                         value={availableCountry.value}
@@ -509,7 +537,11 @@ export default function ProductFormFields({
                 {countryRestriction && (
                     <CountryRestrictionHint
                         restriction={countryRestriction}
-                        preselected={preselected && country === onlyCountry}
+                        preselected={
+                            preselected ||
+                            (country === onlyCountry &&
+                                product?.country_of_origin !== onlyCountry)
+                        }
                         settingsUrl={
                             viewerIsSupplier
                                 ? `${editOrganization.url(organizationSlug)}#profile`

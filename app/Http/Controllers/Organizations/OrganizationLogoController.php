@@ -2,55 +2,48 @@
 
 namespace App\Http\Controllers\Organizations;
 
+use App\Enums\DocumentPreviewKind;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organizations\SaveOrganizationLogoRequest;
 use App\Models\Organization;
 use App\Models\ProductDocument;
+use App\Support\PublicImage;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class OrganizationLogoController extends Controller
 {
     /**
-     * The content types a logo is served as, by file extension.
+     * Show the organization's logo.
      *
-     * @var array<string, string>
+     * A distributor's logo is public, because product pages show it as the
+     * company placing them on the market. A supplier's never appears there
+     * -- who supplies a product stays theirs -- so only its own members may
+     * see it, and anybody else gets a 404 rather than confirmation that the
+     * supplier is here at all.
      */
-    private const array CONTENT_TYPES = [
-        'png' => 'image/png',
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'webp' => 'image/webp',
-    ];
-
-    /**
-     * Show the organization's logo to anyone.
-     *
-     * Public, because it appears on product pages. Served from the private
-     * disk all the same, with the type from the allowlist rather than from
-     * whatever the uploading browser claimed.
-     */
-    public function show(Organization $organization): StreamedResponse
+    public function show(Request $request, Organization $organization): StreamedResponse
     {
         $path = $organization->logo_path;
-        $disk = Storage::disk(ProductDocument::DISK);
+        $public = $organization->isDistributor();
 
-        abort_if($path === null || ! $disk->exists($path), 404);
+        abort_if($path === null, 404);
+        abort_unless($public || $request->user()?->belongsToOrganization($organization), 404);
 
-        $type = self::CONTENT_TYPES[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null;
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $contentType = DocumentPreviewKind::forContentType('image/'.$extension) === DocumentPreviewKind::Image
+            ? DocumentPreviewKind::contentTypeFor('image/'.$extension)
+            : null;
 
-        abort_if($type === null, 404);
+        abort_if($contentType === null, 404);
 
-        return $disk->response($path, 'logo.'.pathinfo($path, PATHINFO_EXTENSION), [
-            'Content-Type' => $type,
-            'X-Content-Type-Options' => 'nosniff',
-            'Content-Security-Policy' => "default-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'",
-            'Cache-Control' => 'public, max-age=86400',
-        ], 'inline');
+        return PublicImage::response(ProductDocument::DISK, $path, 'logo.'.$extension, $contentType, $public);
     }
 
     /**
@@ -69,7 +62,18 @@ class OrganizationLogoController extends Controller
 
         $previous = $organization->logo_path;
 
-        $organization->forceFill(['logo_path' => $path])->save();
+        /**
+         * A row that cannot be written would leave the new file on the disk
+         * with nothing pointing at it, so it goes again before the error
+         * carries on up.
+         */
+        try {
+            $organization->forceFill(['logo_path' => $path])->save();
+        } catch (Throwable $exception) {
+            Storage::disk(ProductDocument::DISK)->delete($path);
+
+            throw $exception;
+        }
 
         if ($previous !== null && $previous !== $path) {
             Storage::disk(ProductDocument::DISK)->delete($previous);

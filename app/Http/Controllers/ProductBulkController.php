@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Products\ReviewProduct;
+use App\Enums\Country;
 use App\Enums\ProductEventType;
 use App\Http\Requests\Products\BulkUpdateProductsRequest;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
+use App\Models\SupplierConnection;
 use App\Support\ProductChanges;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -44,6 +47,8 @@ class ProductBulkController extends Controller
         }
 
         $attributes = collect($request->validated())->except('ids')->all();
+
+        $this->ensureCountryIsProduced($products, $attributes);
 
         $changed = DB::transaction(function () use ($products, $attributes, $request, $currentOrganization) {
             $changed = 0;
@@ -134,6 +139,48 @@ class ProductBulkController extends Controller
             ->whereKey($visible)
             ->with(['organization', 'supplierConnection.supplierOrganization'])
             ->get();
+    }
+
+    /**
+     * Refuse a country a selected product's supplier does not produce in.
+     *
+     * Checked against the products already loaded for the change, so a
+     * large selection is not read twice. A product that already carries
+     * the country keeps it, the same as when it is saved on its own --
+     * unless it is moving to another supplier, whose list then decides.
+     *
+     * @param  Collection<int, Product>  $products
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function ensureCountryIsProduced(Collection $products, array $attributes): void
+    {
+        $country = Country::tryFrom((string) ($attributes['country_of_origin'] ?? ''));
+
+        if ($country === null) {
+            return;
+        }
+
+        $connection = isset($attributes['supplier_connection_id'])
+            ? SupplierConnection::with('supplierOrganization')->find((int) $attributes['supplier_connection_id'])
+            : null;
+
+        $refused = $products->first(function (Product $product) use ($country, $connection): bool {
+            if ($connection === null && $product->country_of_origin === $country) {
+                return false;
+            }
+
+            $allowed = ($connection ?? $product->supplierConnection)?->allowedCountriesOfOrigin();
+
+            return $allowed !== null && ! $allowed->contains($country);
+        });
+
+        if ($refused !== null) {
+            throw ValidationException::withMessages([
+                'country_of_origin' => __(':product comes from a supplier that does not produce in this country.', [
+                    'product' => $refused->name,
+                ]),
+            ]);
+        }
     }
 
     /**

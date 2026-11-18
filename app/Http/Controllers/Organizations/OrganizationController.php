@@ -115,24 +115,19 @@ class OrganizationController extends Controller
     /**
      * Describe the organization's company profile for the page.
      *
+     * The same details a product page shows, with the country as the code
+     * the form edits rather than as its name, and the supplier's countries.
+     *
      * @return array<string, mixed>
      */
     private function toProfileArray(Organization $organization): array
     {
+        $profile = $organization->toPublicProfile();
+
         return [
-            'logoUrl' => $organization->logoUrl(),
-            'street' => $organization->street,
-            'addressLine2' => $organization->address_line_2,
-            'postalCode' => $organization->postal_code,
-            'city' => $organization->city,
-            'country' => $organization->country?->value,
-            'countryLabel' => $organization->country?->label(),
-            'mapUrl' => $organization->map_url,
-            'representedBy' => $organization->represented_by,
-            'phone' => $organization->phone,
-            'email' => $organization->email,
-            'website' => $organization->website,
-            'vatNumber' => $organization->vat_number,
+            ...$profile,
+            'country' => $profile['countryCode'],
+            'countryLabel' => $profile['country'],
             'productionCountries' => $organization->isSupplier()
                 ? ($organization->production_countries?->map(fn (Country $country) => $country->value)->values()->all() ?? [])
                 : null,

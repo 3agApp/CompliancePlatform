@@ -19,7 +19,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Str;
 
 /**
@@ -198,16 +197,6 @@ class Product extends Model
     public function supplierConnection(): BelongsTo
     {
         return $this->belongsTo(SupplierConnection::class);
-    }
-
-    /**
-     * The countries this product may come from, or null for any.
-     *
-     * @return SupportCollection<int, Country>|null
-     */
-    public function allowedCountriesOfOrigin(): ?SupportCollection
-    {
-        return $this->supplierConnection?->allowedCountriesOfOrigin();
     }
 
     /**

@@ -28,6 +28,7 @@ import { update as bulkUpdate } from '@/routes/products/bulk';
 import type {
     BrandOption,
     CountryOption,
+    CountryRestriction,
     Product,
     ProductCategoryOption,
     ProductTemplateOption,
@@ -55,6 +56,8 @@ type Props = {
     availableCategories: ProductCategoryOption[];
     availableTemplates: ProductTemplateOption[];
     availableCountries: CountryOption[];
+    /** Each trade's own list of countries, keyed by connection, where one is kept. */
+    countryRestrictions: Record<number, CountryRestriction>;
 };
 
 /**
@@ -76,6 +79,7 @@ export default function BulkEditProductsModal({
     availableCategories,
     availableTemplates,
     availableCountries,
+    countryRestrictions,
 }: Props) {
     const [enabled, setEnabled] = useState<Set<Field>>(new Set());
     const [isActive, setIsActive] = useState('1');
@@ -135,6 +139,32 @@ export default function BulkEditProductsModal({
             : sharedConnections.size === 1
               ? products[0]?.supplier_connection_id
               : undefined;
+
+    /**
+     * The countries every product in the change may be given: those each
+     * restricted supplier produces in, taken together. The supplier picked
+     * in the same change decides for all of them; otherwise each product's
+     * own does. Null when no supplier involved keeps a list.
+     */
+    const countryConnections =
+        enabled.has('supplier') && connectionId
+            ? [Number(connectionId)]
+            : [...sharedConnections];
+    const countryLists = countryConnections
+        .map((id) => countryRestrictions[id]?.countries)
+        .filter((list): list is string[] => list !== undefined);
+    const allowedCountries =
+        countryLists.length === 0
+            ? null
+            : countryLists.reduce((shared, list) =>
+                  shared.filter((code) => list.includes(code)),
+              );
+    const offeredCountries =
+        allowedCountries === null
+            ? availableCountries
+            : availableCountries.filter((option) =>
+                  allowedCountries.includes(option.value),
+              );
 
     const brands = availableBrands.filter(
         (brand) => brand.supplier_connection_id === brandConnectionId,
@@ -380,13 +410,27 @@ export default function BulkEditProductsModal({
                         onToggle={toggle}
                     >
                         <CountryCombobox
-                            options={availableCountries}
+                            options={offeredCountries}
                             value={country === NONE ? null : country}
                             onChange={(value) => setCountry(value ?? NONE)}
                             placeholder={t('Not set')}
                             invalid={errors.country_of_origin !== undefined}
                             data-test="bulk-country"
                         />
+                        {allowedCountries !== null && (
+                            <p
+                                className="text-muted-foreground text-xs"
+                                data-test="bulk-country-restriction"
+                            >
+                                {allowedCountries.length === 0
+                                    ? t(
+                                          'The suppliers of these products have no country of production in common.',
+                                      )
+                                    : t(
+                                          'Limited to the countries the suppliers of these products produce in.',
+                                      )}
+                            </p>
+                        )}
                         <InputError message={errors.country_of_origin} />
                     </BulkField>
 

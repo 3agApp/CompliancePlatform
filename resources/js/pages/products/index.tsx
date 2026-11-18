@@ -55,6 +55,7 @@ import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
     BrandOption,
     CountryOption,
+    CountryRestriction,
     OrganizationType,
     Paginated,
     Product,
@@ -99,6 +100,7 @@ type Props = {
     filterableBrands: BrandOption[];
     availableTemplates: ProductTemplateOption[];
     availableCountries: CountryOption[];
+    countryRestrictions: Record<number, CountryRestriction>;
     filters: ProductFilters;
     availableStatuses: ProductReviewStatusOption[];
     /** How many products each tab would show, under the other filters. */
@@ -118,6 +120,7 @@ export default function ProductsIndex({
     filterableBrands,
     availableTemplates,
     availableCountries,
+    countryRestrictions,
     filters,
     availableStatuses,
     statusCounts,
@@ -796,6 +799,7 @@ export default function ProductsIndex({
                 availableCategories={isSupplier ? [] : filterableCategories}
                 availableTemplates={availableTemplates}
                 availableCountries={availableCountries}
+                countryRestrictions={countryRestrictions}
             />
 
             <BulkDeleteProductsModal

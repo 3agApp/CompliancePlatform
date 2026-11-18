@@ -139,11 +139,11 @@ test('a distributor sets the public seal by hand from the product page', functio
 
     $this->actingAs($user);
 
-    $page = ignoreResizeObserverLoopNotices(visit(route('products.edit', [
+    $page = visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
         'tab' => 'public',
-    ])));
+    ]));
 
     $page->assertSee('Public page')
         ->assertPresent('@product-public-url')

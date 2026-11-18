@@ -175,6 +175,8 @@ type CountryComboboxProps = {
     clearable?: boolean;
     invalid?: boolean;
     className?: string;
+    /** Classes for the visible control itself, such as a needed outline. */
+    triggerClassName?: string;
     'data-test'?: string;
 };
 
@@ -195,6 +197,7 @@ export function CountryCombobox({
     clearable = true,
     invalid = false,
     className,
+    triggerClassName,
     'data-test': dataTest,
 }: CountryComboboxProps) {
     const [open, setOpen] = useState(false);
@@ -214,7 +217,10 @@ export function CountryCombobox({
                         aria-invalid={invalid || undefined}
                         disabled={disabled}
                         data-test={dataTest}
-                        className="aria-invalid:border-destructive w-full justify-between px-3 font-normal"
+                        className={cn(
+                            'aria-invalid:border-destructive w-full justify-between px-3 font-normal',
+                            triggerClassName,
+                        )}
                     >
                         {selected ? (
                             <span className="flex min-w-0 items-center gap-2">

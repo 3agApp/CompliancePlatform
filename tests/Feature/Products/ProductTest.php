@@ -535,7 +535,7 @@ test('the available countries of origin are shared with the product pages', func
         ->assertInertia(fn (Assert $page) => $page
             ->where('product.country_of_origin', 'CH')
             ->where('availableCountries', Country::options())
-            ->where('countryRestriction', null),
+            ->where('countryRestrictions', []),
         );
 });
 
@@ -558,35 +558,45 @@ function distributorWithProducingSupplier(array $countries): array
     return [$user, $organization, newSupplierConnection($organization, $supplier)];
 }
 
-test('the edit page offers only the countries the supplier produces in', function () {
+test('the edit page knows which countries each supplier produces in', function () {
     [$user, $organization, $connection] = distributorWithProducingSupplier([Country::China, Country::Vietnam]);
+    $open = newSupplierConnection($organization, Organization::factory()->supplier()->create());
 
     $product = Product::factory()->for($organization)->for($connection)->create(['country_of_origin' => null]);
 
+    /**
+     * Every trade's list goes down with the page, so the form follows
+     * whichever supplier is picked on it before anything is saved.
+     */
     $this
         ->actingAs($user)
         ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('availableCountries', [
-                ['value' => 'CN', 'label' => 'China'],
-                ['value' => 'VN', 'label' => 'Vietnam'],
-            ])
-            ->where('countryRestriction', ['supplier' => 'Toy Works', 'countries' => ['CN', 'VN']]),
+            ->where('availableCountries', Country::options())
+            ->where("countryRestrictions.{$connection->id}", ['supplier' => 'Toy Works', 'countries' => ['CN', 'VN']])
+            ->missing("countryRestrictions.{$open->id}"),
         );
 });
 
-test('a country the product already carries is still offered after the supplier narrows its list', function () {
+test('a supplier sees its own countries on the products it is assigned', function () {
+    [$distributorUser, $distributor] = newOrganizationMember();
+    [$supplierUser, $supplier] = newSupplierMember();
+    $supplier->update(['production_countries' => [Country::Vietnam]]);
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    $product = Product::factory()->for($distributor)->for($connection)->create();
+
+    $this
+        ->actingAs($supplierUser)
+        ->get(route('products.edit', ['current_organization' => $supplier->slug, 'product' => $product->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where("countryRestrictions.{$connection->id}.countries", ['VN']));
+});
+
+test('a country the product already carries can still be saved after the supplier narrows its list', function () {
     [$user, $organization, $connection] = distributorWithProducingSupplier([Country::China]);
 
     $product = Product::factory()->for($organization)->for($connection)->create(['country_of_origin' => Country::Germany]);
-
-    $this
-        ->actingAs($user)
-        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
-        ->assertInertia(fn (Assert $page) => $page->where('availableCountries', [
-            ['value' => 'CN', 'label' => 'China'],
-            ['value' => 'DE', 'label' => 'Germany'],
-        ]));
 
     $this
         ->actingAs($user)

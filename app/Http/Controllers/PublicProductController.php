@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductUnit;
 use App\Support\Captcha;
+use App\Support\PublicImage;
 use App\Support\UnitDevice;
 use App\Support\UnitSerial;
 use Illuminate\Http\RedirectResponse;
@@ -179,35 +180,22 @@ class PublicProductController extends Controller
         abort_unless($this->isPublicImage($document), 404);
 
         /**
-         * A row whose file is gone -- an old record, a restored database, a
-         * disk that lost it -- is a picture that does not exist, which is a
-         * 404 and not a crash. This address is open to anyone, so it never
-         * gets to answer with a stack trace.
+         * The type from the allowlist rather than from the column, for the
+         * same reason the private preview does it: the stored type is
+         * whatever the uploading browser claimed.
          */
-        abort_unless(Storage::disk(ProductDocument::DISK)->exists($document->path), 404);
-
-        return Storage::disk(ProductDocument::DISK)->response($document->path, $document->name, [
-            /**
-             * From the allowlist rather than from the column, for the same
-             * reason the private preview does it: the stored type is
-             * whatever the uploading browser claimed.
-             */
-            'Content-Type' => $document->previewContentType(),
-            'X-Content-Type-Options' => 'nosniff',
-            'Content-Security-Policy' => "default-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'",
-            /**
-             * A picture of a product on a public page is as cacheable as
-             * the page is public, and it never changes: a new picture is a
-             * new row with a new address.
-             */
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
+        return PublicImage::response(
+            ProductDocument::DISK,
+            $document->path,
+            $document->name,
+            (string) $document->previewContentType(),
+        );
     }
 
     /**
      * Get what the public page shows about the product itself.
      *
-     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string}>, importer: array<string, string|float|null>, locale: string, checkUrl: string, checkable: bool}
+     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool}
      */
     protected function toPageArray(Product $product): array
     {

@@ -95,6 +95,7 @@ class ProductController extends Controller
              */
             'availableTemplates' => $this->availableTemplates($currentOrganization),
             'availableCountries' => Country::options(),
+            'countryRestrictions' => $this->countryRestrictions($currentOrganization),
             'filters' => $filters,
             'availableStatuses' => ProductReviewStatus::options(),
             'statusCounts' => $this->statusCounts($currentOrganization, $isSupplier, $filters),
@@ -173,50 +174,6 @@ class ProductController extends Controller
     }
 
     /**
-     * The countries the product may be said to come from.
-     *
-     * The supplier's own list when it keeps one, with whatever the product
-     * already carries added back so an older answer still shows.
-     *
-     * @return list<array{value: string, label: string}>
-     */
-    private function availableCountries(Product $product): array
-    {
-        $allowed = $product->allowedCountriesOfOrigin();
-
-        if ($allowed === null) {
-            return Country::options();
-        }
-
-        if ($product->country_of_origin !== null && ! $allowed->contains($product->country_of_origin)) {
-            $allowed = $allowed->push($product->country_of_origin);
-        }
-
-        return Country::options($allowed);
-    }
-
-    /**
-     * Who narrowed the product's countries down, for the hint beside the
-     * field, or null when every country is open.
-     *
-     * @return array{supplier: string, countries: list<string>}|null
-     */
-    private function countryRestriction(Product $product): ?array
-    {
-        $allowed = $product->allowedCountriesOfOrigin();
-        $supplier = $product->supplierConnection?->supplierOrganization;
-
-        if ($allowed === null || $supplier === null) {
-            return null;
-        }
-
-        return [
-            'supplier' => $supplier->name,
-            'countries' => array_values($allowed->map(fn (Country $country): string => $country->value)->all()),
-        ];
-    }
-
-    /**
      * Show the product edit page.
      */
     public function edit(Request $request, Organization $currentOrganization, Product $product): Response
@@ -240,8 +197,8 @@ class ProductController extends Controller
                 'documents' => $this->toDocumentArray($product),
             ],
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
-            'availableCountries' => $this->availableCountries($product),
-            'countryRestriction' => $this->countryRestriction($product),
+            'availableCountries' => Country::options(),
+            'countryRestrictions' => $this->countryRestrictions($currentOrganization),
             'availableDocumentTypes' => ProductDocumentType::options(),
             'availableCategories' => $this->availableCategories($product->organization),
             'availableTemplates' => $this->availableTemplates($product->organization),
@@ -704,6 +661,37 @@ class ProductController extends Controller
             ])
             ->values()
             ->toArray();
+    }
+
+    /**
+     * The countries each trade's products may come from, keyed by the
+     * connection, for the trades whose supplier has narrowed them down.
+     *
+     * Sent whole rather than for one product, so a form follows whichever
+     * supplier is picked on it before anything is saved.
+     *
+     * @return array<int, array{supplier: string, countries: list<string>}>
+     */
+    protected function countryRestrictions(Organization $organization): array
+    {
+        $connections = $organization->isSupplier()
+            ? $organization->distributorConnections()->get()->each(fn (SupplierConnection $connection) => $connection->setRelation('supplierOrganization', $organization))
+            : $organization->supplierConnections()->whereNotNull('supplier_organization_id')->with('supplierOrganization')->get();
+
+        $restrictions = [];
+
+        foreach ($connections as $connection) {
+            $allowed = $connection->allowedCountriesOfOrigin();
+
+            if ($allowed !== null && $connection->supplierOrganization !== null) {
+                $restrictions[$connection->id] = [
+                    'supplier' => $connection->supplierOrganization->name,
+                    'countries' => array_values($allowed->map(fn (Country $country): string => $country->value)->all()),
+                ];
+            }
+        }
+
+        return $restrictions;
     }
 
     /**
