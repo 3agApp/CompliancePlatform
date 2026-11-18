@@ -12,13 +12,33 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->owner = User::factory()->create();
-    $this->organization = Organization::factory()->create();
+    $this->organization = Organization::factory()->withProfile()->create();
     $this->organization->members()->attach($this->owner, ['role' => OrganizationRole::Owner->value]);
 });
 
 test('a healthy organization has nothing that needs attention', function () {
     $this->actingAs($this->owner)
         ->get(route('organizations.edit', $this->organization))
+        ->assertInertia(fn (Assert $page) => $page->where('attention', []));
+});
+
+test('a distributor without an address is asked to complete its profile', function () {
+    $this->organization->update(['city' => null, 'country' => null]);
+
+    $this->actingAs($this->owner)
+        ->get(route('organizations.edit', $this->organization))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('attention.0.key', 'incomplete-profile')
+            ->where('attention.0.target', 'profile'));
+});
+
+test('a supplier without an address is not nagged about its profile', function () {
+    $owner = User::factory()->create();
+    $supplier = Organization::factory()->supplier()->create();
+    $supplier->members()->attach($owner, ['role' => OrganizationRole::Owner->value]);
+
+    $this->actingAs($owner)
+        ->get(route('organizations.edit', $supplier))
         ->assertInertia(fn (Assert $page) => $page->where('attention', []));
 });
 

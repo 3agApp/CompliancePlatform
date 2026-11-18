@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Organizations;
 use App\Actions\Organizations\CreateOrganization;
 use App\Actions\Organizations\DeleteOrganization;
 use App\Enums\AiProvider;
+use App\Enums\Country;
 use App\Enums\OrganizationPermission;
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
@@ -71,6 +72,8 @@ class OrganizationController extends Controller
                 'typeLabel' => $organization->type->label(),
                 'locale' => $organization->locale->value,
             ],
+            'profile' => $this->toProfileArray($organization),
+            'availableCountries' => Country::options(),
             'members' => $organization->members()->get()->map(function (User $member) {
                 /** @var Membership $membership */
                 $membership = $member->getRelation('pivot');
@@ -107,6 +110,28 @@ class OrganizationController extends Controller
             'aiProvider' => $this->toAiProviderArray($user, $organization),
             'availableAiProviders' => AiProvider::options(),
         ]);
+    }
+
+    /**
+     * Describe the organization's company profile for the page.
+     *
+     * The same details a product page shows, with the country as the code
+     * the form edits rather than as its name, and the supplier's countries.
+     *
+     * @return array<string, mixed>
+     */
+    private function toProfileArray(Organization $organization): array
+    {
+        $profile = $organization->toPublicProfile();
+
+        return [
+            ...$profile,
+            'country' => $profile['countryCode'],
+            'countryLabel' => $profile['country'],
+            'productionCountries' => $organization->isSupplier()
+                ? ($organization->production_countries?->map(fn (Country $country) => $country->value)->values()->all() ?? [])
+                : null,
+        ];
     }
 
     /**

@@ -123,6 +123,6 @@ test('the public page carries the safety information and who places the product 
         ->assertInertia(fn (Assert $page) => $page
             ->where('safety.warning_text', 'Not suitable for children under 3 years.')
             ->where('safety.age_grading', '3+')
-            ->where('importer', $organization->name)
+            ->where('importer.name', $organization->name)
             ->missing('product.supplier_connection_id'));
 });

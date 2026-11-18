@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\GeneratesUniqueOrganizationSlugs;
+use App\Enums\Country;
 use App\Enums\Locale;
 use App\Enums\OrganizationRole;
 use App\Enums\OrganizationType;
@@ -10,6 +11,7 @@ use App\Enums\SupplierConnectionStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection as SupportCollection;
 
 /**
  * @property int $id
@@ -24,6 +27,19 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $slug
  * @property OrganizationType $type
  * @property Locale $locale
+ * @property string|null $logo_path
+ * @property string|null $street
+ * @property string|null $address_line_2
+ * @property string|null $postal_code
+ * @property string|null $city
+ * @property Country|null $country
+ * @property string|null $map_url
+ * @property string|null $represented_by
+ * @property string|null $phone
+ * @property string|null $email
+ * @property string|null $website
+ * @property string|null $vat_number
+ * @property SupportCollection<int, Country>|null $production_countries
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Collection<int, OrganizationInvitation> $invitations
@@ -39,11 +55,20 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, SupplierConnection> $distributorConnections
  * @property-read Collection<int, Product> $suppliedProducts
  */
-#[Fillable(['name', 'slug', 'type', 'locale'])]
+#[Fillable([
+    'name', 'slug', 'type', 'locale',
+    'street', 'address_line_2', 'postal_code', 'city', 'country', 'map_url',
+    'represented_by', 'phone', 'email', 'website', 'vat_number', 'production_countries',
+])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
     use GeneratesUniqueOrganizationSlugs, HasFactory;
+
+    /**
+     * The directory the organization's logo is kept in.
+     */
+    public const string LOGO_DIRECTORY = 'organization-logos';
 
     /**
      * The model's default values for attributes.
@@ -92,6 +117,84 @@ class Organization extends Model
         return [
             'type' => OrganizationType::class,
             'locale' => Locale::class,
+            'country' => Country::class,
+            'production_countries' => AsEnumCollection::of(Country::class),
+        ];
+    }
+
+    /**
+     * The directory this organization's logo is filed under.
+     */
+    public function logoDirectory(): string
+    {
+        return self::LOGO_DIRECTORY.'/'.$this->id;
+    }
+
+    /**
+     * The address of the organization's logo, or null without one.
+     *
+     * Versioned by the last change, so a new logo is not hidden behind a
+     * cached old one.
+     */
+    public function logoUrl(): ?string
+    {
+        if ($this->logo_path === null) {
+            return null;
+        }
+
+        return route('organizations.logo', [
+            'organization' => $this->slug,
+            'v' => substr(md5($this->logo_path), 0, 8),
+        ]);
+    }
+
+    /**
+     * Determine if enough of an address is known to find it on a map.
+     */
+    public function hasAddress(): bool
+    {
+        return filled($this->city) && $this->country !== null;
+    }
+
+    /**
+     * The countries a product supplied by this organization may come from.
+     *
+     * Null when the organization has not narrowed it down, which leaves
+     * every country open.
+     *
+     * @return SupportCollection<int, Country>|null
+     */
+    public function allowedCountriesOfOrigin(): ?SupportCollection
+    {
+        if (! $this->isSupplier() || $this->production_countries === null || $this->production_countries->isEmpty()) {
+            return null;
+        }
+
+        return $this->production_countries->values();
+    }
+
+    /**
+     * The company details the public may see, as shown on a product's page.
+     *
+     * @return array{name: string, logoUrl: string|null, street: string|null, addressLine2: string|null, postalCode: string|null, city: string|null, country: string|null, countryCode: string|null, mapUrl: string|null, representedBy: string|null, phone: string|null, email: string|null, website: string|null, vatNumber: string|null}
+     */
+    public function toPublicProfile(): array
+    {
+        return [
+            'name' => $this->name,
+            'logoUrl' => $this->logoUrl(),
+            'street' => $this->street,
+            'addressLine2' => $this->address_line_2,
+            'postalCode' => $this->postal_code,
+            'city' => $this->city,
+            'country' => $this->country?->label(),
+            'countryCode' => $this->country?->value,
+            'mapUrl' => $this->map_url,
+            'representedBy' => $this->represented_by,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            'website' => $this->website,
+            'vatNumber' => $this->vat_number,
         ];
     }
 

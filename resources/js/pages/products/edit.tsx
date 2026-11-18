@@ -37,6 +37,7 @@ import { edit, index, update } from '@/routes/products';
 import type {
     BrandOption,
     CountryOption,
+    CountryRestriction,
     LabelBatchSummary,
     OrganizationType,
     ProductAssessmentState,
@@ -91,6 +92,7 @@ type Props = {
     product: ProductDetail;
     permissions: ProductPermissions;
     availableCountries: CountryOption[];
+    countryRestrictions: Record<number, CountryRestriction>;
     availableDocumentTypes: ProductDocumentTypeOption[];
     availableCategories: ProductCategoryOption[];
     availableTemplates: ProductTemplateOption[];
@@ -151,6 +153,7 @@ export default function ProductEdit({
     product,
     permissions,
     availableCountries,
+    countryRestrictions,
     availableDocumentTypes,
     availableCategories,
     availableTemplates,
@@ -656,6 +659,12 @@ export default function ProductEdit({
                                                 !permissions.canUpdateProduct
                                             }
                                             idPrefix="edit-product"
+                                            countryRestrictions={
+                                                countryRestrictions
+                                            }
+                                            viewerIsSupplier={
+                                                viewerType === 'supplier'
+                                            }
                                         />
                                     </section>
 

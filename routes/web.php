@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
+use App\Http\Controllers\Organizations\OrganizationLogoController;
 use App\Http\Controllers\ProductAssessmentController;
 use App\Http\Controllers\ProductBulkController;
 use App\Http\Controllers\ProductCategoryController;
@@ -61,6 +62,8 @@ Route::middleware(['throttle:public-product', SetPublicLocale::class])->group(fu
     Route::get('p/{product:uuid}/documents/{document}', [PublicProductController::class, 'document'])
         ->scopeBindings()
         ->name('products.public.document');
+
+    Route::get('o/{organization}/logo', [OrganizationLogoController::class, 'show'])->name('organizations.logo');
 });
 
 /**

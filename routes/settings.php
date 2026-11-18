@@ -3,7 +3,9 @@
 use App\Http\Controllers\Organizations\OrganizationAiSettingController;
 use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
+use App\Http\Controllers\Organizations\OrganizationLogoController;
 use App\Http\Controllers\Organizations\OrganizationMemberController;
+use App\Http\Controllers\Organizations\OrganizationProfileController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -45,6 +47,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(EnsureOrganizationMembership::class)->group(function () {
         Route::get('settings/organizations/{organization}', [OrganizationController::class, 'edit'])->name('organizations.edit');
         Route::patch('settings/organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update');
+        Route::patch('settings/organizations/{organization}/profile', [OrganizationProfileController::class, 'update'])->name('organizations.profile.update');
+        Route::post('settings/organizations/{organization}/logo', [OrganizationLogoController::class, 'store'])->name('organizations.logo.store');
+        Route::delete('settings/organizations/{organization}/logo', [OrganizationLogoController::class, 'destroy'])->name('organizations.logo.destroy');
         Route::delete('settings/organizations/{organization}', [OrganizationController::class, 'destroy'])->name('organizations.destroy');
         Route::post('settings/organizations/{organization}/switch', [OrganizationController::class, 'switch'])->name('organizations.switch');
         Route::delete('settings/organizations/{organization}/leave', [OrganizationController::class, 'leave'])->name('organizations.leave');

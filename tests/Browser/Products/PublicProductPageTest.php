@@ -223,6 +223,44 @@ test('the public page shows released documents grouped by kind, safety informati
         ->assertNoJavaScriptErrors();
 });
 
+test('the company placing the product on the market opens with its details', function () {
+    $product = publishableProduct();
+    $product->organization->update([
+        'name' => 'Spielwaren AG',
+        'street' => 'Tramstrasse 66',
+        'postal_code' => '4142',
+        'city' => 'Münchenstein',
+        'country' => 'CH',
+        'phone' => '+41 61 683 47 57',
+        'email' => 'info@example.ch',
+        'vat_number' => 'CHE-103.107.876',
+        'map_url' => 'https://maps.app.goo.gl/abc123XYZ',
+    ]);
+
+    visit($product->publicUrl())
+        ->assertSeeIn('@product-importer', 'Spielwaren AG')
+        ->assertSeeIn('@product-importer', 'Münchenstein, Switzerland')
+        ->click('@product-importer-details')
+        ->assertSeeIn('@product-importer-dialog', 'Tramstrasse 66')
+        ->assertSeeIn('@product-importer-dialog', '4142 Münchenstein')
+        ->assertSeeIn('@product-importer-dialog', '+41 61 683 47 57')
+        ->assertSeeIn('@product-importer-dialog', 'info@example.ch')
+        ->assertSeeIn('@product-importer-dialog', 'CHE-103.107.876')
+        ->assertAttribute('@product-importer-map', 'href', 'https://maps.app.goo.gl/abc123XYZ')
+        ->keys('@product-importer-dialog', 'Escape')
+        ->assertMissing('@product-importer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a company that published only its name gets no details dialog', function () {
+    $product = publishableProduct();
+
+    visit($product->publicUrl())
+        ->assertSeeIn('@product-importer', $product->organization->name)
+        ->assertMissing('@product-importer-details')
+        ->assertNoJavaScriptErrors();
+});
+
 /**
  * A picture whose file cannot be loaded is dropped rather than left as an
  * empty frame at the top of the page.

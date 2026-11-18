@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Products;
 
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -55,7 +55,7 @@ class BulkUpdateProductsRequest extends FormRequest
             'ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_PRODUCTS],
             'ids.*' => ['integer', 'distinct'],
             'is_active' => ['sometimes', 'boolean'],
-            'country_of_origin' => ['sometimes', 'nullable', Rule::enum(CountryOfOrigin::class)],
+            'country_of_origin' => ['sometimes', 'nullable', Rule::enum(Country::class)],
         ];
 
         $organization = $this->route('current_organization');

@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\Country;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductRequirement;
 use App\Models\Brand;
+use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductTemplate;
@@ -240,17 +242,35 @@ test('a save refused from another tab shows the details and says so in the addre
 
     $this->actingAs($user);
 
-    visit(route('products.edit', [
+    $page = visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
-    ]))
-        /**
-         * The history arrives after the page, and its answer puts the plain
-         * address back. Clicked before it lands, the tab can lose the race
-         * for the address bar.
-         */
-        ->waitForEvent('networkidle')
-        ->fill('@product-ean', '123')
+    ]));
+
+    /**
+     * The history arrives after the page, and its answer puts the plain
+     * address back. Clicked before it lands, the tab can lose the race for
+     * the address bar -- and "networkidle" can fire before the deferred
+     * request has even started -- so wait for the history itself to render.
+     * Every tab stays mounted, so it is in the page even while hidden.
+     */
+    $historyLoaded = $page->script(<<<'JS'
+        async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (document.body.textContent.includes('Nothing has happened to this product yet.')) {
+                    return true;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            return false;
+        }
+        JS);
+
+    expect($historyLoaded)->toBeTrue();
+
+    $page->fill('@product-ean', '123')
         ->click('@product-tab-history')
         ->assertQueryStringHas('tab', 'history')
         ->click('@product-unsaved-bar-submit')
@@ -629,5 +649,112 @@ test('a supplier invited from the products page can be assigned without a refres
         ->click('@products-new-product-button')
         ->click('@product-supplier')
         ->assertSee('Acme Supplies AG (invitation pending)')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a supplier that produces in one country fills it in on the product', function () {
+    [$user, $organization] = newOrganizationMember();
+    $supplier = Organization::factory()->supplier()->create([
+        'name' => 'Toy Works',
+        'production_countries' => [Country::Vietnam],
+    ]);
+    $connection = newSupplierConnection($organization, $supplier);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'country_of_origin' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSeeIn('@product-country-of-origin', 'Vietnam')
+        ->assertSee('Toy Works produces only in this country, so it is filled in. Save to keep it.')
+        ->fill('@product-internal-article-number', 'ART-1')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->country_of_origin)->toBe(Country::Vietnam);
+});
+
+test('the country of origin offers only the countries the supplier produces in', function () {
+    [$user, $organization] = newOrganizationMember();
+    $supplier = Organization::factory()->supplier()->create([
+        'name' => 'Toy Works',
+        'production_countries' => [Country::China, Country::Vietnam],
+    ]);
+    $connection = newSupplierConnection($organization, $supplier);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'country_of_origin' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSee('Limited to the countries Toy Works produces in.')
+        ->click('@product-country-of-origin')
+        ->assertCount('[role="option"]', 2)
+        ->click('@country-option-CN')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->country_of_origin)->toBe(Country::China);
+});
+
+test('picking a supplier that produces in one country fills it in before saving', function () {
+    [$user, $organization] = newOrganizationMember();
+    $open = newSupplierConnection($organization, attributes: ['company_name' => 'Open Trading']);
+    $supplier = Organization::factory()->supplier()->create([
+        'name' => 'Toy Works',
+        'production_countries' => [Country::Vietnam],
+    ]);
+    newSupplierConnection($organization, $supplier);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $open->id,
+        'country_of_origin' => Country::Germany,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSeeIn('@product-country-of-origin', 'Germany')
+        ->click('@product-supplier')
+        ->click('[role="option"]:has-text("Toy Works")')
+        ->assertSeeIn('@product-country-of-origin', 'Vietnam')
+        ->assertSee('Toy Works produces only in this country, so it is filled in. Save to keep it.')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh())
+        ->supplier_connection_id->toBe($supplier->distributorConnections()->sole()->id)
+        ->country_of_origin->toBe(Country::Vietnam);
+});
+
+test('a bulk change offers only the countries the products\' suppliers produce in', function () {
+    [$user, $organization] = newOrganizationMember();
+    $supplier = Organization::factory()->supplier()->create([
+        'production_countries' => [Country::China, Country::Vietnam],
+    ]);
+    $connection = newSupplierConnection($organization, $supplier);
+
+    Product::factory()->for($organization)->count(2)->create(['supplier_connection_id' => $connection->id]);
+
+    $this->actingAs($user);
+
+    visit(route('products.index', ['current_organization' => $organization->slug]))
+        ->click('@product-select-all')
+        ->click('@product-bulk-edit')
+        ->click('@bulk-change-country')
+        ->assertSee('Limited to the countries the suppliers of these products produce in.')
+        ->click('@bulk-country')
+        ->assertCount('[cmdk-item]', 2)
+        ->assertPresent('@country-option-CN')
+        ->assertPresent('@country-option-VN')
         ->assertNoJavaScriptErrors();
 });

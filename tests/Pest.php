@@ -10,6 +10,7 @@ use App\Models\SupplierConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Pest\Browser\Api\AwaitableWebpage;
+use Tests\Browser\Support\IgnoreResizeObserverLoopNotices;
 use Tests\TestCase;
 
 /*
@@ -26,6 +27,14 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', 'Browser');
+
+/**
+ * The browser's benign "ResizeObserver loop" notice is not a page error.
+ * See IgnoreResizeObserverLoopNotices for why.
+ */
+pest()->beforeEach(function () {
+    app('router')->pushMiddlewareToGroup('web', IgnoreResizeObserverLoopNotices::class);
+})->in('Browser');
 
 /*
 |--------------------------------------------------------------------------

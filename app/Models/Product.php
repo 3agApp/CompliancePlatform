@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Data\ProductCompleteness;
 use App\Data\ProductSeal;
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
 use App\Enums\ProductSealStatus;
@@ -38,7 +38,7 @@ use Illuminate\Support\Str;
  * @property string|null $supplier_article_number
  * @property string|null $order_number
  * @property string|null $customs_tariff_number
- * @property CountryOfOrigin|null $country_of_origin
+ * @property Country|null $country_of_origin
  * @property string|null $age_grading
  * @property string|null $safety_notice
  * @property string|null $warning_text
@@ -121,7 +121,7 @@ class Product extends Model
     {
         return [
             'is_active' => 'boolean',
-            'country_of_origin' => CountryOfOrigin::class,
+            'country_of_origin' => Country::class,
             'review_status' => ProductReviewStatus::class,
             'seal_override' => ProductSealStatus::class,
             'seal_overridden_at' => 'datetime',

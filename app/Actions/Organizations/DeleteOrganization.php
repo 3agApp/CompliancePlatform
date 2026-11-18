@@ -44,6 +44,8 @@ class DeleteOrganization
 
             $this->deleteProducts($organization);
 
+            Storage::disk(ProductDocument::DISK)->deleteDirectory($organization->logoDirectory());
+
             $organization->delete();
         });
     }

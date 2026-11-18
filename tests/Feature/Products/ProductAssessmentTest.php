@@ -435,7 +435,7 @@ test('the report names the product, says a person decides, and carries every fin
 
     expect($html)
         ->toContain('Magnetic Building Set')
-        ->toContain($organization->name)
+        ->toContain(e($organization->name))
         ->toContain('It is not an approval')
         ->toContain('EN 71-3 migration of elements')
         ->toContain('No test report covers EN 71-3.')

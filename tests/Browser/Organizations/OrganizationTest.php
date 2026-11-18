@@ -57,3 +57,58 @@ test('an organization is renamed from its settings page', function () {
 
     expect($organization->fresh()->name)->toBe('Renamed Organization');
 });
+
+test('a distributor fills in its company profile from the settings page', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $this->actingAs($user);
+
+    $page = visit(route('organizations.edit', ['organization' => $organization->slug]));
+
+    $page->assertSee('Complete your company profile')
+        ->fill('@profile-street', 'Tramstrasse 66')
+        ->fill('@profile-postal-code', '4142')
+        ->fill('@profile-city', 'Münchenstein')
+        ->click('@profile-country')
+        ->fill('[cmdk-input]', 'switz')
+        ->click('@country-option-CH')
+        ->fill('@profile-map-url', 'https://maps.app.goo.gl/abc123XYZ')
+        ->fill('@profile-phone', '+41 61 683 47 57')
+        ->fill('@profile-website', 'example.ch')
+        ->fill('@profile-vat-number', 'CHE-103.107.876')
+        ->click('@profile-save-button')
+        ->assertSee('Company profile updated.')
+        ->assertSee('Open the saved link')
+        ->assertDontSee('Complete your company profile')
+        ->assertNoJavaScriptErrors();
+
+    expect($organization->fresh())
+        ->city->toBe('Münchenstein')
+        ->country->value->toBe('CH')
+        ->website->toBe('https://example.ch')
+        ->map_url->toBe('https://maps.app.goo.gl/abc123XYZ')
+        ->vat_number->toBe('CHE-103.107.876');
+});
+
+test('a supplier picks the countries it produces in', function () {
+    [$user, $organization] = newSupplierMember();
+
+    $this->actingAs($user);
+
+    $page = visit(route('organizations.edit', ['organization' => $organization->slug]));
+
+    $page->assertSee('Where you produce')
+        ->click('@profile-production-countries')
+        ->fill('[cmdk-input]', 'china')
+        ->click('@country-option-CN')
+        ->fill('[cmdk-input]', 'viet')
+        ->click('@country-option-VN')
+        ->keys('[cmdk-input]', 'Escape')
+        ->assertSeeIn('@profile-production-countries-chips', 'China')
+        ->assertSeeIn('@profile-production-countries-chips', 'Vietnam')
+        ->click('@profile-save-button')
+        ->assertSee('Company profile updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($organization->fresh()->production_countries->map->value->all())->toBe(['CN', 'VN']);
+});

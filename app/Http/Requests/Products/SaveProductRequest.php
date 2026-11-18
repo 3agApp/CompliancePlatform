@@ -2,15 +2,17 @@
 
 namespace App\Http\Requests\Products;
 
-use App\Enums\CountryOfOrigin;
+use App\Enums\Country;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Models\SupplierConnection;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
+use Illuminate\Validation\Validator;
 
 class SaveProductRequest extends FormRequest
 {
@@ -75,7 +77,7 @@ class SaveProductRequest extends FormRequest
             'supplier_article_number' => ['nullable', 'string', 'max:255'],
             'order_number' => ['nullable', 'string', 'max:255'],
             'customs_tariff_number' => ['nullable', 'string', 'regex:/^\d{6,12}$/'],
-            'country_of_origin' => ['nullable', Rule::enum(CountryOfOrigin::class)],
+            'country_of_origin' => ['nullable', Rule::enum(Country::class)],
             'age_grading' => ['nullable', 'string', 'max:255'],
             'safety_notice' => ['nullable', 'string', 'max:5000'],
             'warning_text' => ['nullable', 'string', 'max:5000'],
@@ -114,6 +116,64 @@ class SaveProductRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * Get the "after" validation callables for the request.
+     *
+     * A supplier that has said where it produces holds its products to
+     * those countries. A country the product already carries stays valid,
+     * so narrowing the list later never makes an old product unsaveable.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->hasAny(['country_of_origin', 'supplier_connection_id'])) {
+                    return;
+                }
+
+                $country = Country::tryFrom((string) $this->input('country_of_origin'));
+
+                if ($country === null) {
+                    return;
+                }
+
+                $product = $this->route('product');
+
+                if ($product instanceof Product && $product->country_of_origin === $country) {
+                    return;
+                }
+
+                $allowed = $this->chosenConnection()?->allowedCountriesOfOrigin();
+
+                if ($allowed !== null && ! $allowed->contains($country)) {
+                    $validator->errors()->add('country_of_origin', __('Select one of the countries this supplier produces in.'));
+                }
+            },
+        ];
+    }
+
+    /**
+     * The trade the product is saved under: the one a distributor chooses
+     * in this submission, or the one the product already has.
+     */
+    protected function chosenConnection(): ?SupplierConnection
+    {
+        $organization = $this->route('current_organization');
+        $product = $this->route('product');
+
+        if ($organization instanceof Organization && $organization->isDistributor()) {
+            $connectionId = $this->input('supplier_connection_id');
+
+            return is_numeric($connectionId)
+                ? SupplierConnection::with('supplierOrganization')->find((int) $connectionId)
+                : null;
+        }
+
+        return $product instanceof Product ? $product->supplierConnection : null;
     }
 
     /**

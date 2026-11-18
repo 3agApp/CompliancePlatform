@@ -90,6 +90,16 @@ const en = {
     docType_other: 'Document',
 
     importedBy: 'Placed on the market by',
+    companyDetails: 'Company details',
+    companyDetailsFor: 'Company details for {name}',
+    companyAddress: 'Address',
+    companyPhone: 'Phone',
+    companyEmail: 'Email',
+    companyWebsite: 'Website',
+    companyRepresentedBy: 'Represented by',
+    companyVatNumber: 'VAT / UID number',
+    openInGoogleMaps: 'Open in Google Maps',
+    close: 'Close',
     footer: 'Compliance information published by the company that places this product on the market.',
 
     checkTitle: 'Check a product',
@@ -185,6 +195,16 @@ const de: Dictionary = {
     docType_other: 'Dokument',
 
     importedBy: 'In Verkehr gebracht von',
+    companyDetails: 'Firmenangaben',
+    companyDetailsFor: 'Firmenangaben zu {name}',
+    companyAddress: 'Adresse',
+    companyPhone: 'Telefon',
+    companyEmail: 'E-Mail',
+    companyWebsite: 'Website',
+    companyRepresentedBy: 'Vertreten durch',
+    companyVatNumber: 'MWST- / UID-Nummer',
+    openInGoogleMaps: 'In Google Maps öffnen',
+    close: 'Schliessen',
     footer: 'Compliance-Informationen, veröffentlicht vom Unternehmen, das dieses Produkt in Verkehr bringt.',
 
     checkTitle: 'Produkt prüfen',
