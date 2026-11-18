@@ -6,7 +6,6 @@ use App\Actions\Products\AssessProductDocuments;
 use App\Actions\Products\ReviewProduct;
 use App\Data\ProductAssessmentView;
 use App\Data\ProductFilters;
-use App\Enums\CountryOfOrigin;
 use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
 use App\Enums\ProductRequirement;
@@ -23,6 +22,7 @@ use App\Models\ProductDocument;
 use App\Models\ProductEvent;
 use App\Models\ProductTemplate;
 use App\Models\SupplierConnection;
+use App\Support\Countries;
 use App\Support\ProductChanges;
 use App\Support\ProductQueue;
 use Illuminate\Database\Eloquent\Builder;
@@ -94,7 +94,7 @@ class ProductController extends Controller
              * the active flag and the country, so needs neither.
              */
             'availableTemplates' => $this->availableTemplates($currentOrganization),
-            'availableCountries' => CountryOfOrigin::options(),
+            'availableCountries' => Countries::options(),
             'filters' => $filters,
             'availableStatuses' => ProductReviewStatus::options(),
             'statusCounts' => $this->statusCounts($currentOrganization, $isSupplier, $filters),
@@ -179,7 +179,7 @@ class ProductController extends Controller
                 'documents' => $this->toDocumentArray($product),
             ],
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
-            'availableCountries' => CountryOfOrigin::options(),
+            'availableCountries' => Countries::options(),
             'availableDocumentTypes' => ProductDocumentType::options(),
             'availableCategories' => $this->availableCategories($product->organization),
             'availableTemplates' => $this->availableTemplates($product->organization),
@@ -818,8 +818,8 @@ class ProductController extends Controller
             'supplier_article_number' => $product->supplier_article_number,
             'order_number' => $product->order_number,
             'customs_tariff_number' => $product->customs_tariff_number,
-            'country_of_origin' => $product->country_of_origin?->value,
-            'country_of_origin_label' => $product->country_of_origin?->label(),
+            'country_of_origin' => $product->country_of_origin,
+            'country_of_origin_label' => Countries::name($product->country_of_origin),
             'supplier_connection_id' => $product->supplier_connection_id,
             'counterparty' => $connection === null
                 ? null

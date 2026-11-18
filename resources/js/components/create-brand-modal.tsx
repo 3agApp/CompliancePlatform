@@ -1,5 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { useState } from 'react';
+import CountryMultiSelect from '@/components/country-multi-select';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,13 +15,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { t } from '@/lib/i18n';
 import { store } from '@/routes/brands';
-import type { BrandOption } from '@/types';
+import type { BrandOption, CountryOption } from '@/types';
 
 type Props = {
     organizationSlug: string;
     /** The trade the maker is named under. */
     supplierConnectionId: number;
     supplierLabel: string;
+    /** Every country, for the brand to choose where it makes from. */
+    availableCountries: CountryOption[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     /**
@@ -48,6 +51,7 @@ export default function CreateBrandModal({
     organizationSlug,
     supplierConnectionId,
     supplierLabel,
+    availableCountries,
     open,
     onOpenChange,
     reloadOnly = ['availableBrands'],
@@ -130,6 +134,24 @@ export default function CreateBrandModal({
                                 <InputError
                                     message={errors.supplier_connection_id}
                                 />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="inline-brand-countries">
+                                    {t('Countries it makes in')}
+                                </Label>
+                                <CountryMultiSelect
+                                    id="inline-brand-countries"
+                                    name="countries"
+                                    options={availableCountries}
+                                    defaultValue={[]}
+                                />
+                                <p className="text-muted-foreground text-xs">
+                                    {t(
+                                        'A product of this brand can only name one of these as its country of origin. Leave empty to allow any.',
+                                    )}
+                                </p>
+                                <InputError message={errors.countries} />
                             </div>
 
                             <DialogFooter className="gap-2">

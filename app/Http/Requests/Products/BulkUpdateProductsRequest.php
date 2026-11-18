@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests\Products;
 
-use App\Enums\CountryOfOrigin;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Support\Countries;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -55,7 +55,7 @@ class BulkUpdateProductsRequest extends FormRequest
             'ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_PRODUCTS],
             'ids.*' => ['integer', 'distinct'],
             'is_active' => ['sometimes', 'boolean'],
-            'country_of_origin' => ['sometimes', 'nullable', Rule::enum(CountryOfOrigin::class)],
+            'country_of_origin' => ['sometimes', 'nullable', 'string', Rule::in(Countries::codes())],
         ];
 
         $organization = $this->route('current_organization');
@@ -100,6 +100,7 @@ class BulkUpdateProductsRequest extends FormRequest
     public function after(): array
     {
         return [
+            fn (Validator $validator) => $this->checkCountryAgainstBrands($validator),
             function (Validator $validator) {
                 if (! $this->filled('brand_id') || $validator->errors()->isNotEmpty()) {
                     return;
@@ -123,6 +124,51 @@ class BulkUpdateProductsRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /**
+     * Refuse a country of origin that a selected product's brand does not
+     * make in.
+     *
+     * The brand is the one the product will carry once saved: the one
+     * chosen in the same submission, or the one it already has. A product
+     * already naming the country is left alone, like on the product form.
+     */
+    protected function checkCountryAgainstBrands(Validator $validator): void
+    {
+        $country = $this->input('country_of_origin');
+
+        if (! is_string($country) || $country === '' || $validator->errors()->isNotEmpty()) {
+            return;
+        }
+
+        $organization = $this->route('current_organization');
+
+        if (! $organization instanceof Organization) {
+            return;
+        }
+
+        $chosenBrand = $this->filled('brand_id') ? Brand::query()->find((int) $this->input('brand_id')) : null;
+
+        $products = ($organization->isSupplier() ? $organization->suppliedProducts() : $organization->products())
+            ->whereIn('products.id', array_map('intval', (array) $this->input('ids', [])))
+            ->with('brand')
+            ->get();
+
+        $refusing = $products
+            ->filter(fn (Product $product): bool => $product->country_of_origin !== $country)
+            ->map(fn (Product $product): ?Brand => $chosenBrand ?? $product->brand)
+            ->filter(fn (?Brand $brand): bool => $brand instanceof Brand && ! $brand->allowsCountry($country))
+            ->unique('id')
+            ->map(fn (Brand $brand): string => $brand->name)
+            ->values();
+
+        if ($refusing->isNotEmpty()) {
+            $validator->errors()->add('country_of_origin', __('Not made in :country: :brands. Change those products on their own.', [
+                'country' => Countries::name($country),
+                'brands' => $refusing->implode(', '),
+            ]));
+        }
     }
 
     /**

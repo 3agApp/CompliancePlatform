@@ -1176,5 +1176,16 @@
     "Only PDFs and images can be checked by AI.": "Nur PDFs und Bilder können mit KI geprüft werden.",
     "Warning pictogram": "Warnsymbol",
     "Packaging close-up": "Verpackung (Nahaufnahme)",
-    "AI check of :name started. It usually takes a minute.": "KI-Prüfung von :name gestartet. Das dauert meist eine Minute."
+    "AI check of :name started. It usually takes a minute.": "KI-Prüfung von :name gestartet. Das dauert meist eine Minute.",
+    "Remove :country": ":country entfernen",
+    "Search countries": "Länder suchen",
+    "No country matches.": "Kein Land passt.",
+    "Countries it makes in": "Produktionsländer",
+    "A product of this brand can only name one of these as its country of origin. Leave empty to allow any.": "Ein Produkt dieser Marke kann nur eines dieser Länder als Ursprungsland angeben. Leer lassen, um jedes Land zu erlauben.",
+    "Only the countries :brand makes in.": "Nur die Länder, in denen :brand produziert.",
+    "Edit brand": "Marke bearbeiten",
+    "countries": "Länder",
+    "country": "Land",
+    "Not made in :country: :brands. Change those products on their own.": "Nicht in :country hergestellt: :brands. Ändern Sie diese Produkte einzeln.",
+    ":brand is not made in :country. Choose one of the brand's countries.": ":brand wird nicht in :country hergestellt. Wählen Sie eines der Länder der Marke."
 }

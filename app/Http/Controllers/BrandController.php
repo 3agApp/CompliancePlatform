@@ -7,6 +7,7 @@ use App\Http\Requests\Brands\SaveBrandRequest;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\SupplierConnection;
+use App\Support\Countries;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -36,6 +37,7 @@ class BrandController extends Controller
             'connections' => $this->connections($request, $currentOrganization),
             'permissions' => $request->user()->toBrandPermissions($currentOrganization),
             'viewerType' => $currentOrganization->type->value,
+            'availableCountries' => Countries::options(),
         ]);
     }
 
@@ -50,7 +52,10 @@ class BrandController extends Controller
 
         Gate::authorize('create', [Brand::class, $connection]);
 
-        $connection->brands()->create($request->safe()->only('name'));
+        $connection->brands()->create([
+            'name' => $request->validated('name'),
+            'countries' => $this->countries($request),
+        ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Brand created.')]);
 
@@ -70,7 +75,10 @@ class BrandController extends Controller
     {
         Gate::authorize('update', $brand);
 
-        $brand->update($request->safe()->only('name'));
+        $brand->update([
+            'name' => $request->validated('name'),
+            ...($request->has('countries') ? ['countries' => $this->countries($request)] : []),
+        ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Brand updated.')]);
 
@@ -113,6 +121,22 @@ class BrandController extends Controller
     }
 
     /**
+     * Get the countries the brand was given, in a stable order, or null
+     * when none were.
+     *
+     * @return list<string>|null
+     */
+    protected function countries(SaveBrandRequest $request): ?array
+    {
+        $chosen = array_filter((array) $request->validated('countries'), is_string(...));
+
+        $countries = array_values(array_unique($chosen));
+        sort($countries);
+
+        return $countries === [] ? null : $countries;
+    }
+
+    /**
      * Transform the organization's trades, each with the makers named under
      * it, for the frontend.
      *
@@ -121,7 +145,7 @@ class BrandController extends Controller
      * apart. A trade with no brands yet is still listed: it is where the
      * first one gets added.
      *
-     * @return array<array{id: int, label: string, status: string, statusLabel: string, isExpired: bool, canAddBrand: bool, brands: array<array{id: int, name: string, products_count: int}>}>
+     * @return array<array{id: int, label: string, status: string, statusLabel: string, isExpired: bool, canAddBrand: bool, brands: array<array{id: int, name: string, countries: list<string>, products_count: int}>}>
      */
     protected function connections(Request $request, Organization $organization): array
     {
@@ -141,6 +165,7 @@ class BrandController extends Controller
                     ->map(fn (Brand $brand) => [
                         'id' => $brand->id,
                         'name' => $brand->name,
+                        'countries' => $brand->countries ?? [],
                         'products_count' => (int) $brand->products_count,
                     ])
                     ->values()

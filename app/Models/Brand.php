@@ -27,17 +27,43 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property int $supplier_connection_id
  * @property string $name
+ * @property list<string>|null $countries
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read SupplierConnection $supplierConnection
  * @property-read Collection<int, Product> $products
  * @property-read int|null $products_count
  */
-#[Fillable(['name'])]
+#[Fillable(['name', 'countries'])]
 class Brand extends Model
 {
     /** @use HasFactory<BrandFactory> */
     use HasFactory;
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'countries' => 'array',
+        ];
+    }
+
+    /**
+     * Determine if a product of this brand may name the country as where it
+     * was made.
+     *
+     * A brand nobody has given countries to allows any of them, so adding
+     * this did not suddenly invalidate every product already filed.
+     */
+    public function allowsCountry(?string $country): bool
+    {
+        return $country === null || $this->countries === null || $this->countries === []
+            || in_array($country, $this->countries, true);
+    }
 
     /**
      * Get the trade this brand is named under.
@@ -66,7 +92,10 @@ class Brand extends Model
      * brand of the supplier it is assigned to: the form narrows the list
      * to the supplier already chosen rather than asking the server again.
      *
-     * @return array{id: int, label: string, supplier_connection_id: int}
+     * The countries come with it too, so the form narrows the countries of
+     * origin to the brand's as soon as one is chosen.
+     *
+     * @return array{id: int, label: string, supplier_connection_id: int, countries: list<string>}
      */
     public function toOption(): array
     {
@@ -74,6 +103,7 @@ class Brand extends Model
             'id' => $this->id,
             'label' => $this->name,
             'supplier_connection_id' => $this->supplier_connection_id,
+            'countries' => $this->countries ?? [],
         ];
     }
 }

@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\CountryOfOrigin;
 use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
@@ -78,7 +77,7 @@ class ProductFactory extends Factory
             'supplier_article_number' => fake()->unique()->bothify('SUP-#####'),
             'order_number' => fake()->bothify('PO-#####'),
             'customs_tariff_number' => (string) fake()->numerify('95030075'),
-            'country_of_origin' => fake()->randomElement(CountryOfOrigin::cases()),
+            'country_of_origin' => fake()->randomElement(['DE', 'CH']),
         ];
     }
 

@@ -6,6 +6,7 @@ use App\Enums\SupplierConnectionStatus;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\SupplierConnection;
+use App\Support\Countries;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,6 +29,8 @@ class SaveBrandRequest extends FormRequest
     {
         $rules = [
             'name' => ['required', 'string', 'max:255', $this->uniqueWithinTheTrade()],
+            'countries' => ['sometimes', 'nullable', 'array', 'max:'.count(Countries::codes())],
+            'countries.*' => ['string', 'distinct', Rule::in(Countries::codes())],
         ];
 
         if (! $this->route('brand') instanceof Brand) {
@@ -140,6 +143,8 @@ class SaveBrandRequest extends FormRequest
         return [
             'name' => __('brand name'),
             'supplier_connection_id' => __('supplier'),
+            'countries' => __('countries'),
+            'countries.*' => __('country'),
         ];
     }
 }

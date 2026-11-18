@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\Products;
 
-use App\Enums\CountryOfOrigin;
 use App\Enums\SupplierConnectionStatus;
+use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
+use App\Support\Countries;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -75,7 +77,7 @@ class SaveProductRequest extends FormRequest
             'supplier_article_number' => ['nullable', 'string', 'max:255'],
             'order_number' => ['nullable', 'string', 'max:255'],
             'customs_tariff_number' => ['nullable', 'string', 'regex:/^\d{6,12}$/'],
-            'country_of_origin' => ['nullable', Rule::enum(CountryOfOrigin::class)],
+            'country_of_origin' => ['nullable', 'string', Rule::in(Countries::codes()), $this->madeByTheChosenBrand()],
             'age_grading' => ['nullable', 'string', 'max:255'],
             'safety_notice' => ['nullable', 'string', 'max:5000'],
             'warning_text' => ['nullable', 'string', 'max:5000'],
@@ -114,6 +116,37 @@ class SaveProductRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * Require the country of origin to be one the chosen brand makes in.
+     *
+     * A brand that has not been given any countries allows every one. A
+     * country the product already had is let through unchanged, so a brand
+     * narrowing its list later does not block every other edit of products
+     * filed before it did.
+     */
+    protected function madeByTheChosenBrand(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $brandId = $this->input('brand_id');
+            $brand = is_numeric($brandId) ? Brand::query()->find((int) $brandId) : null;
+
+            if (! $brand instanceof Brand || $brand->allowsCountry((string) $value)) {
+                return;
+            }
+
+            $product = $this->route('product');
+
+            if ($product instanceof Product && $product->country_of_origin === $value) {
+                return;
+            }
+
+            $fail(__(':brand is not made in :country. Choose one of the brand\'s countries.', [
+                'brand' => $brand->name,
+                'country' => Countries::name((string) $value),
+            ]));
+        };
     }
 
     /**

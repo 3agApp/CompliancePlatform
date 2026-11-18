@@ -17,6 +17,7 @@ use App\Models\ProductAssessment;
 use App\Models\ProductAssessmentFinding;
 use App\Models\ProductDocument;
 use App\Models\User;
+use App\Support\Countries;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -473,7 +474,7 @@ class AssessProductDocuments
             'EAN' => $product->ean,
             'Supplier article number' => $product->supplier_article_number,
             'Internal article number' => $product->internal_article_number,
-            'Country of origin' => $product->country_of_origin?->label(),
+            'Country of origin' => Countries::name($product->country_of_origin, 'en'),
             'Age grading' => $product->age_grading,
             'Safety notice' => $product->safety_notice,
             'Warning text' => $product->warning_text,

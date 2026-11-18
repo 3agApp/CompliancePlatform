@@ -464,3 +464,62 @@ test('guests are redirected to the login page', function () {
         ->get(route('brands.index', ['current_organization' => $organization->slug]))
         ->assertRedirect(route('login'));
 });
+
+test('a brand is named with the countries it makes in', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $this
+        ->actingAs($user)
+        ->from(brandsUrl($distributor))
+        ->post(route('brands.store', ['current_organization' => $distributor->slug]), [
+            'name' => 'tigerbox',
+            'supplier_connection_id' => $connection->id,
+            'countries' => ['DE', 'CN'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($connection->brands()->sole()->countries)->toBe(['CN', 'DE']);
+
+    brandsPage($user, $distributor)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('connections.0.brands.0.countries', ['CN', 'DE'])
+            ->has('availableCountries'));
+});
+
+test('a brand countries can be changed and cleared', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $brand = carriedBrand(newSupplierConnection($distributor), 'Magna-Tiles');
+    $url = route('brands.update', ['current_organization' => $distributor->slug, 'brand' => $brand->id]);
+
+    $this->actingAs($user)->patch($url, ['name' => 'Magna-Tiles', 'countries' => ['CN']])->assertSessionHasNoErrors();
+    expect($brand->fresh()->countries)->toBe(['CN']);
+
+    $this->actingAs($user)->patch($url, ['name' => 'Magna-Tiles', 'countries' => ''])->assertSessionHasNoErrors();
+    expect($brand->fresh()->countries)->toBeNull();
+});
+
+test('renaming a brand without naming countries keeps the ones it has', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $brand = carriedBrand(newSupplierConnection($distributor), 'Magna Tiles');
+    $brand->update(['countries' => ['CN']]);
+
+    $this->actingAs($user)
+        ->patch(route('brands.update', ['current_organization' => $distributor->slug, 'brand' => $brand->id]), ['name' => 'Magna-Tiles'])
+        ->assertSessionHasNoErrors();
+
+    expect($brand->fresh()->countries)->toBe(['CN']);
+});
+
+test('a brand only takes real country codes, each once', function (array $countries) {
+    [$user, $distributor] = newOrganizationMember();
+    $brand = carriedBrand(newSupplierConnection($distributor), 'Magna-Tiles');
+
+    $this->actingAs($user)
+        ->patch(route('brands.update', ['current_organization' => $distributor->slug, 'brand' => $brand->id]), ['name' => 'Magna-Tiles', 'countries' => $countries])
+        ->assertSessionHasErrors();
+})->with([
+    'unknown code' => [['XX']],
+    'lower case' => [['cn']],
+    'twice' => [['CN', 'CN']],
+]);

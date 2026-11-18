@@ -631,3 +631,30 @@ test('a supplier invited from the products page can be assigned without a refres
         ->assertSee('Acme Supplies AG (invitation pending)')
         ->assertNoJavaScriptErrors();
 });
+
+test('a product only offers the countries its brand makes in', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+    $brand = carriedBrand($connection, 'Magna-Tiles');
+    $brand->update(['countries' => ['CN', 'VN']]);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'brand_id' => $brand->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertSee('Only the countries Magna-Tiles makes in.')
+        ->click('@product-country-of-origin')
+        ->assertCount('[role="option"]', 2)
+        ->assertSee('Vietnam')
+        ->assertDontSee('Switzerland')
+        ->click('[role="option"]:has-text("Vietnam")')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($product->fresh()->country_of_origin)->toBe('VN');
+});

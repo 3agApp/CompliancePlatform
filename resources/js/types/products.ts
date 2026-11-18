@@ -1,7 +1,8 @@
 import type { CompanyProfile } from './organizations';
 import type { SupplierConnectionStatus } from './connections';
 
-export type CountryOfOrigin = 'DE' | 'CH';
+/** An ISO 3166-1 alpha-2 country code. */
+export type CountryOfOrigin = string;
 
 export type CountryOption = {
     value: CountryOfOrigin;
@@ -101,6 +102,8 @@ export type ProductCompleteness = {
 export type Brand = {
     id: number;
     name: string;
+    /** Where the maker produces; empty when nobody has said. */
+    countries: string[];
     products_count: number;
 };
 
@@ -108,6 +111,8 @@ export type BrandOption = {
     id: number;
     label: string;
     supplier_connection_id: number;
+    /** The countries its products may come from; empty allows any. */
+    countries: string[];
 };
 
 /**

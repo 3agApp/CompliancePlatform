@@ -75,7 +75,7 @@ test('a brand is renamed through the edit dialog', function () {
 
     $page->click('[data-test="brand-row"]:has-text("Magna Tiles") [data-test="brand-actions"]')
         ->click('@brand-edit-button')
-        ->assertSee('Rename brand')
+        ->assertSee('Edit brand')
         ->fill('@brand-name', 'Magna-Tiles')
         ->click('@save-brand-submit')
         ->assertSee('Brand updated.')
@@ -199,4 +199,28 @@ test('the brand list is narrowed to one supplier and a new brand asks which supp
         ->assertSee('Saarplast')
         ->assertQueryStringHas('supplier', (string) $other->id)
         ->assertNoJavaScriptErrors();
+});
+
+test('a brand is given the countries it makes in', function () {
+    [$user, $distributor] = newOrganizationMember();
+
+    carriedBrand(newSupplierConnection($distributor), 'Magna-Tiles');
+
+    $this->actingAs($user);
+
+    visit(route('brands.index', ['current_organization' => $distributor->slug]))
+        ->click('[data-test="brand-row"]:has-text("Magna-Tiles") [data-test="brand-actions"]')
+        ->click('@brand-edit-button')
+        ->fill('@country-search', 'chin')
+        ->click('@country-option-CN')
+        ->fill('@country-search', 'viet')
+        ->click('@country-option-VN')
+        ->assertCount('@country-chip', 2)
+        ->click('@save-brand-submit')
+        ->assertSee('Brand updated.')
+        ->assertSeeIn('@brand-countries', 'China')
+        ->assertSeeIn('@brand-countries', 'Vietnam')
+        ->assertNoJavaScriptErrors();
+
+    expect($distributor->brands()->sole()->countries)->toBe(['CN', 'VN']);
 });

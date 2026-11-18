@@ -1,12 +1,12 @@
 <?php
 
-use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SupplierConnection;
 use App\Models\User;
+use App\Support\Countries;
 use Illuminate\Database\QueryException;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -387,7 +387,7 @@ test('a country of origin can be removed by submitting an empty value', function
     [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create([
-        'country_of_origin' => CountryOfOrigin::Germany,
+        'country_of_origin' => 'DE',
     ]);
 
     $this
@@ -485,7 +485,7 @@ test('a customs tariff number of nothing but separators is no number at all', fu
     expect(Product::sole()->customs_tariff_number)->toBeNull();
 });
 
-test('the country of origin is limited to germany and switzerland', function (?string $country, bool $valid) {
+test('the country of origin is any real country code', function (?string $country, bool $valid) {
     [$user, $organization, $connection] = distributorWithSupplier();
 
     $response = $this
@@ -502,7 +502,8 @@ test('the country of origin is limited to germany and switzerland', function (?s
     ['CH', true],
     [null, true],
     ['', true],
-    ['AT', false],
+    ['CN', true],
+    ['XX', false],
     ['Germany', false],
     ['de', false],
 ]);
@@ -511,7 +512,7 @@ test('the available countries of origin are shared with the product pages', func
     [$user, $organization, $connection] = distributorWithSupplier();
 
     $product = Product::factory()->for($organization)->create([
-        'country_of_origin' => CountryOfOrigin::Switzerland,
+        'country_of_origin' => 'CH',
     ]);
 
     $this
@@ -531,10 +532,8 @@ test('the available countries of origin are shared with the product pages', func
         ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('product.country_of_origin', 'CH')
-            ->where('availableCountries', [
-                ['value' => 'DE', 'label' => 'Germany'],
-                ['value' => 'CH', 'label' => 'Switzerland'],
-            ]),
+            ->has('availableCountries', count(Countries::codes()))
+            ->where('availableCountries', fn ($countries) => collect($countries)->contains(['value' => 'CH', 'label' => 'Switzerland'])),
         );
 });
 
@@ -557,7 +556,7 @@ test('products can be updated', function () {
         ->supplier_article_number->toBe('MT-BLUE-32')
         ->order_number->toBe('PO-2026-0148')
         ->customs_tariff_number->toBe('95030075')
-        ->country_of_origin->toBe(CountryOfOrigin::Germany);
+        ->country_of_origin->toBe('DE');
 });
 
 test('products can be deleted', function () {
@@ -677,4 +676,60 @@ test('a product saved without the webshop flag keeps the one it had', function (
         ->assertSessionHasNoErrors();
 
     expect($product->fresh()->is_active)->toBeFalse();
+});
+
+test('a product of a brand can only come from a country the brand makes in', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+    carriedBrand($connection)->update(['countries' => ['CN', 'VN']]);
+
+    $this->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, ['country_of_origin' => 'DE']))
+        ->assertSessionHasErrors('country_of_origin');
+
+    $this->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, ['country_of_origin' => 'VN']))
+        ->assertSessionHasNoErrors();
+
+    expect(Product::sole()->country_of_origin)->toBe('VN');
+});
+
+test('a brand without countries allows any country of origin', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+
+    $this->actingAs($user)
+        ->post(route('products.store', ['current_organization' => $organization->slug]), productPayload($connection, ['country_of_origin' => 'PT']))
+        ->assertSessionHasNoErrors();
+});
+
+test('a country saved before the brand narrowed its list can be kept on save', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+    $brand = carriedBrand($connection);
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => $connection->id,
+        'brand_id' => $brand->id,
+        'country_of_origin' => 'DE',
+    ]);
+
+    $brand->update(['countries' => ['CN']]);
+
+    $this->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection, ['country_of_origin' => 'DE']))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($user)
+        ->patch(route('products.update', ['current_organization' => $organization->slug, 'product' => $product->id]), productPayload($connection, ['country_of_origin' => 'FR']))
+        ->assertSessionHasErrors('country_of_origin');
+});
+
+test('the brand options carry their countries for the form to narrow by', function () {
+    [$user, $organization, $connection] = distributorWithSupplier();
+    $brand = carriedBrand($connection);
+    $brand->update(['countries' => ['CN']]);
+    $product = Product::factory()->for($organization)->create(['supplier_connection_id' => $connection->id]);
+
+    $this->actingAs($user)
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('availableBrands', fn ($brands) => collect($brands)->firstWhere('id', $brand->id)['countries'] === ['CN']));
 });

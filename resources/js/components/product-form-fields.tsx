@@ -183,6 +183,33 @@ export default function ProductFormFields({
         ? brandId
         : undefined;
 
+    const selectedBrand = brands.find(
+        (brand) => String(brand.id) === selectedBrandId,
+    );
+
+    /**
+     * A brand that names the countries it makes in narrows the countries of
+     * origin to those. The product's own saved country stays on the list
+     * even if the brand has since dropped it, so an old product still reads
+     * as it was saved.
+     */
+    const brandCountries = selectedBrand?.countries ?? [];
+    const countryOptions =
+        brandCountries.length > 0
+            ? availableCountries.filter(
+                  (option) =>
+                      brandCountries.includes(option.value) ||
+                      option.value === product?.country_of_origin,
+              )
+            : availableCountries;
+
+    /** Derived like the brand: a country the brand does not make in is not a selection. */
+    const selectedCountry = countryOptions.some(
+        (option) => option.value === country,
+    )
+        ? country
+        : undefined;
+
     return (
         <div className="grid gap-4">
             <div className="grid gap-2">
@@ -271,6 +298,7 @@ export default function ProductFormFields({
                         organizationSlug={organizationSlug}
                         supplierConnectionId={supplierConnectionId}
                         supplierLabel={supplierLabel ?? t('This supplier')}
+                        availableCountries={availableCountries}
                         open={brandDialogOpen}
                         onOpenChange={setBrandDialogOpen}
                         onCreated={(brand) => setBrandId(String(brand.id))}
@@ -415,7 +443,7 @@ export default function ProductFormFields({
                     />
                 </Label>
                 <Select
-                    value={country}
+                    value={selectedCountry ?? ''}
                     onValueChange={(value) =>
                         setCountry(value as CountryOfOrigin)
                     }
@@ -434,7 +462,7 @@ export default function ProductFormFields({
                         <SelectValue placeholder={t('Select a country')} />
                     </SelectTrigger>
                     <SelectContent>
-                        {availableCountries.map((availableCountry) => (
+                        {countryOptions.map((availableCountry) => (
                             <SelectItem
                                 key={availableCountry.value}
                                 value={availableCountry.value}
@@ -447,8 +475,18 @@ export default function ProductFormFields({
                 <input
                     type="hidden"
                     name="country_of_origin"
-                    value={country ?? ''}
+                    value={selectedCountry ?? ''}
                 />
+                {selectedBrand !== undefined && brandCountries.length > 0 ? (
+                    <p
+                        className="text-muted-foreground text-xs"
+                        data-test="product-country-of-origin-hint"
+                    >
+                        {t('Only the countries :brand makes in.', {
+                            brand: selectedBrand.label,
+                        })}
+                    </p>
+                ) : null}
                 <InputError message={errors.country_of_origin} />
             </div>
 

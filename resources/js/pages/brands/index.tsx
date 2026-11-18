@@ -28,7 +28,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { t, tc } from '@/lib/i18n';
+import { countryName } from '@/lib/countries';
+import { currentLocale, t, tc } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as distributorsIndex } from '@/routes/distributors';
 import { index as productsIndex } from '@/routes/products';
@@ -37,6 +38,7 @@ import type {
     Brand,
     BrandConnection,
     BrandPermissions,
+    CountryOption,
     OrganizationType,
 } from '@/types';
 
@@ -44,6 +46,7 @@ type Props = {
     connections: BrandConnection[];
     permissions: BrandPermissions;
     viewerType: OrganizationType;
+    availableCountries: CountryOption[];
 };
 
 const ALL = 'all';
@@ -72,6 +75,7 @@ export default function BrandsIndex({
     connections,
     permissions,
     viewerType,
+    availableCountries,
 }: Props) {
     const page = usePage();
     const organizationSlug = page.props.currentOrganization?.slug ?? '';
@@ -408,6 +412,7 @@ export default function BrandsIndex({
                     supplierConnectionId={createUnder.id}
                     supplierLabel={createUnder.label}
                     reloadOnly={['connections']}
+                    availableCountries={availableCountries}
                     open={createOpen}
                     onOpenChange={setCreateOpen}
                 />
@@ -416,6 +421,7 @@ export default function BrandsIndex({
             <RenameBrandModal
                 organizationSlug={organizationSlug}
                 brand={brandToRename}
+                availableCountries={availableCountries}
                 open={renameOpen}
                 onOpenChange={setRenameOpen}
             />
@@ -451,7 +457,19 @@ function BrandRow({
 
     return (
         <tr className="border-t" data-test="brand-row">
-            <td className="px-6 font-medium break-words">{brand.name}</td>
+            <td className="px-6 break-words">
+                <span className="font-medium">{brand.name}</span>
+                {brand.countries.length > 0 ? (
+                    <span
+                        className="text-muted-foreground block text-xs"
+                        data-test="brand-countries"
+                    >
+                        {brand.countries
+                            .map((code) => countryName(code, currentLocale()))
+                            .join(', ')}
+                    </span>
+                ) : null}
+            </td>
             <td className="px-6" data-label={counterpartyLabel}>
                 <span className="inline-flex flex-wrap items-center justify-end gap-2 md:justify-start">
                     <span data-test="brand-connection-name">
@@ -519,7 +537,7 @@ function BrandRow({
                                         onSelect={() => onRename(brand)}
                                     >
                                         <Pencil className="h-4 w-4" />
-                                        {t('Rename brand')}
+                                        {t('Edit brand')}
                                     </DropdownMenuItem>
                                 ) : null}
                                 {permissions.canDeleteBrand ? (

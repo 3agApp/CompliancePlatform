@@ -3,12 +3,13 @@
 namespace App\Support;
 
 /**
- * The countries an organization can be based in.
+ * Every country, by its ISO 3166-1 alpha-2 code.
  *
- * Only the ISO 3166-1 alpha-2 codes live here. The names come from the
- * browser's own Intl.DisplayNames in whatever language the reader uses, so
- * the list never has to be translated and never falls out of date with the
- * languages the app speaks.
+ * Where an organization is based, where a brand makes its products and a
+ * product's country of origin are all read from this one list. Only the
+ * codes live here: the names come from ICU through PHP's intl extension, or
+ * from the browser's Intl.DisplayNames, in whatever language the reader
+ * uses, so the list never has to be translated.
  */
 class Countries
 {
@@ -44,5 +45,45 @@ class Countries
     public static function codes(): array
     {
         return self::CODES;
+    }
+
+    /**
+     * Get a country's name in the given language, or the current one.
+     *
+     * Without the intl extension there is nothing to read names from, so
+     * the code itself is the name rather than an error.
+     */
+    public static function name(?string $code, ?string $locale = null): ?string
+    {
+        if ($code === null || $code === '') {
+            return null;
+        }
+
+        if (! class_exists(\Locale::class)) {
+            return $code;
+        }
+
+        $name = \Locale::getDisplayRegion('-'.$code, $locale ?? app()->getLocale());
+
+        return $name === false || $name === '' ? $code : $name;
+    }
+
+    /**
+     * Get the countries as select options, sorted by name in the reader's
+     * language.
+     *
+     * @param  list<string>|null  $codes  Only these countries; all of them when null.
+     * @return list<array{value: string, label: string}>
+     */
+    public static function options(?array $codes = null): array
+    {
+        $options = array_map(
+            fn (string $code): array => ['value' => $code, 'label' => self::name($code) ?? $code],
+            $codes ?? self::CODES,
+        );
+
+        usort($options, fn (array $a, array $b): int => strnatcasecmp($a['label'], $b['label']));
+
+        return $options;
     }
 }

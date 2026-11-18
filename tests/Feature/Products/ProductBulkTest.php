@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\CountryOfOrigin;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductEventType;
 use App\Enums\ProductReviewStatus;
@@ -54,7 +53,7 @@ test('a distributor can change the active flag and country of many products at o
         $product->refresh();
 
         expect($product->is_active)->toBeFalse()
-            ->and($product->country_of_origin)->toBe(CountryOfOrigin::from('CH'));
+            ->and($product->country_of_origin)->toBe('CH');
 
         $event = $product->events()->sole();
 
@@ -76,7 +75,7 @@ test('a field left out of a bulk change is left as each product has it', functio
 
     expect($product->fresh())
         ->is_active->toBeFalse()
-        ->country_of_origin->toBe(CountryOfOrigin::from('DE'));
+        ->country_of_origin->toBe('DE');
 });
 
 test('a bulk change can move products to another category and template', function () {
@@ -300,4 +299,25 @@ test('a supplier cannot bulk delete assigned products', function () {
         ->assertForbidden();
 
     $this->assertModelExists($product);
+});
+
+test('a bulk country change is refused for products whose brand does not make there', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+    $brand = carriedBrand($connection, 'Magna-Tiles');
+    $brand->update(['countries' => ['CN']]);
+
+    $made = Product::factory()->for($organization)->create(['supplier_connection_id' => $connection->id, 'brand_id' => $brand->id, 'country_of_origin' => 'CN']);
+    $unbranded = Product::factory()->for($organization)->create(['supplier_connection_id' => $connection->id, 'brand_id' => null, 'country_of_origin' => 'CN']);
+
+    bulkUpdate($user, $organization, ['ids' => [$made->id, $unbranded->id], 'country_of_origin' => 'DE'])
+        ->assertSessionHasErrors(['country_of_origin' => 'Not made in Germany: Magna-Tiles. Change those products on their own.']);
+
+    expect($made->fresh()->country_of_origin)->toBe('CN')
+        ->and($unbranded->fresh()->country_of_origin)->toBe('CN');
+
+    bulkUpdate($user, $organization, ['ids' => [$unbranded->id], 'country_of_origin' => 'DE'])
+        ->assertSessionHasNoErrors();
+
+    expect($unbranded->fresh()->country_of_origin)->toBe('DE');
 });
