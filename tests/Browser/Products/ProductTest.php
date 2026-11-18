@@ -242,17 +242,35 @@ test('a save refused from another tab shows the details and says so in the addre
 
     $this->actingAs($user);
 
-    visit(route('products.edit', [
+    $page = visit(route('products.edit', [
         'current_organization' => $organization->slug,
         'product' => $product->id,
-    ]))
-        /**
-         * The history arrives after the page, and its answer puts the plain
-         * address back. Clicked before it lands, the tab can lose the race
-         * for the address bar.
-         */
-        ->waitForEvent('networkidle')
-        ->fill('@product-ean', '123')
+    ]));
+
+    /**
+     * The history arrives after the page, and its answer puts the plain
+     * address back. Clicked before it lands, the tab can lose the race for
+     * the address bar -- and "networkidle" can fire before the deferred
+     * request has even started -- so wait for the history itself to render.
+     * Every tab stays mounted, so it is in the page even while hidden.
+     */
+    $historyLoaded = $page->script(<<<'JS'
+        async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (document.body.textContent.includes('Nothing has happened to this product yet.')) {
+                    return true;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            return false;
+        }
+        JS);
+
+    expect($historyLoaded)->toBeTrue();
+
+    $page->fill('@product-ean', '123')
         ->click('@product-tab-history')
         ->assertQueryStringHas('tab', 'history')
         ->click('@product-unsaved-bar-submit')
