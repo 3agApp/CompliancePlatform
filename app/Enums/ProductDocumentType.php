@@ -24,7 +24,7 @@ enum ProductDocumentType: string
             self::ManualOrInstructions => __('Manual or instructions'),
             self::Certificate => __('Certificate'),
             self::ProductImage => __('Product image'),
-            self::SafetyImage => __('Safety image'),
+            self::SafetyImage => __('Warning image'),
             self::RegulatoryDocument => __('Regulatory document'),
             self::Other => __('Other'),
         };

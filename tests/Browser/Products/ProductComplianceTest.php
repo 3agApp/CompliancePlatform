@@ -8,6 +8,7 @@ use App\Enums\ProductRequirement;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductTemplate;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Write a real PDF somewhere the browser can pick it up from.
@@ -366,4 +367,81 @@ test('an organization with no AI provider is not offered the guess at all', func
         ->assertNoJavaScriptErrors();
 
     DocumentKindAgent::assertNeverPrompted();
+});
+
+/**
+ * A one pixel PNG on disk, for the file picker to take.
+ */
+function aPngNamed(string $name): string
+{
+    $path = sys_get_temp_dir().'/pest-documents/'.$name;
+
+    @mkdir(dirname($path), 0777, true);
+    file_put_contents($path, base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+
+    return $path;
+}
+
+test('warning images sit beside the warning text, not among the papers', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'warning_text' => 'Not suitable for children under 3 years.',
+    ]);
+
+    $path = ProductDocument::directoryFor($product).'/under-3.png';
+    Storage::disk(ProductDocument::DISK)->put($path, (string) file_get_contents(aPngNamed('under-3.png')));
+    $warningImage = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::SafetyImage)->create([
+        'name' => 'under-3.png',
+        'path' => $path,
+        'mime_type' => 'image/png',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]));
+
+    $page->assertVisible('#product-compliance [data-test="warning-images"]')
+        ->assertCount('@warning-image', 1)
+        ->assertSeeIn('@warning-image-visibility', 'Hidden')
+        ->click('@warning-image-visibility')
+        ->assertSeeIn('@warning-image-visibility', 'Public')
+        ->assertVisible('@warning-image-add')
+        ->click('@product-tab-documents')
+        ->assertDontSee('under-3.png')
+        ->assertNoJavaScriptErrors();
+
+    expect($warningImage->fresh()->is_public)->toBeTrue();
+});
+
+test('a warning image is filed from beside the warning text without touching the form', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->withoutOptionalDetails()->create([
+        'supplier_connection_id' => $connection->id,
+        'warning_text' => 'Small parts.',
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertCount('@warning-image', 0)
+        ->click('@warning-image-add')
+        ->attach('@document-file', aPngNamed('small-parts.png'))
+        /** Filed as a warning image without being asked. */
+        ->assertSeeIn('@pending-document-type-0', 'Warning image')
+        ->assertButtonEnabled('@upload-document-submit')
+        /** Choosing a file is not an edit to the product's fields. */
+        ->assertMissing('@product-unsaved-bar')
+        ->click('@upload-documents-cancel')
+        ->assertMissing('@upload-documents-modal')
+        ->assertMissing('@product-unsaved-bar')
+        ->assertNoJavaScriptErrors();
 });

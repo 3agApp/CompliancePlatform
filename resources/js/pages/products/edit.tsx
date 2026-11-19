@@ -27,6 +27,7 @@ import ProductReviewPanel, {
 } from '@/components/product-review-panel';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import SerialLabelsPanel from '@/components/serial-labels-panel';
+import WarningImagesField from '@/components/warning-images-field';
 import { Button } from '@/components/ui/button';
 import { SectionBadge, SectionNav } from '@/components/ui/section-nav';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
@@ -136,6 +137,11 @@ type Props = {
  * in, or the documents tab for a paper.
  */
 function sectionFor(item: ProductCompletenessItem): string {
+    /** A warning image is kept with the warning, not among the papers. */
+    if (item.document_type === 'safety_image') {
+        return 'product-compliance';
+    }
+
     if (item.group === 'document') {
         return 'product-documents';
     }
@@ -312,7 +318,11 @@ export default function ProductEdit({
      * offer them directly.
      */
     const outstandingDocumentTypes = completeness.items.flatMap((item) => {
-        if (item.satisfied || item.document_type === null) {
+        if (
+            item.satisfied ||
+            item.document_type === null ||
+            item.document_type === 'safety_image'
+        ) {
             return [];
         }
 
@@ -320,6 +330,11 @@ export default function ProductEdit({
 
         return availableDocumentTypes.filter((option) => option.value === type);
     });
+
+    /** Kept with the warning text in the compliance details. */
+    const warningImages = product.documents.filter(
+        (document) => document.type === 'safety_image',
+    );
 
     /**
      * Where an outstanding item from the status strip is answered: the
@@ -692,6 +707,39 @@ export default function ProductEdit({
                                                 !permissions.canUpdateProduct
                                             }
                                             idPrefix="edit-product"
+                                            hasWarningImages={
+                                                warningImages.length > 0
+                                            }
+                                            warningImages={
+                                                <WarningImagesField
+                                                    organizationSlug={
+                                                        organizationSlug
+                                                    }
+                                                    productId={product.id}
+                                                    images={warningImages}
+                                                    availableDocumentTypes={
+                                                        availableDocumentTypes
+                                                    }
+                                                    canUpload={
+                                                        permissions.canUpdateProduct
+                                                    }
+                                                    canPublish={
+                                                        permissions.canPublishDocuments
+                                                    }
+                                                    canGuessKinds={
+                                                        canGuessDocumentKinds
+                                                    }
+                                                    required={(
+                                                        template?.requirements ??
+                                                        []
+                                                    ).includes(
+                                                        'requires_safety_image',
+                                                    )}
+                                                    missing={outstandingRequirements.includes(
+                                                        'requires_safety_image',
+                                                    )}
+                                                />
+                                            }
                                         />
                                     </section>
 
@@ -758,7 +806,9 @@ export default function ProductEdit({
                         <ProductDocumentsPanel
                             organizationSlug={organizationSlug}
                             productId={product.id}
-                            documents={product.documents}
+                            documents={product.documents.filter(
+                                (document) => document.type !== 'safety_image',
+                            )}
                             availableDocumentTypes={availableDocumentTypes}
                             outstandingTypes={outstandingDocumentTypes}
                             canUpload={permissions.canUpdateProduct}

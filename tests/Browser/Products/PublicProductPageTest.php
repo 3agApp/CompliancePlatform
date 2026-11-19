@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
  * The public page draws the picture, so there has to be one: a row pointing
  * at nothing renders a broken frame and the test would pass on it.
  */
-function aStoredImage(Product $product, string $name = 'front.png'): ProductDocument
+function aStoredImage(Product $product, string $name = 'front.png', ProductDocumentType $type = ProductDocumentType::ProductImage): ProductDocument
 {
     $path = ProductDocument::directoryFor($product).'/'.$name;
 
@@ -26,7 +26,7 @@ function aStoredImage(Product $product, string $name = 'front.png'): ProductDocu
 
     return ProductDocument::factory()
         ->for($product)
-        ->ofType(ProductDocumentType::ProductImage)
+        ->ofType($type)
         ->create(['name' => $name, 'path' => $path, 'mime_type' => 'image/png', 'is_public' => true]);
 }
 
@@ -278,4 +278,17 @@ test('a product picture that cannot be loaded falls back to the no picture panel
     visit(route('products.public', ['product' => $product->uuid]))
         ->assertMissing('@product-photo')
         ->assertPresent('@product-photo-missing');
+});
+
+test('a warning image is shown inside the warning, not among the downloads', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct(['warning_text' => 'Not suitable for children under 3 years.']);
+    aStoredImage($product, 'under-3.png', ProductDocumentType::SafetyImage);
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertSeeIn('@product-public-warning', 'Not suitable for children under 3 years.')
+        ->assertCount('[data-test="product-public-warning"] [data-test="product-public-warning-image"] img', 1)
+        ->assertMissing('@product-public-documents')
+        ->assertNoJavaScriptErrors();
 });

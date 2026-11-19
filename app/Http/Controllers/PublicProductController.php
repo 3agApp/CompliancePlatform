@@ -168,16 +168,20 @@ class PublicProductController extends Controller
     }
 
     /**
-     * Show one of the product's pictures.
+     * Show one of the product's pictures, or one of its warning images.
      *
      * The only bytes on the private disk that are served without a login,
-     * and only ever the ones somebody filed as a picture of the article. The
-     * kind is checked here rather than trusted from the route, so a test
-     * report filed under the wrong heading is still not reachable this way.
+     * and only ever the ones somebody filed as a picture of the article or
+     * of its warning. The kind is checked here rather than trusted from the
+     * route, so a test report filed under the wrong heading is still not
+     * reachable this way.
      */
     public function image(Product $product, ProductDocument $document): StreamedResponse
     {
-        abort_unless($this->isPublicImage($document), 404);
+        abort_unless(
+            $this->isPublicImage($document) || $this->isPublicImage($document, ProductDocumentType::SafetyImage),
+            404,
+        );
 
         /**
          * The type from the allowlist rather than from the column, for the
@@ -195,7 +199,7 @@ class PublicProductController extends Controller
     /**
      * Get what the public page shows about the product itself.
      *
-     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool}
+     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, warningImages: array<array{id: int, url: string, name: string}>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool}
      */
     protected function toPageArray(Product $product): array
     {
@@ -226,6 +230,11 @@ class PublicProductController extends Controller
                 'material_information' => $product->material_information,
                 'usage_restrictions' => $product->usage_restrictions,
             ],
+            /**
+             * The symbols printed beside the warning, shown inside it rather
+             * than among the downloads.
+             */
+            'warningImages' => $this->toImageArray($product, ProductDocumentType::SafetyImage),
             'seal' => $product->seal(),
             'images' => $this->toImageArray($product),
             'documents' => $this->toDocumentArray($product),
@@ -262,14 +271,17 @@ class PublicProductController extends Controller
     /**
      * Get the documents the distributor released to the public page.
      *
-     * Pictures of the article are left out: they are already the gallery.
+     * Pictures of the article and of its warning are left out: they are
+     * already shown in the gallery and in the warning.
      *
      * @return array<array{id: int, type: string, name: string, size: int, url: string}>
      */
     protected function toDocumentArray(Product $product): array
     {
         return $product->documents
-            ->filter(fn (ProductDocument $document) => $document->is_public && ! $this->isPublicImage($document))
+            ->filter(fn (ProductDocument $document) => $document->is_public
+                && ! $this->isPublicImage($document)
+                && ! $this->isPublicImage($document, ProductDocumentType::SafetyImage))
             ->map(fn (ProductDocument $document) => [
                 'id' => $document->id,
                 'type' => $document->type->value,
@@ -293,10 +305,10 @@ class PublicProductController extends Controller
      *
      * @return array<array{id: int, url: string, name: string}>
      */
-    protected function toImageArray(Product $product): array
+    protected function toImageArray(Product $product, ProductDocumentType $type = ProductDocumentType::ProductImage): array
     {
         return $product->documents
-            ->filter(fn (ProductDocument $document) => $this->isPublicImage($document))
+            ->filter(fn (ProductDocument $document) => $this->isPublicImage($document, $type))
             ->map(fn (ProductDocument $document) => [
                 'id' => $document->id,
                 'url' => route('products.public.image', [
@@ -310,12 +322,13 @@ class PublicProductController extends Controller
     }
 
     /**
-     * Determine if a document is a picture of the article that may be shown
-     * to anyone: one switched on for the public page, like any document.
+     * Determine if a document is a picture of the given kind that may be
+     * shown to anyone: one switched on for the public page, like any
+     * document.
      */
-    protected function isPublicImage(ProductDocument $document): bool
+    protected function isPublicImage(ProductDocument $document, ProductDocumentType $type = ProductDocumentType::ProductImage): bool
     {
-        return $document->type === ProductDocumentType::ProductImage
+        return $document->type === $type
             && $document->is_public
             && $document->previewKind() === DocumentPreviewKind::Image;
     }
