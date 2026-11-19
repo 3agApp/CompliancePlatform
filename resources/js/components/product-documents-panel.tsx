@@ -213,13 +213,7 @@ export default function ProductDocumentsPanel({
         <>
             <div className="grid gap-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                    <Heading
-                        variant="small"
-                        title={t('Documents')}
-                        description={t(
-                            'Test reports, declarations of conformity, manuals, certificates and images. A product can carry several of the same kind.',
-                        )}
-                    />
+                    <Heading variant="small" title={t('Documents')} />
 
                     {canUpload ? (
                         <Button
@@ -340,13 +334,7 @@ export default function ProductDocumentsPanel({
                         className="text-muted-foreground text-sm"
                         data-test="product-documents-empty"
                     >
-                        {canUpload
-                            ? t(
-                                  'No documents yet — upload the first ones above.',
-                              )
-                            : t(
-                                  'No documents have been filed against this product yet.',
-                              )}
+                        {t('No documents yet.')}
                     </p>
                 ) : null}
             </div>

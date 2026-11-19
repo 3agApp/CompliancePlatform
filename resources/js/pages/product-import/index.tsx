@@ -77,26 +77,13 @@ export default function ProductImportIndex(props: Props) {
             <Head title={t('Product import')} />
 
             <div className="workspace-page">
-                <div className="page-heading">
-                    <h1 className="page-title">{t('Product import')}</h1>
-                    <p className="text-muted-foreground text-sm">
-                        {t(
-                            'Bring your catalogue in from the system you keep it in. Each manufacturer becomes a supplier, and each article a product filed under the template you choose.',
-                        )}
-                    </p>
-                </div>
+                <h1 className="page-title">{t('Product import')}</h1>
 
                 <section
                     className="workspace-panel space-y-6 p-6"
                     data-test="import-source-section"
                 >
-                    <Heading
-                        variant="small"
-                        title={t('Source')}
-                        description={t(
-                            'Where your catalogue is kept, and what an import does with what it finds.',
-                        )}
-                    />
+                    <Heading variant="small" title={t('Source')} />
                     <SourceForm
                         organizationSlug={organizationSlug}
                         {...props}
@@ -108,13 +95,7 @@ export default function ProductImportIndex(props: Props) {
                         className="workspace-panel space-y-6 p-6"
                         data-test="import-manufacturers-section"
                     >
-                        <Heading
-                            variant="small"
-                            title={t('Manufacturers')}
-                            description={t(
-                                'Only the manufacturers ticked here are imported. Choose a supplier and a template for one, or leave them for the import to work out.',
-                            )}
-                        />
+                        <Heading variant="small" title={t('Manufacturers')} />
                         <ManufacturerPicker
                             organizationSlug={organizationSlug}
                             {...props}
@@ -127,13 +108,7 @@ export default function ProductImportIndex(props: Props) {
                         className="workspace-panel space-y-6 p-6"
                         data-test="import-runs-section"
                     >
-                        <Heading
-                            variant="small"
-                            title={t('Imports')}
-                            description={t(
-                                'An import runs in the background. You can leave this page; it keeps going.',
-                            )}
-                        />
+                        <Heading variant="small" title={t('Imports')} />
                         <Runs organizationSlug={organizationSlug} {...props} />
                     </section>
                 ) : null}
@@ -249,11 +224,7 @@ function SourceForm({
                                           )
                                 }
                             />
-                            <p className="text-muted-foreground text-xs">
-                                {t(
-                                    'Stored encrypted. It is never shown again and never sent to the browser.',
-                                )}
-                            </p>
+
                             <InputError message={errors.api_key} />
                         </div>
 
@@ -269,11 +240,7 @@ function SourceForm({
                                 defaultValue={source?.fileUrlPrefix ?? ''}
                                 placeholder="https://…/images"
                             />
-                            <p className="text-muted-foreground text-xs">
-                                {t(
-                                    'Put in front of each image file name. Leave empty to import without images.',
-                                )}
-                            </p>
+
                             <InputError message={errors.file_url_prefix} />
                         </div>
 
@@ -366,11 +333,7 @@ function SourceForm({
                                         : defaultTemplate
                                 }
                             />
-                            <p className="text-muted-foreground text-xs">
-                                {t(
-                                    'Used for a new product when neither its manufacturer nor the AI names a template.',
-                                )}
-                            </p>
+
                             <InputError
                                 message={errors.default_product_template_id}
                             />

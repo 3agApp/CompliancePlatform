@@ -218,13 +218,13 @@ export default function ProductClassificationFields({
                         name="product_category_id"
                         value={categoryId ?? ''}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {availableCategories.length === 0
-                            ? t(
-                                  'No categories yet — add them under Categories.',
-                              )
-                            : t('Its legal family.')}
-                    </p>
+                    {availableCategories.length === 0 ? (
+                        <p className="text-muted-foreground text-xs">
+                            {t(
+                                'No categories yet — add them under Categories.',
+                            )}
+                        </p>
+                    ) : null}
                     <InputError message={errors.product_category_id} />
                 </div>
 
@@ -270,15 +270,13 @@ export default function ProductClassificationFields({
                         name="product_template_id"
                         value={templateId ?? ''}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {hasCategory && templates.length === 0
-                            ? t(':category has no templates yet.', {
-                                  category: categoryLabel,
-                              })
-                            : t(
-                                  'Which documents and data this product is expected to carry.',
-                              )}
-                    </p>
+                    {hasCategory && templates.length === 0 ? (
+                        <p className="text-muted-foreground text-xs">
+                            {t(':category has no templates yet.', {
+                                category: categoryLabel,
+                            })}
+                        </p>
+                    ) : null}
                     <InputError message={errors.product_template_id} />
                 </div>
             </div>

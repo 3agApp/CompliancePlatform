@@ -19,16 +19,9 @@ export default function Onboarding() {
 
             <div className="workspace-page">
                 <div className="mx-auto w-full max-w-xl space-y-6">
-                    <div className="page-heading">
-                        <h1 className="page-title">
-                            {t('Create your first organization')}
-                        </h1>
-                        <p className="text-muted-foreground text-sm">
-                            {t(
-                                'An organization is where your team works on compliance together. You can add more organizations and invite people later.',
-                            )}
-                        </p>
-                    </div>
+                    <h1 className="page-title">
+                        {t('Create your first organization')}
+                    </h1>
 
                     {pendingInvitationsCount > 0 ? (
                         <div

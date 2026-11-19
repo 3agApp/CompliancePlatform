@@ -54,9 +54,7 @@ export default function OrganizationTypeField({
             </div>
 
             <p className="text-muted-foreground text-xs">
-                {t(
-                    'This cannot be changed later. A company that both imports and supplies can create one organization of each type.',
-                )}
+                {t('This cannot be changed later.')}
             </p>
 
             <InputError message={error} />

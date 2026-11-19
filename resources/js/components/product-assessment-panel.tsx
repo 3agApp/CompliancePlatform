@@ -205,13 +205,7 @@ export default function ProductAssessmentPanel({
             data-test="product-assessment-panel"
         >
             <div className="flex flex-wrap items-start justify-between gap-3">
-                <Heading
-                    variant="small"
-                    title={t('AI document check')}
-                    description={t(
-                        'A second reader for the test reports, declarations and certificates. Advisory only: a person decides, and nothing here approves the product or changes its seal.',
-                    )}
-                />
+                <Heading variant="small" title={t('AI document check')} />
 
                 {unavailableReason === null ? (
                     <Form
@@ -314,9 +308,7 @@ export default function ProductAssessmentPanel({
                 />
             ) : unavailableReason === null ? (
                 <p className="text-muted-foreground text-sm">
-                    {t(
-                        'No check has been run yet. It reads every PDF and image filed against the product and usually takes a minute or two.',
-                    )}
+                    {t('No check has been run yet.')}
                 </p>
             ) : null}
 
@@ -357,8 +349,7 @@ function AssessmentRun({
                 data-test="assessment-pending"
             >
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {run.status_label}…{' '}
-                {t('You can keep working; this updates by itself.')}
+                {run.status_label}…
             </div>
         );
     }
@@ -435,11 +426,6 @@ function AssessmentRun({
                         {tc(
                             '1 still open|:count still open',
                             run.comparison.still_open_count,
-                        )}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                        {t(
-                            'The AI matches gaps between checks. A gap it words differently can show as one fixed and one new.',
                         )}
                     </p>
                 </div>

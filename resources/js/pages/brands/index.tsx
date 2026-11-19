@@ -182,19 +182,8 @@ export default function BrandsIndex({
             <Head title={t('Brands')} />
 
             <div className="workspace-page">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="page-heading">
-                        <h1 className="page-title">{t('Brands')}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {isSupplier
-                                ? t(
-                                      'The makers behind each trade. A brand belongs to the distributor it is sold to.',
-                                  )
-                                : t(
-                                      'The makers behind each trade. A brand belongs to the supplier that carries it.',
-                                  )}
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h1 className="page-title">{t('Brands')}</h1>
 
                     {addable.length > 0 ? (
                         filteredConnection !== null || addable.length === 1 ? (
@@ -355,9 +344,7 @@ export default function BrandsIndex({
                                 </div>
                                 <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                                     {brandCount === 0
-                                        ? t(
-                                              'No brands yet. Add one to name the maker behind a supplier’s products.',
-                                          )
+                                        ? t('No brands yet.')
                                         : t('No brands match.')}
                                 </p>
                             </div>
@@ -368,22 +355,11 @@ export default function BrandsIndex({
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <Copyright className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {isSupplier
-                                    ? t('No distributors yet')
-                                    : t('No suppliers yet')}
-                            </h2>
-                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {isSupplier
-                                    ? t(
-                                          'A brand belongs to a trade, so there is nowhere to file one until you have distributors.',
-                                      )
-                                    : t(
-                                          'A brand belongs to a trade, so there is nowhere to file one until you have suppliers.',
-                                      )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">
+                            {isSupplier
+                                ? t('No distributors yet')
+                                : t('No suppliers yet')}
+                        </h2>
                         <Button variant="outline" asChild>
                             <Link
                                 href={
@@ -406,7 +382,6 @@ export default function BrandsIndex({
                 <CreateBrandModal
                     organizationSlug={organizationSlug}
                     supplierConnectionId={createUnder.id}
-                    supplierLabel={createUnder.label}
                     reloadOnly={['connections']}
                     open={createOpen}
                     onOpenChange={setCreateOpen}

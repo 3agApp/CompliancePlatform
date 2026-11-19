@@ -47,21 +47,9 @@ export default function ManageTwoFactor(props: Props) {
 
     return (
         <div className="space-y-6">
-            <Heading
-                variant="small"
-                title={t('Two-factor authentication')}
-                description={t(
-                    'Manage your two-factor authentication settings',
-                )}
-            />
+            <Heading variant="small" title={t('Two-factor authentication')} />
             {twoFactorEnabled ? (
                 <div className="flex flex-col items-start justify-start space-y-4">
-                    <p className="text-muted-foreground text-sm">
-                        {t(
-                            'You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.',
-                        )}
-                    </p>
-
                     <div className="relative inline">
                         <Form {...disable.form()}>
                             {({ processing }) => (
@@ -84,12 +72,6 @@ export default function ManageTwoFactor(props: Props) {
                 </div>
             ) : (
                 <div className="flex flex-col items-start justify-start space-y-4">
-                    <p className="text-muted-foreground text-sm">
-                        {t(
-                            'When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.',
-                        )}
-                    </p>
-
                     <div>
                         {hasSetupData ? (
                             <Button onClick={() => setShowSetupModal(true)}>

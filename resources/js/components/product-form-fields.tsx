@@ -82,19 +82,6 @@ type Props = {
 const SHORT_COUNTRY_LIST = 8;
 
 /**
- * Everything but the name is optional, so the marker is worth factoring out
- * rather than repeating on every label. Shared with the compliance fields,
- * where every single one is optional too.
- */
-export function Optional() {
-    return (
-        <span className="text-muted-foreground font-normal">
-            {t('(optional)')}
-        </span>
-    );
-}
-
-/**
  * A field the product's template asks for.
  *
  * Deliberately not a `required` attribute, and deliberately not a warning
@@ -142,7 +129,7 @@ export function FieldMarker({
         return <NeededByTemplate />;
     }
 
-    return required ? <RequiredByTemplate /> : <Optional />;
+    return required ? <RequiredByTemplate /> : null;
 }
 
 /**
@@ -315,21 +302,20 @@ export default function ProductFormFields({
                         name="brand_id"
                         value={selectedBrandId ?? ''}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {brands.length === 0
-                            ? supplierLabel
+                    {brands.length === 0 ? (
+                        <p className="text-muted-foreground text-xs">
+                            {supplierLabel
                                 ? t(':supplier has no brands yet.', {
                                       supplier: supplierLabel,
                                   })
-                                : t('This supplier has no brands yet.')
-                            : t('The maker of the product.')}
-                    </p>
+                                : t('This supplier has no brands yet.')}
+                        </p>
+                    ) : null}
                     <InputError message={errors.brand_id} />
 
                     <CreateBrandModal
                         organizationSlug={organizationSlug}
                         supplierConnectionId={supplierConnectionId}
-                        supplierLabel={supplierLabel ?? t('This supplier')}
                         open={brandDialogOpen}
                         onOpenChange={setBrandDialogOpen}
                         onCreated={(brand) => setBrandId(String(brand.id))}
@@ -380,9 +366,7 @@ export default function ProductFormFields({
                         autoComplete="off"
                         disabled={disabled}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {t("The distributor's own SKU.")}
-                    </p>
+
                     <InputError message={errors.internal_article_number} />
                 </div>
 
@@ -406,9 +390,7 @@ export default function ProductFormFields({
                         autoComplete="off"
                         disabled={disabled}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {t("The manufacturer's SKU.")}
-                    </p>
+
                     <InputError message={errors.supplier_article_number} />
                 </div>
             </div>
@@ -458,9 +440,7 @@ export default function ProductFormFields({
                         autoComplete="off"
                         disabled={disabled}
                     />
-                    <p className="text-muted-foreground text-xs">
-                        {t('Its HS code.')}
-                    </p>
+
                     <InputError message={errors.customs_tariff_number} />
                 </div>
             </div>
@@ -554,7 +534,7 @@ export default function ProductFormFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-short-description`}>
-                    {t('Short description')} <Optional />
+                    {t('Short description')}
                 </Label>
                 <Textarea
                     id={`${idPrefix}-short-description`}
@@ -569,7 +549,7 @@ export default function ProductFormFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-long-description`}>
-                    {t('Long description')} <Optional />
+                    {t('Long description')}
                 </Label>
                 <Textarea
                     id={`${idPrefix}-long-description`}
@@ -582,34 +562,26 @@ export default function ProductFormFields({
                 <InputError message={errors.long_description} />
             </div>
 
-            <div className="flex items-start gap-3">
+            <div className="flex flex-wrap items-center gap-3">
                 <Checkbox
                     id={`${idPrefix}-is-active`}
                     data-test="product-is-active"
                     checked={isActive}
                     onCheckedChange={(value) => setIsActive(value === true)}
                     disabled={disabled}
-                    className="mt-0.5"
                 />
                 <input
                     type="hidden"
                     name="is_active"
                     value={isActive ? '1' : '0'}
                 />
-                <div className="grid gap-1">
-                    <Label
-                        htmlFor={`${idPrefix}-is-active`}
-                        className="font-normal"
-                    >
-                        {t('Active — still sold in the webshop')}
-                    </Label>
-                    <p className="text-muted-foreground text-sm">
-                        {t(
-                            'Turn off for a product that is no longer sold. It keeps its documents and history.',
-                        )}
-                    </p>
-                    <InputError message={errors.is_active} />
-                </div>
+                <Label
+                    htmlFor={`${idPrefix}-is-active`}
+                    className="font-normal"
+                >
+                    {t('Active — still sold in the webshop')}
+                </Label>
+                <InputError message={errors.is_active} />
             </div>
         </div>
     );

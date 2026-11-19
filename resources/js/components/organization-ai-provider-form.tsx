@@ -165,11 +165,7 @@ export default function OrganizationAiProviderForm({
                                       )
                             }
                         />
-                        <p className="text-muted-foreground text-xs">
-                            {t(
-                                'Stored encrypted. It is never shown again and never sent to the browser.',
-                            )}
-                        </p>
+
                         <InputError message={errors.api_key} />
                     </div>
 

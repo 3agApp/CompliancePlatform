@@ -6,7 +6,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -48,7 +47,7 @@ export default function SaveCategoryModal({
                 <DialogTrigger asChild>{children}</DialogTrigger>
             ) : null}
 
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
                 <Form
                     key={`${category?.id ?? 'new'}-${String(open)}`}
                     {...form}
@@ -63,11 +62,6 @@ export default function SaveCategoryModal({
                                         ? t('Rename category')
                                         : t('Add a category')}
                                 </DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'A category is the legal family a product is regulated under, such as a toy or a magnetic toy.',
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">

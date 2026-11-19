@@ -8,7 +8,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -28,7 +27,7 @@ export default function CreateOrganizationModal({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{children}</DialogTrigger>
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
                 <Form
                     key={String(open)}
                     {...store.form()}
@@ -41,11 +40,6 @@ export default function CreateOrganizationModal({
                                 <DialogTitle>
                                     {t('Create a new organization')}
                                 </DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'Create a new organization to collaborate with others.',
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">

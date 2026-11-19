@@ -31,14 +31,7 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
             <Head title={t('Invitations')} />
 
             <div className="workspace-page">
-                <div className="page-heading">
-                    <h1 className="page-title">{t('Invitations')}</h1>
-                    <p className="text-muted-foreground text-sm">
-                        {t(
-                            'Accept or decline the organizations and distributors that have invited you.',
-                        )}
-                    </p>
-                </div>
+                <h1 className="page-title">{t('Invitations')}</h1>
 
                 {connections.length > 0 ? (
                     <ul className="grid gap-3">
@@ -152,16 +145,9 @@ export default function InvitationsIndex({ invitations, connections }: Props) {
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <MailOpen className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {t('No pending invitations')}
-                            </h2>
-                            <p className="text-muted-foreground text-sm">
-                                {t(
-                                    'Invitations to join an organization, or to supply a distributor, will show up here.',
-                                )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">
+                            {t('No pending invitations')}
+                        </h2>
                     </div>
                 )}
             </div>

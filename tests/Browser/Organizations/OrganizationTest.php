@@ -37,7 +37,7 @@ test('the switcher moves the user to another organization they belong to', funct
     $page->click('@organization-switcher-trigger')
         ->click('[role="menuitem"]:has-text("Second Organization")')
         ->assertPathIs('/second-organization/products')
-        ->assertSee('The products Second Organization is responsible for.')
+        ->assertSeeIn('@organization-switcher-trigger', 'Second Organization')
         ->assertNoJavaScriptErrors();
 
     expect($user->fresh()->currentOrganization->name)->toBe('Second Organization');

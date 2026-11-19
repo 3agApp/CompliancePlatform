@@ -588,9 +588,6 @@ export default function ProductEdit({
                                         <Heading
                                             variant="small"
                                             title={t('Classification')}
-                                            description={t(
-                                                'Who supplies the product, and which template it is held to.',
-                                            )}
                                         />
 
                                         <ProductClassificationFields
@@ -640,9 +637,6 @@ export default function ProductEdit({
                                         <Heading
                                             variant="small"
                                             title={t('Product details')}
-                                            description={t(
-                                                'What the product is, and the numbers each side of the trade knows it by.',
-                                            )}
                                         />
 
                                         <ProductFormFields
@@ -683,9 +677,6 @@ export default function ProductEdit({
                                         <Heading
                                             variant="small"
                                             title={t('Compliance details')}
-                                            description={t(
-                                                'What the product claims about its own safety: the warnings it carries, who it is for, and how it may be used.',
-                                            )}
                                         />
 
                                         <ProductComplianceFields
@@ -747,7 +738,6 @@ export default function ProductEdit({
                              */}
                             <ProductRequirementsPanel
                                 completeness={completeness}
-                                templateLabel={savedTemplateLabel}
                                 hideOutstanding
                             />
                         </div>

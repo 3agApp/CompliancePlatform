@@ -33,11 +33,7 @@ export default function ManagePasskeys(props: Props) {
 
     return (
         <div className="space-y-6">
-            <Heading
-                variant="small"
-                title={t('Passkeys')}
-                description={t('Manage your passkeys for passwordless sign-in')}
-            />
+            <Heading variant="small" title={t('Passkeys')} />
 
             <div className="border-border overflow-hidden rounded-lg border">
                 {passkeys.length > 0 ? (
@@ -49,13 +45,7 @@ export default function ManagePasskeys(props: Props) {
                         />
                     ))
                 ) : (
-                    <EmptyState
-                        icon={KeyRound}
-                        title={t('No passkeys yet')}
-                        description={t(
-                            'Add a passkey to sign in without a password',
-                        )}
-                    />
+                    <EmptyState icon={KeyRound} title={t('No passkeys yet')} />
                 )}
             </div>
 

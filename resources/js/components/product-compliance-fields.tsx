@@ -32,7 +32,6 @@ type TextField = {
     label: string;
     requirement: ProductRequirementKey;
     placeholder: string;
-    hint?: string;
 };
 
 /**
@@ -81,7 +80,6 @@ export default function ProductComplianceFields({
             placeholder: t(
                 'Not suitable for children under 3 years. Small parts.',
             ),
-            hint: t('Word for word as it appears on the packaging.'),
         },
         {
             name: 'material_information',
@@ -178,9 +176,7 @@ export default function ProductComplianceFields({
                     autoComplete="off"
                     disabled={disabled}
                 />
-                <p className="text-muted-foreground text-xs">
-                    {t('Who the product is for.')}
-                </p>
+
                 <InputError message={errors.age_grading} />
             </div>
 
@@ -209,20 +205,13 @@ export default function ProductComplianceFields({
                         rows={3}
                         disabled={disabled}
                     />
-                    {field.hint ? (
-                        <p className="text-muted-foreground text-xs">
-                            {field.hint}
-                        </p>
-                    ) : null}
+
                     <InputError message={errors[field.name]} />
                 </div>
             ))}
 
             {hidden.length > 0 && !disabled ? (
-                <div className="grid gap-2 border-t pt-4">
-                    <p className="text-muted-foreground text-xs">
-                        {t('Add more if the packaging carries it')}
-                    </p>
+                <div className="border-t pt-4">
                     <div className="flex flex-wrap gap-2">
                         {hidden.map((field) => (
                             <Button

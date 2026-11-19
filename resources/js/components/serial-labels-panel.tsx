@@ -61,16 +61,7 @@ export default function SerialLabelsPanel({
             className="workspace-panel space-y-4 p-5"
             data-test="serial-labels-panel"
         >
-            <div className="space-y-1">
-                <h2 className="text-sm font-medium">
-                    {t('Serialised labels')}
-                </h2>
-                <p className="text-muted-foreground text-xs">
-                    {t(
-                        'One label per box, each with its own serial, so buyers can check theirs is genuine.',
-                    )}
-                </p>
-            </div>
+            <h2 className="text-sm font-medium">{t('Serialised labels')}</h2>
 
             <Form
                 {...store.form([organizationSlug, productId])}
@@ -110,12 +101,7 @@ export default function SerialLabelsPanel({
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="label-note">
-                                {t('Note')}{' '}
-                                <span className="text-muted-foreground font-normal">
-                                    {t('(optional)')}
-                                </span>
-                            </Label>
+                            <Label htmlFor="label-note">{t('Note')}</Label>
                             <Textarea
                                 id="label-note"
                                 name="note"

@@ -21,7 +21,6 @@ test('a distributor opens a product waiting on review straight from the dashboar
 
     visit(route('dashboard', ['current_organization' => $distributor->slug]))
         ->assertSeeIn('@dashboard-stage-in_review', '1')
-        ->assertSeeIn('@dashboard-stage-in_review', 'Waiting on your decision')
         ->assertSeeIn('@dashboard-queue', 'Magnetic Building Set')
         ->assertSeeIn('@dashboard-queue', $supplier->name)
         ->click('@dashboard-queue-item')

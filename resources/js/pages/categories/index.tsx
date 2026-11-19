@@ -122,16 +122,8 @@ export default function CategoriesIndex({
             <Head title={t('Categories')} />
 
             <div className="workspace-page">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="page-heading">
-                        <h1 className="page-title">{t('Categories')}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {t(
-                                'The legal families :organization files its products under, and the templates that say what each kind of product needs.',
-                                { organization: currentOrganization?.name },
-                            )}
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h1 className="page-title">{t('Categories')}</h1>
 
                     {permissions.canCreateCategory ? (
                         <Button
@@ -374,20 +366,9 @@ export default function CategoriesIndex({
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <Tags className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {t('No categories yet')}
-                            </h2>
-                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {permissions.canCreateCategory
-                                    ? t(
-                                          'Add the legal families your products fall under, such as toy or magnetic toy.',
-                                      )
-                                    : t(
-                                          'Categories added to this organization will show up here.',
-                                      )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">
+                            {t('No categories yet')}
+                        </h2>
                     </div>
                 )}
             </div>
@@ -448,10 +429,7 @@ function TemplateList({
                     className="text-muted-foreground text-sm"
                     data-test="category-templates-empty"
                 >
-                    {t(
-                        'No templates yet. A product must be held to one, so nothing can be filed under :category until you add a template.',
-                        { category: category.name },
-                    )}
+                    {t('No templates yet.')}
                 </p>
             ) : (
                 <ul className="grid gap-2">

@@ -6,7 +6,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -52,7 +51,7 @@ export default function RenameBrandModal({
                 <DialogTrigger asChild>{children}</DialogTrigger>
             ) : null}
 
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
                 <Form
                     key={`${brand.id}-${String(open)}`}
                     {...form}
@@ -63,11 +62,6 @@ export default function RenameBrandModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>{t('Rename brand')}</DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'The maker behind a product, such as Magna-Tiles or tigerbox. It stays with the supplier it is filed under.',
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">

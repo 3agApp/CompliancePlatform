@@ -6,7 +6,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -49,7 +48,7 @@ export default function InviteMemberModal({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
                 <Form
                     key={String(open)}
                     {...storeInvitation.form(organization.slug)}
@@ -62,11 +61,6 @@ export default function InviteMemberModal({
                                 <DialogTitle>
                                     {t('Invite an organization member')}
                                 </DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'Send an invitation to join this organization.',
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-4">

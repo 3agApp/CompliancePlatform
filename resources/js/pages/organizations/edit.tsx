@@ -163,9 +163,6 @@ export default function OrganizationEdit({
                             <Heading
                                 variant="small"
                                 title={t('Organization settings')}
-                                description={t(
-                                    'Update your organization name and settings',
-                                )}
                             />
 
                             <Form
@@ -239,11 +236,7 @@ export default function OrganizationEdit({
                                                     )}
                                                 </SelectContent>
                                             </Select>
-                                            <p className="text-muted-foreground text-xs">
-                                                {t(
-                                                    "Members who haven't chosen a language of their own see the app in this one, and invitations go out in it.",
-                                                )}
-                                            </p>
+
                                             <InputError
                                                 message={errors.locale}
                                             />
@@ -266,9 +259,6 @@ export default function OrganizationEdit({
                             <Heading
                                 variant="small"
                                 title={organization.name}
-                                description={t(
-                                    'Only an owner or admin can change these settings.',
-                                )}
                             />
                             <dl
                                 className="grid gap-4 text-sm sm:grid-cols-2"
@@ -318,13 +308,7 @@ export default function OrganizationEdit({
                         className="scroll-mt-6 space-y-6 border-t pt-8 first:border-0 first:pt-0"
                         data-test="ai-provider-section"
                     >
-                        <Heading
-                            variant="small"
-                            title={t('AI provider')}
-                            description={t(
-                                'Connect a provider to have document kinds guessed for you when files are uploaded. Only file names, types and sizes are sent — never the contents of a document.',
-                            )}
-                        />
+                        <Heading variant="small" title={t('AI provider')} />
 
                         {/*
                          * Whether it is on at all, said before the form: the
@@ -357,12 +341,7 @@ export default function OrganizationEdit({
                                 className="bg-muted text-muted-foreground rounded-lg px-3 py-2.5 text-sm"
                                 data-test="ai-provider-status"
                             >
-                                <span className="text-foreground font-medium">
-                                    {t('Not connected.')}
-                                </span>{' '}
-                                {t(
-                                    'Document kinds are picked by hand and the AI check is unavailable until a provider is connected.',
-                                )}
+                                {t('Not connected.')}
                             </p>
                         )}
 
@@ -379,13 +358,6 @@ export default function OrganizationEdit({
                         <Heading
                             variant="small"
                             title={t('Organization members')}
-                            description={
-                                permissions.canCreateInvitation
-                                    ? t(
-                                          'Manage who belongs to this organization',
-                                      )
-                                    : t('Who belongs to this organization')
-                            }
                         />
 
                         {permissions.canCreateInvitation ? (
@@ -528,9 +500,6 @@ export default function OrganizationEdit({
                         <Heading
                             variant="small"
                             title={t('Pending invitations')}
-                            description={t(
-                                "Invitations that haven't been accepted yet",
-                            )}
                         />
 
                         <ul className="divide-y overflow-hidden rounded-lg border">
@@ -652,9 +621,6 @@ export default function OrganizationEdit({
                     <div className="border-t pt-8 first:border-0 first:pt-0">
                         <DangerZone
                             title={t('Delete organization')}
-                            description={t(
-                                'Permanently delete your organization',
-                            )}
                             warning={t(
                                 'Everything in the organization goes with it. This cannot be undone.',
                             )}

@@ -346,14 +346,6 @@ export default function CommandSearch({
                             </li>
                         ) : null}
                     </ul>
-
-                    <div className="text-muted-foreground bg-muted/40 flex flex-wrap gap-4 border-t px-4 py-2 text-xs">
-                        <span>{t('↑ ↓ to move')}</span>
-                        <span>{t('↵ to open')}</span>
-                        <span className="ml-auto">
-                            {t('Finds names, article numbers and EANs')}
-                        </span>
-                    </div>
                 </DialogContent>
             </Dialog>
         </>

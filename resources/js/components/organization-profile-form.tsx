@@ -68,22 +68,10 @@ export default function OrganizationProfileForm({
         profile.productionCountries ?? [],
     );
 
-    const description = isSupplier
-        ? t(
-              'Your company details, and the countries your products are made in.',
-          )
-        : t(
-              "Shown to the public on your products' pages, as the company placing them on the market.",
-          );
-
     if (!canUpdate) {
         return (
             <div id="profile" className="scroll-mt-20 space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('Company profile')}
-                    description={description}
-                />
+                <Heading variant="small" title={t('Company profile')} />
                 <ProfileSummary
                     organization={organization}
                     profile={profile}
@@ -95,11 +83,7 @@ export default function OrganizationProfileForm({
 
     return (
         <div id="profile" className="scroll-mt-20 space-y-6">
-            <Heading
-                variant="small"
-                title={t('Company profile')}
-                description={description}
-            />
+            <Heading variant="small" title={t('Company profile')} />
 
             <LogoField organization={organization} logoUrl={profile.logoUrl} />
 
@@ -130,10 +114,7 @@ export default function OrganizationProfileForm({
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="profile-address-line-2">
-                                    {t('Address line 2')}{' '}
-                                    <span className="text-muted-foreground font-normal">
-                                        {t('(optional)')}
-                                    </span>
+                                    {t('Address line 2')}
                                 </Label>
                                 <Input
                                     id="profile-address-line-2"
@@ -189,10 +170,7 @@ export default function OrganizationProfileForm({
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="profile-map-url">
-                                    {t('Google Maps link')}{' '}
-                                    <span className="text-muted-foreground font-normal">
-                                        {t('(optional)')}
-                                    </span>
+                                    {t('Google Maps link')}
                                 </Label>
                                 <Input
                                     id="profile-map-url"
@@ -202,22 +180,17 @@ export default function OrganizationProfileForm({
                                     defaultValue={profile.mapUrl ?? ''}
                                     data-test="profile-map-url"
                                 />
-                                <p className="text-muted-foreground text-xs">
-                                    {t(
-                                        "In Google Maps, find your company, choose Share and copy the link. Buyers can open it from your products' pages.",
-                                    )}{' '}
-                                    {profile.mapUrl && (
-                                        <a
-                                            href={profile.mapUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-foreground inline-flex items-center gap-1 underline underline-offset-4"
-                                        >
-                                            {t('Open the saved link')}
-                                            <ExternalLink className="size-3" />
-                                        </a>
-                                    )}
-                                </p>
+                                {profile.mapUrl && (
+                                    <a
+                                        href={profile.mapUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs underline underline-offset-4"
+                                    >
+                                        {t('Open the saved link')}
+                                        <ExternalLink className="size-3" />
+                                    </a>
+                                )}
                                 <InputError message={errors.map_url} />
                             </div>
                         </FieldGroup>
@@ -317,19 +290,6 @@ export default function OrganizationProfileForm({
                                 icon={<Factory className="size-4" />}
                                 title={t('Where you produce')}
                             >
-                                <p className="text-muted-foreground -mt-2 text-sm">
-                                    {productionCountries.length === 0
-                                        ? t(
-                                              "No countries chosen, so every country is offered as a product's country of origin.",
-                                          )
-                                        : productionCountries.length === 1
-                                          ? t(
-                                                'Products you supply get this country of origin automatically.',
-                                            )
-                                          : t(
-                                                'Products you supply only offer these countries of origin.',
-                                            )}
-                                </p>
                                 <CountryMultiSelect
                                     id="profile-production-countries"
                                     name="production_countries"
@@ -492,11 +452,7 @@ function LogoField({
             </label>
             <div className="space-y-2">
                 <p className="text-sm font-medium">{t('Logo')}</p>
-                <p className="text-muted-foreground text-xs">
-                    {t(
-                        'PNG, JPG or WebP, up to 2 MB. A square or wide logo on a transparent background looks best.',
-                    )}
-                </p>
+
                 <div className="flex gap-2">
                     <Button
                         type="button"

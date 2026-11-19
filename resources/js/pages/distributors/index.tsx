@@ -17,18 +17,8 @@ export default function DistributorsIndex({ connections }: Props) {
             <Head title={t('Distributors')} />
 
             <div className="workspace-page">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="page-heading">
-                        <h1 className="page-title">{t('Distributors')}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {t(
-                                'The companies :organization supplies products to.',
-                                {
-                                    organization: currentOrganization?.name,
-                                },
-                            )}
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h1 className="page-title">{t('Distributors')}</h1>
                 </div>
 
                 {connections.length > 0 ? (
@@ -88,16 +78,9 @@ export default function DistributorsIndex({ connections }: Props) {
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <Truck className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {t('No distributors yet')}
-                            </h2>
-                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {t(
-                                    'Distributors who connect with you will show up here, along with the products they assign.',
-                                )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">
+                            {t('No distributors yet')}
+                        </h2>
                     </div>
                 )}
             </div>

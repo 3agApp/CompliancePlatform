@@ -8,7 +8,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -82,7 +81,10 @@ export default function InviteSupplierModal({
              * with a button it does not own. The dialog's form has already
              * handled it by the time it gets here.
              */}
-            <DialogContent onSubmit={(event) => event.stopPropagation()}>
+            <DialogContent
+                aria-describedby={undefined}
+                onSubmit={(event) => event.stopPropagation()}
+            >
                 <Form
                     key={String(open)}
                     {...store.form(organizationSlug)}
@@ -125,11 +127,6 @@ export default function InviteSupplierModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>{t('Add a supplier')}</DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'You can assign products to them straight away, whether or not they have been invited yet.',
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
@@ -165,7 +162,7 @@ export default function InviteSupplierModal({
                                 <InputError message={errors.contact_email} />
                             </div>
 
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-center gap-3">
                                 <Checkbox
                                     id="supplier-send-invitation"
                                     data-test="supplier-send-invitation"
@@ -173,30 +170,18 @@ export default function InviteSupplierModal({
                                     onCheckedChange={(value) =>
                                         setSendInvitation(value === true)
                                     }
-                                    className="mt-0.5"
                                 />
                                 <input
                                     type="hidden"
                                     name="send_invitation"
                                     value={sendInvitation ? '1' : '0'}
                                 />
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="supplier-send-invitation"
-                                        className="font-normal"
-                                    >
-                                        {t('Send the invitation now')}
-                                    </Label>
-                                    <p className="text-muted-foreground text-sm">
-                                        {sendInvitation
-                                            ? t(
-                                                  'We will email them a link to set up their company.',
-                                              )
-                                            : t(
-                                                  'Nothing is sent. Invite them from the suppliers page whenever you are ready.',
-                                              )}
-                                    </p>
-                                </div>
+                                <Label
+                                    htmlFor="supplier-send-invitation"
+                                    className="font-normal"
+                                >
+                                    {t('Send the invitation now')}
+                                </Label>
                             </div>
 
                             <DialogFooter className="gap-2">

@@ -42,7 +42,13 @@ export default function EditSupplierModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent
+                aria-describedby={
+                    connection.isInvited
+                        ? 'edit-supplier-description'
+                        : undefined
+                }
+            >
                 <Form
                     key={`${connection.id}-${String(open)}`}
                     {...update.form([organizationSlug, connection.id])}
@@ -54,15 +60,13 @@ export default function EditSupplierModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>{t('Edit supplier')}</DialogTitle>
-                                <DialogDescription>
-                                    {connection.isInvited
-                                        ? t(
-                                              'Changing the email address takes back the invitation already sent. Invite them again afterwards.',
-                                          )
-                                        : t(
-                                              'Correct the name or add the address the invitation will go to.',
-                                          )}
-                                </DialogDescription>
+                                {connection.isInvited ? (
+                                    <DialogDescription id="edit-supplier-description">
+                                        {t(
+                                            'Changing the email address takes back the invitation already sent. Invite them again afterwards.',
+                                        )}
+                                    </DialogDescription>
+                                ) : null}
                             </DialogHeader>
 
                             <div className="grid gap-2">

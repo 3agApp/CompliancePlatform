@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -61,7 +60,10 @@ export default function SaveTemplateModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl">
+            <DialogContent
+                aria-describedby={undefined}
+                className="sm:max-w-3xl"
+            >
                 <Form
                     key={`${template?.id ?? 'new'}-${String(open)}`}
                     {...form}
@@ -78,11 +80,6 @@ export default function SaveTemplateModal({
                                               category: category.name,
                                           })}
                                 </DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'A template says which documents and which details a product of this kind is expected to carry. Nothing here blocks a product from being saved — it is a checklist, not a gate.',
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">

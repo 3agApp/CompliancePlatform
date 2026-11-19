@@ -68,5 +68,4 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
 ForgotPassword.layout = {
     title: tk('Forgot password'),
-    description: tk('Enter your email to receive a password reset link'),
 };

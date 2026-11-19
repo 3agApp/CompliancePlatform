@@ -147,5 +147,4 @@ export default function Register({
 
 Register.layout = {
     title: tk('Create an account'),
-    description: tk('Enter your details below to create your account'),
 };

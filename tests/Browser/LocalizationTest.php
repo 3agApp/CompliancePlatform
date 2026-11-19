@@ -31,7 +31,6 @@ test('a member who follows the organization reads the app in its default languag
 
     visit(route('dashboard', ['current_organization' => $organization->slug]))
         ->assertSee('Übersicht')
-        ->assertSee('Sie arbeiten in '.$organization->name.'.')
         ->assertNoJavaScriptErrors();
 });
 

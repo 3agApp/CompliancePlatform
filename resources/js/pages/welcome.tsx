@@ -16,30 +16,18 @@ const features = [
     {
         icon: Building2,
         title: tk('Every organization, one workspace'),
-        description: tk(
-            'Switch between organizations and keep people, roles and settings scoped correctly.',
-        ),
     },
     {
         icon: ClipboardCheck,
         title: tk('Built for compliance work'),
-        description: tk(
-            'A secure foundation for policies, evidence and accountability as your needs grow.',
-        ),
     },
     {
         icon: ShieldCheck,
         title: tk('Access you can trust'),
-        description: tk(
-            'Owners, admins and members with clear permissions for sensitive work.',
-        ),
     },
     {
         icon: Users,
         title: tk('Invite your team'),
-        description: tk(
-            'Send invitations, manage membership and keep the right people in the loop.',
-        ),
     },
 ];
 
@@ -96,21 +84,11 @@ export default function Welcome() {
 
                 <main className="flex-1">
                     <section className="mx-auto max-w-6xl px-6 pt-12 pb-16 text-center lg:pt-20">
-                        <div className="bg-muted/60 text-muted-foreground mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium">
-                            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                            {t('Compliance management for organizations')}
-                        </div>
                         <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
                             {t(
                                 'Keep compliance work clear across every organization.',
                             )}
                         </h1>
-                        <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-base text-balance sm:text-lg">
-                            {t(
-                                ':name gives your team one place to manage organizations, members and the access that keeps compliance work on track.',
-                                { name },
-                            )}
-                        </p>
                         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                             <Button size="lg" asChild>
                                 <Link
@@ -146,9 +124,6 @@ export default function Welcome() {
                                 <h2 className="font-medium">
                                     {t(feature.title)}
                                 </h2>
-                                <p className="text-muted-foreground mt-2 text-sm">
-                                    {t(feature.description)}
-                                </p>
                             </div>
                         ))}
                     </section>
