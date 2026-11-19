@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DocumentPreviewKind;
 use App\Enums\ProductDocumentType;
+use App\Support\Watermark;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductDocumentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -66,7 +67,8 @@ class ProductDocument extends Model
     /**
      * Give a new file its kind's visibility, and take the file with the row.
      *
-     * The delete only fires when a document is deleted on its own. A product taken away
+     * The delete takes the file's watermarked copies with it. It only
+     * fires when a document is deleted on its own. A product taken away
      * takes its rows with it through the foreign key, which no model event
      * ever sees, so the controller clears that directory itself.
      */
@@ -84,6 +86,7 @@ class ProductDocument extends Model
 
         static::deleted(function (ProductDocument $document) {
             Storage::disk(self::DISK)->delete($document->path);
+            Watermark::forget($document);
         });
     }
 

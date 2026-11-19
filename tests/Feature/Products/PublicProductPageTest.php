@@ -282,11 +282,17 @@ test('the public page shows the pictures of the article and serves them without 
             ->where('images.0.id', $image->id),
         );
 
-    $this
+    $served = $this
         ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
         ->assertOk()
         ->assertHeader('Content-Type', 'image/png')
-        ->assertHeader('X-Content-Type-Options', 'nosniff');
+        ->assertHeader('X-Content-Type-Options', 'nosniff')
+        ->streamedContent();
+
+    /** Served watermarked, still a PNG, and the original left as it was filed. */
+    expect($served)->not->toBe(Storage::disk('local')->get($image->path))
+        ->and(getimagesizefromstring($served)['mime'] ?? null)->toBe('image/png')
+        ->and(Storage::disk('local')->files(ProductDocument::directoryFor($product).'/watermarked'))->toHaveCount(1);
 
     /** Switched off, it is neither shown nor served. */
     $image->forceFill(['is_public' => false])->save();
@@ -350,10 +356,14 @@ test('a warning image is shown with the warning and served, not offered as a dow
             ->has('documents', 0),
         );
 
-    $this
+    $served = $this
         ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $warningImage->id]))
         ->assertOk()
-        ->assertHeader('Content-Type', 'image/png');
+        ->assertHeader('Content-Type', 'image/png')
+        ->streamedContent();
+
+    /** A safety symbol is served as filed: a watermark would only blur it. */
+    expect($served)->toBe(Storage::disk('local')->get($warningImage->path));
 
     /** Switched off, it is neither shown nor served. */
     $warningImage->forceFill(['is_public' => false])->save();
@@ -403,6 +413,28 @@ test('a released warning image the browser cannot draw stays a download', functi
 
     $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $sheet->id]))
         ->assertNotFound();
+});
+
+test('a large picture is handed out scaled down, the full size kept behind the login', function () {
+    Storage::fake('local');
+
+    [, , $product] = productWithTemplate();
+
+    $path = ProductDocument::directoryFor($product).'/large.jpg';
+    Storage::disk('local')->put($path, UploadedFile::fake()->image('large.jpg', 3000, 1500)->getContent());
+
+    $image = ProductDocument::factory()
+        ->for($product)
+        ->ofType(ProductDocumentType::ProductImage)
+        ->create(['path' => $path, 'mime_type' => 'image/jpeg']);
+
+    $served = $this
+        ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/jpeg')
+        ->streamedContent();
+
+    expect(array_slice(getimagesizefromstring($served), 0, 2))->toBe([2000, 1000]);
 });
 
 test('a picture whose file is gone is a missing page rather than a crash', function () {

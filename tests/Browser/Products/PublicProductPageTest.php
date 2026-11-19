@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductTemplate;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -290,5 +291,88 @@ test('a warning image is shown inside the warning, not among the downloads', fun
         ->assertSeeIn('@product-public-warning', 'Not suitable for children under 3 years.')
         ->assertCount('[data-test="product-public-warning"] [data-test="product-public-warning-image"] img', 1)
         ->assertMissing('@product-public-documents')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the public page shows the product photo watermarked and leaves a released Word file off', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+    aStoredImage($product);
+
+    $manual = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ManualOrInstructions)->create([
+        'name' => 'manual.docx',
+        'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+    $manual->forceFill(['is_public' => true])->save();
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertPresent('@product-photo')
+        ->assertScript('document.querySelector(\'[data-test="product-photo"]\').complete && document.querySelector(\'[data-test="product-photo"]\').naturalWidth > 0')
+        ->assertMissing('@product-public-documents')
+        ->assertDontSee('manual.docx')
+        ->assertNoJavaScriptErrors();
+
+    expect(Storage::disk(ProductDocument::DISK)->files(ProductDocument::directoryFor($product).'/watermarked'))->toHaveCount(1);
+});
+
+test('a distributor cannot release a Word file to the public page', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization] = newOrganizationMember();
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => newSupplierConnection($organization)->id,
+    ]);
+
+    $manual = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ManualOrInstructions)->create([
+        'name' => 'manual.docx',
+        'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'documents']))
+        ->assertScript('document.querySelector(\'[data-test="product-document-visibility-button"]\').disabled')
+        ->assertAttribute('@product-document-visibility-button', 'title', 'Only PDFs and images can be shown on the public page.')
+        ->assertNoJavaScriptErrors();
+
+    expect($manual->fresh()->is_public)->toBeFalse();
+});
+
+test('a reader enlarges the product photo on the public page', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+    aStoredImage($product);
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->click('@product-photo-enlarge')
+        ->assertVisible('@public-preview-dialog')
+        ->assertPresent('@public-preview-image')
+        ->assertMissing('@public-preview-download')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a reader previews a released PDF on the public page and can still download it', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+    $path = ProductDocument::directoryFor($product).'/report.pdf';
+    Storage::disk(ProductDocument::DISK)->put($path, Pdf::loadHTML('<h1>Test report</h1>')->output());
+
+    $report = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
+        'name' => 'test-report.pdf',
+        'path' => $path,
+        'mime_type' => 'application/pdf',
+        'is_public' => true,
+    ]);
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->click('@product-public-document-preview')
+        ->assertVisible('@public-preview-dialog')
+        ->assertSeeIn('[data-test="public-preview-dialog"] h2', 'test-report.pdf')
+        ->assertAttribute('@public-preview-pdf', 'data', route('products.public.document', ['product' => $product->uuid, 'document' => $report->id]))
+        ->assertAttribute('@public-preview-download', 'href', route('products.public.document.download', ['product' => $product->uuid, 'document' => $report->id]))
         ->assertNoJavaScriptErrors();
 });

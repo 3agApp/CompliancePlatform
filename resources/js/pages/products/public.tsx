@@ -6,9 +6,11 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    Eye,
     FileText,
     Hash,
     ImageOff,
+    Maximize2,
     ShieldAlert,
     ShieldCheck,
     ShieldOff,
@@ -18,6 +20,8 @@ import { useState } from 'react';
 import ProductUnitCheck from '@/components/product-unit-check';
 import PublicCompanyCard from '@/components/public-company-card';
 import PublicHeader from '@/components/public-header';
+import PublicPreviewDialog from '@/components/public-preview-dialog';
+import type { PublicPreview } from '@/components/public-preview-dialog';
 import { formatPublicDate, usePublicLocale } from '@/lib/public-i18n';
 import type { PublicLocale, PublicTranslate } from '@/lib/public-i18n';
 import { cn } from '@/lib/utils';
@@ -105,6 +109,7 @@ export default function PublicProduct({
     checkResult,
 }: Props) {
     const { locale, setLocale, t } = usePublicLocale(initialLocale);
+    const [preview, setPreview] = useState<PublicPreview | null>(null);
 
     return (
         <>
@@ -130,6 +135,7 @@ export default function PublicProduct({
                             <Gallery
                                 images={images}
                                 productName={product.name}
+                                onPreview={setPreview}
                                 t={t}
                             />
 
@@ -217,6 +223,7 @@ export default function PublicProduct({
                                                     key={type}
                                                     type={type}
                                                     documents={group}
+                                                    onPreview={setPreview}
                                                     t={t}
                                                 />
                                             ),
@@ -238,6 +245,12 @@ export default function PublicProduct({
                     </div>
                 </main>
             </div>
+
+            <PublicPreviewDialog
+                preview={preview}
+                onClose={() => setPreview(null)}
+                t={t}
+            />
         </>
     );
 }
@@ -367,10 +380,12 @@ function SealHero({
 function Gallery({
     images,
     productName,
+    onPreview,
     t,
 }: {
     images: PublicProductImage[];
     productName: string;
+    onPreview: (preview: PublicPreview) => void;
     t: PublicTranslate;
 }) {
     const [shown, setShown] = useState(0);
@@ -406,13 +421,30 @@ function Gallery({
     return (
         <figure className="border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
             <div className="relative flex h-64 items-center justify-center overflow-hidden">
-                <img
-                    src={image.url}
-                    alt={productName}
-                    data-test="product-photo"
-                    onError={() => dropImage(image.id)}
-                    className="size-full object-contain p-6"
-                />
+                <button
+                    type="button"
+                    onClick={() =>
+                        onPreview({
+                            kind: 'image',
+                            name: productName,
+                            url: image.url,
+                        })
+                    }
+                    aria-label={t('enlargePicture')}
+                    data-test="product-photo-enlarge"
+                    className="group size-full cursor-zoom-in focus-visible:outline-none"
+                >
+                    <img
+                        src={image.url}
+                        alt={productName}
+                        data-test="product-photo"
+                        onError={() => dropImage(image.id)}
+                        className="size-full object-contain p-6"
+                    />
+                    <span className="absolute right-3 bottom-3 rounded-full bg-white/90 p-2 text-gray-700 shadow-md transition-transform group-hover:scale-105 group-focus-visible:ring-2 group-focus-visible:ring-sky-500">
+                        <Maximize2 className="size-4" aria-hidden />
+                    </span>
+                </button>
 
                 {visible.length > 1 ? (
                     <>
@@ -619,10 +651,12 @@ function groupByType(
 function DocumentGroup({
     type,
     documents,
+    onPreview,
     t,
 }: {
     type: ProductDocumentType;
     documents: PublicProductDocument[];
+    onPreview: (preview: PublicPreview) => void;
     t: PublicTranslate;
 }) {
     return (
@@ -660,13 +694,31 @@ function DocumentGroup({
                                 {humanSize(document.size)}
                             </p>
                         </div>
-                        <a
-                            href={document.url}
+                        <button
+                            type="button"
+                            onClick={() =>
+                                onPreview({
+                                    kind: 'pdf',
+                                    name: document.name,
+                                    url: document.url,
+                                    downloadUrl: document.downloadUrl,
+                                })
+                            }
+                            data-test="product-public-document-preview"
                             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
-                            aria-label={`${t('download')} ${document.name}`}
+                            aria-label={`${t('preview')} ${document.name}`}
                         >
-                            <Download className="size-3.5" />
-                            {t('download')}
+                            <Eye className="size-3.5" />
+                            {t('preview')}
+                        </button>
+                        <a
+                            href={document.downloadUrl}
+                            data-test="product-public-document-download"
+                            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-sky-200 bg-white p-1.5 text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
+                            aria-label={`${t('download')} ${document.name}`}
+                            title={t('download')}
+                        >
+                            <Download className="size-4" />
                         </a>
                     </li>
                 ))}
