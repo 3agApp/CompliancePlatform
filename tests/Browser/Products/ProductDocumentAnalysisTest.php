@@ -121,3 +121,20 @@ test('a reading in progress shows its verdict by itself once it finishes', funct
         ->assertSee('No gaps found')
         ->assertNoJavaScriptErrors();
 });
+
+/**
+ * A product photo carries no claim to check, so it is not offered for a
+ * reading at all.
+ */
+test('a product image has no Analyze button', function () {
+    [$user, $organization, $product, $document] = browserReviewerWithTestReport();
+
+    $document->update(['type' => ProductDocumentType::ProductImage, 'mime_type' => 'image/png', 'name' => 'front.png']);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'documents']))
+        ->assertVisible('@product-document-images')
+        ->assertMissing('@document-analyze')
+        ->assertNoJavaScriptErrors();
+});

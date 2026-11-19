@@ -37,6 +37,8 @@ class AnalyzeProductDocument
      * Why a run could not be started, beyond the organization-wide reasons
      * AssessProductDocuments gives.
      */
+    public const string NOT_OFFERED = 'not_offered';
+
     public const string UNSUPPORTED = 'unsupported_type';
 
     public const string TOO_LARGE = 'over_size_budget';
@@ -51,15 +53,17 @@ class AnalyzeProductDocument
     }
 
     /**
-     * Determine if the provider can be sent this paper at all: a PDF or an
-     * image, within the size a request can carry.
+     * Determine if the provider can be sent this paper at all: a kind that
+     * is offered for reading, as a PDF or an image, within the size a
+     * request can carry.
      *
      * Says nothing about the organization -- that is
      * AssessProductDocuments::unavailableReason().
      */
     public static function canRead(ProductDocument $document): bool
     {
-        return AssessProductDocuments::attachmentFor($document) !== null
+        return $document->type->offersAnalysis()
+            && AssessProductDocuments::attachmentFor($document) !== null
             && $document->size <= AssessProductDocuments::SIZE_BUDGET;
     }
 
@@ -321,6 +325,7 @@ class AnalyzeProductDocument
     private function unreadableReason(ProductDocument $document): ?string
     {
         return match (true) {
+            ! $document->type->offersAnalysis() => self::NOT_OFFERED,
             AssessProductDocuments::attachmentFor($document) === null => self::UNSUPPORTED,
             $document->size > AssessProductDocuments::SIZE_BUDGET => self::TOO_LARGE,
             ! Storage::disk(ProductDocument::DISK)->exists($document->path) => self::MISSING,
@@ -335,6 +340,7 @@ class AnalyzeProductDocument
     private function messageFor(string $reason): string
     {
         return match ($reason) {
+            self::NOT_OFFERED => __('Product images are not analyzed.'),
             self::UNSUPPORTED => __('Only PDFs and images can be analyzed.'),
             self::TOO_LARGE => __('This file is too large to analyze.'),
             self::MISSING => __('The file could not be found.'),

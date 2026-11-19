@@ -31,6 +31,19 @@ enum ProductDocumentType: string
     }
 
     /**
+     * Determine if a paper of this kind is offered for an AI reading on its
+     * own.
+     *
+     * A product photo shows what the toy looks like and carries no claim to
+     * check, so reading one alone would only spend the organization's key.
+     * Safety images stay in: their warnings and marks are what is checked.
+     */
+    public function offersAnalysis(): bool
+    {
+        return $this !== self::ProductImage;
+    }
+
+    /**
      * Get all the kinds a product document can be filed under.
      *
      * @return array<array{value: string, label: string}>

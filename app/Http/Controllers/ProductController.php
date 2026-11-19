@@ -761,7 +761,7 @@ class ProductController extends Controller
      * the download link itself, so nothing here is a URL that could be
      * mistaken for one that works on its own.
      *
-     * @return array<array{id: int, type: string, type_label: string, is_public: bool, name: string, size: int, preview_kind: string|null, analyzable: bool, uploaded_by: string|null, created_at: string|null}>
+     * @return array<array{id: int, type: string, type_label: string, is_public: bool, name: string, size: int, preview_kind: string|null, analyzable: bool, offers_analysis: bool, uploaded_by: string|null, created_at: string|null}>
      */
     protected function toDocumentArray(Product $product): array
     {
@@ -784,6 +784,12 @@ class ProductController extends Controller
                  * can say so before anyone presses the button.
                  */
                 'analyzable' => AnalyzeProductDocument::canRead($document),
+                /**
+                 * Whether the page offers a reading for this kind at all.
+                 * A product photo gets no Analyze button rather than a
+                 * disabled one.
+                 */
+                'offers_analysis' => $document->type->offersAnalysis(),
                 'uploaded_by' => $document->uploader?->name,
                 'created_at' => $document->created_at?->toISOString(),
             ])
