@@ -25,7 +25,11 @@ import type {
 } from '@/types';
 
 /** The kinds shown as pictures rather than as rows. */
-const GALLERY_TYPES: ProductDocumentType[] = ['product_image', 'safety_image'];
+const GALLERY_TYPES: ProductDocumentType[] = [
+    'product_image',
+    'safety_image',
+    'packaging_closeup',
+];
 
 type Props = {
     organizationSlug: string;
@@ -180,10 +184,10 @@ export default function ProductDocumentsPanel({
     };
 
     /**
-     * Photos of the product and its safety marks are recognised by sight,
-     * so they get a gallery. Any other paper stays under its kind even when
-     * it was filed as a picture -- a scanned certificate is still looked
-     * for among the certificates.
+     * Photos of the product, its safety marks and its packaging are
+     * recognised by sight, so they get a gallery. Any other paper stays
+     * under its kind even when it was filed as a picture -- a scanned
+     * certificate is still looked for among the certificates.
      */
     const isPicture = (document: ProductDocument) =>
         document.preview_kind === 'image' &&

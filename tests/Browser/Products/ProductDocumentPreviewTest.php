@@ -147,6 +147,29 @@ test('product photos form a gallery while a scanned certificate stays with the c
         ->assertNoJavaScriptErrors();
 });
 
+test('a close-up of the packaging is shown among the pictures, under its own kind', function () {
+    [$user, $organization, $product] = productWithFiledPaper(
+        'box-back-label.png',
+        'image/png',
+        base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/wFbqlPUAAAAAElFTkSuQmCC'),
+        ProductDocumentType::PackagingCloseUp,
+    );
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'tab' => 'documents',
+    ]))
+        ->assertScript(
+            "[...document.querySelectorAll('[data-test=\"product-document-images\"] [data-test=\"product-document-preview\"]')].map((name) => name.textContent)",
+            ['box-back-label.png'],
+        )
+        ->assertSeeIn('@product-document-images', 'Packaging close-up')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a file the browser cannot show is a download rather than a preview', function () {
     [$user, $organization, $product] = productWithFiledPaper(
         'manual.docx',

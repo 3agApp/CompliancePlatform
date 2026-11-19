@@ -465,6 +465,7 @@ export type ProductDocumentType =
     | 'certificate'
     | 'product_image'
     | 'safety_image'
+    | 'packaging_closeup'
     | 'regulatory_document'
     | 'other';
 

@@ -39,7 +39,7 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
      * could change an answer, so two runs that disagree can be told apart
      * from a run that changed its mind.
      */
-    public const string PROMPT_VERSION = '2';
+    public const string PROMPT_VERSION = '3';
 
     /**
      * The document_index given for a finding about the product as a whole.
@@ -107,6 +107,18 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
           not cover the standards the toy needs is a gap.
         - Certificates: who issued them, for which product, which standards, and
           whether they have expired.
+        - Packaging close-ups (filed as packaging_closeup): photographs of the toy's
+          box or packaging taken up close -- the label, the warnings, the CE mark, the
+          batch or article number, the manufacturer's and importer's name and address.
+          Check that what is printed on the packaging is what the law requires: the CE
+          mark is present and legible; the toy carries a type, batch, serial or model
+          number; the manufacturer's (and, where there is one, the importer's) name,
+          trade name or mark and a postal address are given; the warnings the toy
+          needs are there, preceded by the word "Warning", in the languages of the
+          market (for Switzerland, its official languages); and the age grading and
+          warnings match the product details and the other documents. A required
+          marking you cannot find on the photos is a gap, unless another photo or
+          document shows it; one you cannot read is "unclear".
         - Consistency with the product: compare the documents with the product details
           you are given -- age grading, warnings, materials, country of origin. A toy
           not meant for children under 36 months needs that warning; small parts,

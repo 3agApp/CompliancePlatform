@@ -625,6 +625,7 @@ const DOCUMENT_ORDER: ProductDocumentType[] = [
     'regulatory_document',
     'manual_or_instructions',
     'safety_image',
+    'packaging_closeup',
     'product_image',
     'other',
 ];
