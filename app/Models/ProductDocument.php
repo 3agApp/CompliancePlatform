@@ -78,7 +78,7 @@ class ProductDocument extends Model
          */
         static::creating(function (ProductDocument $document) {
             if (! array_key_exists('is_public', $document->getAttributes())) {
-                $document->is_public = $document->type?->isPublicByDefault() ?? false;
+                $document->is_public = $document->type->isPublicByDefault();
             }
         });
 
