@@ -114,8 +114,10 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
           mark is present and legible; the toy carries a type, batch, serial or model
           number; the manufacturer's (and, where there is one, the importer's) name,
           trade name or mark and a postal address are given; the warnings the toy
-          needs are there, preceded by the word "Warning", in the languages of the
-          market (for Switzerland, its official languages); and the age grading and
+          needs are there, each introduced by the word for "Warning" in the language
+          it is written in (for example "Achtung", "Attention", "Avvertenza"), in the
+          languages of the market (for Switzerland, its official languages); and the
+          age grading and
           warnings match the product details and the other documents. A required
           marking you cannot find on the photos is a gap, unless another photo or
           document shows it; one you cannot read is "unclear".

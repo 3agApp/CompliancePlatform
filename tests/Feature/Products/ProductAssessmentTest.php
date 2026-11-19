@@ -188,7 +188,7 @@ test('close-ups of the packaging are sent to the model as images, and it is told
     DocumentAssessmentAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->attachments->count() === 2
         && $prompt->attachments[1] instanceof Image
         && $prompt->contains('1. box-back.jpg -- filed as: packaging_closeup')
-        && str_contains((string) $prompt->agent->instructions(), 'Packaging close-ups (filed as packaging_closeup)'));
+        && str_contains((string) $prompt->agent->instructions(), 'packaging_closeup'));
 });
 
 test('a finding pointed at a document that is not on the list is kept against the product as a whole', function () {

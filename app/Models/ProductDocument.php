@@ -113,6 +113,21 @@ class ProductDocument extends Model
     }
 
     /**
+     * Determine if this file could be shown on the public page.
+     *
+     * A PDF carries the watermark and is listed among the papers. A picture
+     * only goes out where the page has a place for its kind.
+     */
+    public function canBePublished(): bool
+    {
+        return match ($this->previewKind()) {
+            DocumentPreviewKind::Pdf => true,
+            DocumentPreviewKind::Image => $this->type->showsPicturePublicly(),
+            null => false,
+        };
+    }
+
+    /**
      * Get the content type a preview of this file is served under.
      */
     public function previewContentType(): ?string

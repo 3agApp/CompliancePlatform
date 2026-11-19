@@ -43,6 +43,27 @@ enum ProductDocumentType: string
      */
     public function isPublicByDefault(): bool
     {
+        return $this->showsPicturePublicly();
+    }
+
+    /**
+     * Determine if a file of this kind is a picture, recognised by sight and
+     * shown in a gallery rather than listed as a paper.
+     */
+    public function isPicture(): bool
+    {
+        return in_array($this, [self::ProductImage, self::SafetyImage, self::PackagingCloseUp], true);
+    }
+
+    /**
+     * Determine if the public page has a place to show a picture of this
+     * kind: the gallery for the article, the warning for its safety image.
+     *
+     * Any other picture -- a packaging close-up, a scanned certificate --
+     * would be released to nowhere, so it cannot be released at all.
+     */
+    public function showsPicturePublicly(): bool
+    {
         return in_array($this, [self::ProductImage, self::SafetyImage], true);
     }
 

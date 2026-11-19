@@ -219,6 +219,38 @@ test('a Word file cannot be released, but one released before can be taken back'
     expect($manual->fresh()->is_public)->toBeFalse();
 });
 
+test('a picture the public page has no place for cannot be released, while a PDF of the same kind can', function () {
+    [$user, $organization, $product] = productWithReport();
+
+    $closeUp = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::PackagingCloseUp)->create([
+        'name' => 'box-back.png',
+        'mime_type' => 'image/png',
+    ]);
+    $scannedBox = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::PackagingCloseUp)->create([
+        'name' => 'box-print.pdf',
+        'mime_type' => 'application/pdf',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('product.documents.0.name', 'box-back.png')
+            ->where('product.documents.0.publishable', false)
+            ->where('product.documents.0.is_picture', true)
+            ->where('product.documents.1.name', 'box-print.pdf')
+            ->where('product.documents.1.publishable', true),
+        );
+
+    $this->patch(route('products.documents.visibility', ['current_organization' => $organization->slug, 'product' => $product->id, 'document' => $closeUp->id]), ['is_public' => true])
+        ->assertSessionHasErrors(['is_public' => 'Only product images and warning images can be shown on the public page as pictures.']);
+
+    $this->patch(route('products.documents.visibility', ['current_organization' => $organization->slug, 'product' => $product->id, 'document' => $scannedBox->id]), ['is_public' => true])
+        ->assertSessionHasNoErrors();
+
+    expect($closeUp->fresh()->is_public)->toBeFalse()
+        ->and($scannedBox->fresh()->is_public)->toBeTrue();
+});
+
 test('a released document can be taken back', function () {
     [$user, $organization, $product, $document] = productWithReport();
     $document->forceFill(['is_public' => true])->save();

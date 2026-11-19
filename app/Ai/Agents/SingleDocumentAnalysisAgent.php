@@ -87,8 +87,10 @@ class SingleDocumentAnalysisAgent implements Agent, HasStructuredOutput
           its age grading and features, and the languages they are given in.
         - Packaging close-up: a photo of what is printed on the box. Check the CE
           mark, a type, batch, serial or model number, the manufacturer's (and
-          importer's) name and postal address, and the warnings, preceded by the word
-          "Warning", in the languages of the market. Only judge what this photo
+          importer's) name and postal address, and the warnings, each introduced by
+          the word for "Warning" in its own language (for example "Achtung",
+          "Attention", "Avvertenza"), in the languages of the market. Only judge
+          what this photo
           shows: a marking that is simply on another side of the box is not a gap
           here.
         - In every case: whether the document is about this toy at all, and whether

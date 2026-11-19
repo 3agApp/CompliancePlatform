@@ -626,7 +626,7 @@ class DemoSeeder extends Seeder
      */
     protected function documentRow(Product $product, ProductDocumentType $type, int $uploadedBy): array
     {
-        $isImage = in_array($type, [ProductDocumentType::ProductImage, ProductDocumentType::SafetyImage, ProductDocumentType::PackagingCloseUp], true);
+        $isImage = $type->isPicture();
 
         $contents = $isImage
             ? $this->pngBytes(160, 120, [(crc32($product->name) % 160) + 60, 140, 200])

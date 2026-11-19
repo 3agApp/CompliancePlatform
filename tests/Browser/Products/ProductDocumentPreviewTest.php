@@ -167,6 +167,9 @@ test('a close-up of the packaging is shown among the pictures, under its own kin
             ['box-back-label.png'],
         )
         ->assertSeeIn('@product-document-images', 'Packaging close-up')
+        /* The public page has no place for it, so it cannot be switched on. */
+        ->assertAttribute('@product-document-visibility-button', 'title', 'Only product images and warning images can be shown on the public page as pictures.')
+        ->assertScript("document.querySelector('[data-test=\"product-document-visibility-button\"]').disabled", true)
         ->assertNoJavaScriptErrors();
 });
 

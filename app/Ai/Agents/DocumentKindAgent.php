@@ -62,15 +62,16 @@ class DocumentKindAgent implements Agent, HasStructuredOutput
           certificate of compliance or of registration. Often cert or certificate.
         - manual_or_instructions: what goes in the box for the buyer. Manual,
           instructions, user guide, IFU, quick start, assembly.
-        - product_image: a photograph or render of the product or its packaging as
-          a whole. Usually an image file, often named for the product, an angle, or
-          a SKU.
+        - product_image: a photograph or render of the product or its packaging,
+          showing what it looks like. Usually an image file, often named for the
+          product, an angle, or a SKU. A plain "packaging" or "box" photo is one.
         - safety_image: an image whose subject is the safety marking rather than the
           product -- the label, the rating plate, the warning panel, the CE or UKCA
           mark, an age grading.
-        - packaging_closeup: a close-up photograph of the box or packaging showing
-          what is printed on it -- its label, warnings, CE mark, batch number or
-          address panel. Often named box, packaging, carton, label, batch or back.
+        - packaging_closeup: a close-up photograph of the print on the box, taken
+          to show what it says rather than how it looks -- the batch number, the
+          address panel, the small print. Only when the name says close-up, detail,
+          batch, lot or address; otherwise prefer product_image or safety_image.
         - regulatory_document: correspondence or filings with an authority. Customs
           or tariff paperwork, a registration, a notification, a market surveillance
           letter, an EU responsible person appointment.

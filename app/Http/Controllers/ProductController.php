@@ -763,7 +763,7 @@ class ProductController extends Controller
      * the download link itself, so nothing here is a URL that could be
      * mistaken for one that works on its own.
      *
-     * @return array<array{id: int, type: string, type_label: string, is_public: bool, name: string, size: int, preview_kind: string|null, analyzable: bool, offers_analysis: bool, uploaded_by: string|null, created_at: string|null}>
+     * @return array<array{id: int, type: string, type_label: string, is_picture: bool, is_public: bool, publishable: bool, name: string, size: int, preview_kind: string|null, analyzable: bool, offers_analysis: bool, uploaded_by: string|null, created_at: string|null}>
      */
     protected function toDocumentArray(Product $product): array
     {
@@ -772,7 +772,13 @@ class ProductController extends Controller
                 'id' => $document->id,
                 'type' => $document->type->value,
                 'type_label' => $document->type->label(),
+                'is_picture' => $document->type->isPicture(),
                 'is_public' => $document->is_public,
+                /**
+                 * Whether the switch may turn it on: the same rule the
+                 * visibility controller enforces, decided once.
+                 */
+                'publishable' => $document->canBePublished(),
                 'name' => $document->name,
                 'size' => $document->size,
                 /**
