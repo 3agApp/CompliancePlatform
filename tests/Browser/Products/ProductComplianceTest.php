@@ -409,15 +409,15 @@ test('warning images sit beside the warning text, not among the papers', functio
 
     $page->assertVisible('#product-compliance [data-test="warning-images"]')
         ->assertCount('@warning-image', 1)
-        ->assertSeeIn('@warning-image-visibility', 'Hidden')
-        ->click('@warning-image-visibility')
         ->assertSeeIn('@warning-image-visibility', 'Public')
+        ->click('@warning-image-visibility')
+        ->assertSeeIn('@warning-image-visibility', 'Hidden')
         ->assertVisible('@warning-image-add')
         ->click('@product-tab-documents')
         ->assertDontSee('under-3.png')
         ->assertNoJavaScriptErrors();
 
-    expect($warningImage->fresh()->is_public)->toBeTrue();
+    expect($warningImage->fresh()->is_public)->toBeFalse();
 });
 
 test('a warning image is filed from beside the warning text without touching the form', function () {

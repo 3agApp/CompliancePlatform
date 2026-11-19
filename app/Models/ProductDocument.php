@@ -64,14 +64,24 @@ class ProductDocument extends Model
     }
 
     /**
-     * Take the file with the row.
+     * Give a new file its kind's visibility, and take the file with the row.
      *
-     * Only fires when a document is deleted on its own. A product taken away
+     * The delete only fires when a document is deleted on its own. A product taken away
      * takes its rows with it through the foreign key, which no model event
      * ever sees, so the controller clears that directory itself.
      */
     protected static function booted(): void
     {
+        /**
+         * A file that is not told otherwise takes its kind's default, so
+         * every way of filing one -- upload, import -- agrees on it.
+         */
+        static::creating(function (ProductDocument $document) {
+            if (! array_key_exists('is_public', $document->getAttributes())) {
+                $document->is_public = $document->type->isPublicByDefault();
+            }
+        });
+
         static::deleted(function (ProductDocument $document) {
             Storage::disk(self::DISK)->delete($document->path);
         });

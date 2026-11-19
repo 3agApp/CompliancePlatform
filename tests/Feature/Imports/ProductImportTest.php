@@ -122,7 +122,8 @@ test('the images are fetched from the file prefix and filed once', function () {
         IMPORT_FILES.'/gri04040_2.JPG',
     ])
         ->and($documents->first()->type)->toBe(ProductDocumentType::ProductImage)
-        ->and($documents->first()->name)->toBe('gri04040.jpg');
+        ->and($documents->first()->name)->toBe('gri04040.jpg')
+        ->and($documents->every(fn (ProductDocument $document) => $document->is_public))->toBeTrue();
 
     Storage::disk(ProductDocument::DISK)->assertExists($documents->first()->path);
 

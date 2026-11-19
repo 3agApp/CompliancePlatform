@@ -31,6 +31,18 @@ enum ProductDocumentType: string
     }
 
     /**
+     * Determine if a file of this kind starts out on the public page.
+     *
+     * Pictures of the article and of its warning are filed to be seen by
+     * buyers, so they are switched on as they arrive. Papers start hidden
+     * until the distributor chooses to release them.
+     */
+    public function isPublicByDefault(): bool
+    {
+        return in_array($this, [self::ProductImage, self::SafetyImage], true);
+    }
+
+    /**
      * Determine if a paper of this kind is offered for an AI reading on its
      * own.
      *

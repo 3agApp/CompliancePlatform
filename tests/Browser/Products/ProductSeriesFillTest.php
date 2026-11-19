@@ -91,6 +91,7 @@ test('a distributor shows every image of a product on the public page at once', 
         $image = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ProductImage)->create([
             'name' => $name,
             'mime_type' => 'image/png',
+            'is_public' => false,
         ]);
         Storage::disk(ProductDocument::DISK)->put($image->path, 'png');
     }
