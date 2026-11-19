@@ -19,6 +19,20 @@ export function formatDay(timestamp: string | null): string {
 }
 
 /**
+ * A calendar date such as 2026-03-04, in the reader's language.
+ *
+ * Read as that day where the reader is: handing a bare date to Date
+ * reads it as midnight in UTC, which west of Greenwich is the day before.
+ */
+export function formatCalendarDate(date: string | null): string {
+    if (date === null) {
+        return '';
+    }
+
+    return formatDay(`${date}T00:00:00`);
+}
+
+/**
  * Show a file size the way the person who picked the file thinks of it.
  */
 export function formatFileSize(bytes: number): string {

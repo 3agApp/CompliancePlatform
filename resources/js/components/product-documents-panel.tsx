@@ -1,9 +1,14 @@
-import { router } from '@inertiajs/react';
+import { router, usePoll } from '@inertiajs/react';
 import { Download, FileText, ImageOff, Trash2, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DeleteProductDocumentModal from '@/components/delete-product-document-modal';
+import {
+    AnalyzeDocumentButton,
+    DocumentAnalysisResult,
+} from '@/components/document-analysis';
 import Heading from '@/components/heading';
 import PreviewDocumentModal from '@/components/preview-document-modal';
+import { unavailableNotes } from '@/components/product-assessment-panel';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
 import { Button } from '@/components/ui/button';
 import { formatDay, formatFileSize } from '@/lib/format';
@@ -11,7 +16,9 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { preview, show, visibility } from '@/routes/products/documents';
 import type {
+    ProductAssessmentUnavailableReason,
     ProductDocument,
+    ProductDocumentAnalysis,
     ProductDocumentType,
     ProductDocumentTypeOption,
 } from '@/types';
@@ -35,7 +42,18 @@ type Props = {
     canPublish?: boolean;
     /** Whether the organization has an AI provider to ask for kinds. */
     canGuessKinds?: boolean;
+    /**
+     * The latest AI reading of each paper, keyed by its id. Null for anyone
+     * who does not rule on the product: they get no Analyze button.
+     */
+    analyses?: Record<number, ProductDocumentAnalysis> | null;
+    analysisUnavailableReason?: ProductAssessmentUnavailableReason | null;
 };
+
+/**
+ * How often to look again while a paper is being read, in milliseconds.
+ */
+const POLL_INTERVAL = 4000;
 
 /**
  * The file's extension, for the small mark beside its name.
@@ -69,6 +87,8 @@ export default function ProductDocumentsPanel({
     canUpload,
     canPublish = false,
     canGuessKinds = false,
+    analyses = null,
+    analysisUnavailableReason = null,
 }: Props) {
     const [uploadOpen, setUploadOpen] = useState(false);
     const [presetType, setPresetType] = useState<ProductDocumentType | null>(
@@ -91,11 +111,63 @@ export default function ProductDocumentsPanel({
         setUploadOpen(true);
     };
 
+    /**
+     * Why the last Analyze press failed, with the reading that was latest
+     * at the time: once a newer reading lands, the error is old news.
+     */
+    const [analysisErrors, setAnalysisErrors] = useState<
+        Record<number, { message: string; analysisId: number | null }>
+    >({});
+
+    /**
+     * Look again while any paper is being read, and stop once none is.
+     */
+    const { start, stop } = usePoll(
+        POLL_INTERVAL,
+        { only: ['documentAnalyses'] },
+        { autoStart: false },
+    );
+
+    const analysisPending = Object.values(analyses ?? {}).some(
+        (analysis) => analysis.is_pending,
+    );
+
+    useEffect(() => {
+        if (analysisPending) {
+            start();
+        } else {
+            stop();
+        }
+
+        return stop;
+    }, [analysisPending, start, stop]);
+
     const actions: DocumentActions = {
         organizationSlug,
         productId,
         canUpload,
         canPublish,
+        analyses,
+        analysisUnavailableNote:
+            analysisUnavailableReason === null
+                ? null
+                : unavailableNotes()[analysisUnavailableReason],
+        analysisErrors,
+        onAnalysisError: (document, message) =>
+            setAnalysisErrors((current) => {
+                const next = { ...current };
+
+                if (message === null) {
+                    delete next[document.id];
+                } else {
+                    next[document.id] = {
+                        message,
+                        analysisId: analyses?.[document.id]?.id ?? null,
+                    };
+                }
+
+                return next;
+            }),
         onPreview: (document) => {
             setDocumentToPreview(document);
             setPreviewDialogOpen(true);
@@ -172,7 +244,7 @@ export default function ProductDocumentsPanel({
                         aria-label={t('Documents')}
                         className="workspace-panel overflow-hidden"
                     >
-                        <div className="text-muted-foreground hidden grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_5rem] gap-3 border-b px-5 py-2.5 text-xs md:grid">
+                        <div className="text-muted-foreground hidden grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_7.5rem] gap-3 border-b px-5 py-2.5 text-xs md:grid">
                             <span>{t('File')}</span>
                             <span>{t('Uploaded by')}</span>
                             <span>{t('Date')}</span>
@@ -282,6 +354,16 @@ type DocumentActions = {
     productId: number;
     canUpload: boolean;
     canPublish: boolean;
+    analyses: Record<number, ProductDocumentAnalysis> | null;
+    analysisUnavailableNote: string | null;
+    analysisErrors: Record<
+        number,
+        { message: string; analysisId: number | null }
+    >;
+    onAnalysisError: (
+        document: ProductDocument,
+        message: string | null,
+    ) => void;
     onPreview: (document: ProductDocument) => void;
     onDelete: (document: ProductDocument) => void;
 };
@@ -513,6 +595,19 @@ function DocumentButtons({
 }) {
     return (
         <div className="flex items-center justify-end">
+            {actions.analyses !== null ? (
+                <AnalyzeDocumentButton
+                    organizationSlug={actions.organizationSlug}
+                    productId={actions.productId}
+                    document={document}
+                    analysis={actions.analyses[document.id]}
+                    unavailableNote={actions.analysisUnavailableNote}
+                    onError={(message) =>
+                        actions.onAnalysisError(document, message)
+                    }
+                />
+            ) : null}
+
             <Button variant="ghost" size="icon" className="size-8" asChild>
                 <a
                     href={show.url([
@@ -561,7 +656,7 @@ function DocumentRow({
     return (
         <li
             data-test="product-document-row"
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-t px-5 py-2.5 first:border-t-0 md:grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_5rem]"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-t px-5 py-2.5 first:border-t-0 md:grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_7.5rem]"
         >
             <div className="flex min-w-0 items-center gap-3">
                 <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md border text-[10px] font-semibold">
@@ -602,6 +697,8 @@ function DocumentRow({
             <div className="col-start-2 row-span-2 row-start-1 md:col-start-auto md:row-span-1 md:row-start-auto">
                 <DocumentButtons document={document} actions={actions} />
             </div>
+
+            <AnalysisLine document={document} actions={actions} />
         </li>
     );
 }
@@ -669,7 +766,42 @@ function ImageCard({
                     <PublicSwitch document={document} actions={actions} />
                     <DocumentButtons document={document} actions={actions} />
                 </div>
+
+                <AnalysisLine document={document} actions={actions} />
             </div>
         </li>
+    );
+}
+
+/**
+ * The latest AI reading of a paper, under the paper, for those who may
+ * ask for one. Spans the whole row so the details have room to open.
+ */
+function AnalysisLine({
+    document,
+    actions,
+}: {
+    document: ProductDocument;
+    actions: DocumentActions;
+}) {
+    if (actions.analyses === null) {
+        return null;
+    }
+
+    const analysis = actions.analyses[document.id];
+    const stored = actions.analysisErrors[document.id];
+    const error =
+        stored !== undefined && stored.analysisId === (analysis?.id ?? null)
+            ? stored.message
+            : null;
+
+    if (analysis === undefined && error === null) {
+        return null;
+    }
+
+    return (
+        <div className="col-span-full min-w-0">
+            <DocumentAnalysisResult analysis={analysis} error={error} />
+        </div>
     );
 }

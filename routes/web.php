@@ -13,6 +13,7 @@ use App\Http\Controllers\ProductAssessmentController;
 use App\Http\Controllers\ProductBulkController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductDocumentAnalysisController;
 use App\Http\Controllers\ProductDocumentController;
 use App\Http\Controllers\ProductDocumentVisibilityController;
 use App\Http\Controllers\ProductImportController;
@@ -159,6 +160,14 @@ Route::prefix('{current_organization}')
              * Releasing a document to the public page, or taking it back.
              */
             Route::patch('products/{product}/documents/{document}/visibility', ProductDocumentVisibilityController::class)->name('products.documents.visibility');
+
+            /**
+             * An AI reading of one paper. Advisory, and on the same budget as
+             * the whole-product check.
+             */
+            Route::post('products/{product}/documents/{document}/analyses', [ProductDocumentAnalysisController::class, 'store'])
+                ->middleware('throttle:ai-assessments')
+                ->name('products.documents.analyses.store');
 
             /**
              * Brands are named under a supplier connection, so both sides

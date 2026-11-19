@@ -116,7 +116,7 @@ class AssessProductDocuments
         $reason = self::unavailableReason($organization);
 
         if ($reason !== null) {
-            throw ValidationException::withMessages(['assessment' => $this->messageFor($reason)]);
+            throw ValidationException::withMessages(['assessment' => self::messageFor($reason)]);
         }
 
         $setting = $organization->aiSetting;
@@ -168,7 +168,7 @@ class AssessProductDocuments
         });
 
         if ($assessment === null) {
-            throw ValidationException::withMessages(['assessment' => $this->messageFor(self::ALREADY_RUNNING)]);
+            throw ValidationException::withMessages(['assessment' => self::messageFor(self::ALREADY_RUNNING)]);
         }
 
         RunProductAssessment::dispatch($assessment);
@@ -202,7 +202,7 @@ class AssessProductDocuments
         $reason = self::unavailableReason($organization);
 
         if ($setting === null || $reason !== null) {
-            $this->fail($assessment, $this->messageFor($reason ?? self::NOT_CONFIGURED));
+            $this->fail($assessment, self::messageFor($reason ?? self::NOT_CONFIGURED));
 
             return;
         }
@@ -219,7 +219,7 @@ class AssessProductDocuments
         try {
             $response = $this->provider->using(
                 $setting,
-                fn (string $provider): mixed => (new DocumentAssessmentAgent($this->languageFor($organization)))->prompt(
+                fn (string $provider): mixed => (new DocumentAssessmentAgent(self::languageFor($organization)))->prompt(
                     $this->promptFor($product, $sent, $skipped, $assessment->previousAssessment, $previous),
                     attachments: $attachments,
                     provider: $provider,
@@ -228,7 +228,7 @@ class AssessProductDocuments
                 ),
             );
         } catch (DecryptException) {
-            $this->fail($assessment, $this->messageFor(self::NOT_CONFIGURED));
+            $this->fail($assessment, self::messageFor(self::NOT_CONFIGURED));
 
             return;
         } catch (Throwable $exception) {
@@ -281,8 +281,8 @@ class AssessProductDocuments
             $assessment->forceFill([
                 'status' => AssessmentStatus::Completed,
                 'overall' => $overall ?? ($position > 0 ? AssessmentOverall::GapsFound : AssessmentOverall::InsufficientDocuments),
-                'summary' => $this->text($response['summary'] ?? null),
-                'factory_request' => $this->text($response['factory_request'] ?? null),
+                'summary' => self::text($response['summary'] ?? null),
+                'factory_request' => self::text($response['factory_request'] ?? null),
                 'completed_at' => now(),
             ])->save();
 
@@ -322,8 +322,8 @@ class AssessProductDocuments
 
         $severity = FindingSeverity::tryFrom((string) ($row['severity'] ?? ''));
         $category = FindingCategory::tryFrom((string) ($row['category'] ?? ''));
-        $requirement = $this->text($row['requirement'] ?? null);
-        $rationale = $this->text($row['rationale'] ?? null);
+        $requirement = self::text($row['requirement'] ?? null);
+        $rationale = self::text($row['rationale'] ?? null);
 
         if ($severity === null || $category === null || $requirement === null || $rationale === null) {
             return null;
@@ -343,8 +343,8 @@ class AssessProductDocuments
             'category' => $category,
             'requirement' => Str::limit($requirement, 250),
             'rationale' => $rationale,
-            'evidence' => $this->text($row['evidence'] ?? null),
-            'ask_manufacturer' => $this->text($row['ask_manufacturer'] ?? null),
+            'evidence' => self::text($row['evidence'] ?? null),
+            'ask_manufacturer' => self::text($row['ask_manufacturer'] ?? null),
         ];
     }
 
@@ -362,7 +362,7 @@ class AssessProductDocuments
         $budget = self::SIZE_BUDGET;
 
         foreach ($product->documents->sortBy('id') as $document) {
-            $attachment = $this->attachmentFor($document);
+            $attachment = self::attachmentFor($document);
 
             $reason = match (true) {
                 $attachment === null => self::SKIPPED_UNSUPPORTED,
@@ -396,8 +396,11 @@ class AssessProductDocuments
     /**
      * Get the paper as something the provider can read, or null if it is a
      * kind of file the providers do not take -- a Word or Excel file.
+     *
+     * Shared with AnalyzeProductDocument, so one paper read alone is sent
+     * exactly as it is when read with the rest.
      */
-    private function attachmentFor(ProductDocument $document): Document|Image|null
+    public static function attachmentFor(ProductDocument $document): Document|Image|null
     {
         return match (true) {
             $document->mime_type === 'application/pdf' => Document::fromStorage($document->path, ProductDocument::DISK)
@@ -420,24 +423,7 @@ class AssessProductDocuments
      */
     private function promptFor(Product $product, array $sent, array $skipped, ?ProductAssessment $previousAssessment, array $previous): string
     {
-        $details = collect([
-            'Name' => $product->name,
-            'Brand' => $product->brand?->name,
-            'Category' => $product->category->name,
-            'Requirement template' => $product->template->name,
-            'EAN' => $product->ean,
-            'Supplier article number' => $product->supplier_article_number,
-            'Internal article number' => $product->internal_article_number,
-            'Country of origin' => $product->country_of_origin?->label(),
-            'Age grading' => $product->age_grading,
-            'Safety notice' => $product->safety_notice,
-            'Warning text' => $product->warning_text,
-            'Materials' => $product->material_information,
-            'Usage restrictions' => $product->usage_restrictions,
-            'Safety instructions' => $product->safety_instructions,
-        ])
-            ->map(fn (?string $value, string $label): string => "- {$label}: ".(filled($value) ? $value : '(not given)'))
-            ->implode("\n");
+        $details = self::productDetailsFor($product);
 
         $documents = collect($sent)
             ->map(fn (array $document, int $index): string => sprintf(
@@ -474,9 +460,38 @@ class AssessProductDocuments
     }
 
     /**
+     * Describe the product the way the model is told about it, one line per
+     * detail, with the gaps said out loud.
+     *
+     * Shared with AnalyzeProductDocument so a paper read alone is checked
+     * against the same details as when read with the rest.
+     */
+    public static function productDetailsFor(Product $product): string
+    {
+        return collect([
+            'Name' => $product->name,
+            'Brand' => $product->brand?->name,
+            'Category' => $product->category->name,
+            'Requirement template' => $product->template->name,
+            'EAN' => $product->ean,
+            'Supplier article number' => $product->supplier_article_number,
+            'Internal article number' => $product->internal_article_number,
+            'Country of origin' => $product->country_of_origin?->label(),
+            'Age grading' => $product->age_grading,
+            'Safety notice' => $product->safety_notice,
+            'Warning text' => $product->warning_text,
+            'Materials' => $product->material_information,
+            'Usage restrictions' => $product->usage_restrictions,
+            'Safety instructions' => $product->safety_instructions,
+        ])
+            ->map(fn (?string $value, string $label): string => "- {$label}: ".(filled($value) ? $value : '(not given)'))
+            ->implode("\n");
+    }
+
+    /**
      * Get the language the reviewer reads, named for the model.
      */
-    private function languageFor(Organization $organization): string
+    public static function languageFor(Organization $organization): string
     {
         return match ($organization->locale) {
             Locale::German => 'German',
@@ -486,8 +501,10 @@ class AssessProductDocuments
 
     /**
      * Get the message shown for a reason a run could not happen.
+     *
+     * Shared with AnalyzeProductDocument for the organization-wide reasons.
      */
-    private function messageFor(string $reason): string
+    public static function messageFor(string $reason): string
     {
         return match ($reason) {
             self::NOT_CONFIGURED => __('Connect an AI provider in the organization settings first.'),
@@ -499,8 +516,10 @@ class AssessProductDocuments
 
     /**
      * Get a trimmed string from the answer, or null for nothing.
+     *
+     * Shared with AnalyzeProductDocument, which reads its answer the same way.
      */
-    private function text(mixed $value): ?string
+    public static function text(mixed $value): ?string
     {
         if (! is_string($value)) {
             return null;

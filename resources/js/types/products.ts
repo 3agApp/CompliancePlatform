@@ -198,7 +198,9 @@ export type ProductEventType =
     | 'document_published'
     | 'document_unpublished'
     | 'assessment_requested'
-    | 'assessment_completed';
+    | 'assessment_completed'
+    | 'document_analysis_requested'
+    | 'document_analysis_completed';
 
 /**
  * One field that changed, as the history kept it: both sides are the text
@@ -479,6 +481,8 @@ export type ProductDocument = {
     name: string;
     size: number;
     preview_kind: DocumentPreviewKind | null;
+    /** Whether the AI can be sent this file at all: a PDF or image within the size limit. */
+    analyzable: boolean;
     is_public: boolean;
     uploaded_by: string | null;
     created_at: string | null;
@@ -605,3 +609,56 @@ export type ProductAssessmentState = {
 export type ProductAssessmentUnavailableReason =
     | 'not_configured'
     | 'analysis_disabled';
+
+/**
+ * What an AI reading of one paper says the paper itself states. Text the
+ * model could not find is null, never a guess.
+ */
+export type ProductDocumentAnalysisFacts = {
+    issuer: string | null;
+    document_number: string | null;
+    issued_on: string | null;
+    expires_on: string | null;
+    is_expired: boolean;
+    standards: string[];
+    covered_product: string | null;
+    type_matches: boolean;
+    suggested_type: ProductDocumentType | null;
+    suggested_type_label: string | null;
+};
+
+/**
+ * One gap a reading of a single paper found.
+ */
+export type ProductDocumentAnalysisFinding = {
+    id: number;
+    severity: ProductFindingSeverity;
+    severity_label: string;
+    category: string;
+    category_label: string;
+    requirement: string;
+    rationale: string;
+    evidence: string | null;
+    ask_manufacturer: string | null;
+};
+
+/**
+ * The latest AI reading of one paper.
+ */
+export type ProductDocumentAnalysis = {
+    id: number;
+    status: ProductAssessmentStatus;
+    status_label: string;
+    is_pending: boolean;
+    overall: ProductAssessmentOverall | null;
+    overall_label: string | null;
+    summary: string | null;
+    facts: ProductDocumentAnalysisFacts | null;
+    failure_reason: string | null;
+    provider_label: string;
+    model_label: string;
+    requested_by: string | null;
+    created_at: string | null;
+    completed_at: string | null;
+    findings: ProductDocumentAnalysisFinding[];
+};
