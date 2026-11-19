@@ -152,9 +152,15 @@ test('a code checked from another device warns, and shows when it was checked', 
 test('the history is newest first and capped, with the total kept', function () {
     $unit = aPacket();
 
+    /**
+     * Read once: a second on the clock passing between the setup and the
+     * assertion would otherwise fail the test on a slow runner.
+     */
+    $start = now()->startOfSecond();
+
     foreach (range(1, ProductUnit::HISTORY_LENGTH + 5) as $earlier) {
         $unit->checks()->create(['device_hash' => str_pad((string) $earlier, 64, '0')])
-            ->forceFill(['created_at' => now()->subHours(100 - $earlier)])->save();
+            ->forceFill(['created_at' => $start->copy()->subHours(100 - $earlier)])->save();
     }
 
     checkPacket($unit);
@@ -163,7 +169,7 @@ test('the history is newest first and capped, with the total kept', function () 
         ->assertInertia(fn (Assert $page) => $page
             ->where('checkResult.earlierChecks', ProductUnit::HISTORY_LENGTH + 5)
             ->has('checkResult.history', ProductUnit::HISTORY_LENGTH)
-            ->where('checkResult.history.0.at', now()->subHours(100 - ProductUnit::HISTORY_LENGTH - 5)->toIso8601String()));
+            ->where('checkResult.history.0.at', $start->copy()->subHours(100 - ProductUnit::HISTORY_LENGTH - 5)->toIso8601String()));
 });
 
 test('a serial nobody issued is reported as not recognised, and nothing is recorded', function () {
