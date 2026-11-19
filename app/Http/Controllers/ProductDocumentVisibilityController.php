@@ -9,6 +9,7 @@ use App\Models\ProductDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -32,6 +33,17 @@ class ProductDocumentVisibilityController extends Controller
         ]);
 
         $isPublic = (bool) $validated['is_public'];
+
+        /**
+         * The public page watermarks what it hands out, and only a PDF or
+         * a picture can carry a watermark. Taking a file back is always
+         * allowed, so one released before this rule can still be hidden.
+         */
+        if ($isPublic && $document->previewKind() === null) {
+            throw ValidationException::withMessages([
+                'is_public' => __('Only PDFs and images can be shown on the public page.'),
+            ]);
+        }
 
         if ($document->is_public !== $isPublic) {
             $document->forceFill(['is_public' => $isPublic])->save();

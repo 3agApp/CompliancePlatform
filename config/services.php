@@ -14,6 +14,14 @@ return [
     |
     */
 
+    /*
+     * Watermarks the PDFs on a product's public page. Found on the PATH
+     * when left empty.
+     */
+    'ghostscript' => [
+        'binary' => env('GHOSTSCRIPT_BINARY'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

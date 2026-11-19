@@ -534,6 +534,13 @@ function PublicSwitch({
 }) {
     const label = document.is_public ? t('Public') : t('Hidden');
 
+    /*
+     * The public page watermarks what it hands out, and only a PDF or a
+     * picture can carry one. A file released before that rule can still
+     * be taken back.
+     */
+    const publishable = document.preview_kind !== null || document.is_public;
+
     if (!actions.canPublish) {
         return document.is_public ? (
             <span
@@ -562,6 +569,12 @@ function PublicSwitch({
                       })
             }
             data-test="product-document-visibility-button"
+            disabled={!publishable}
+            title={
+                publishable
+                    ? undefined
+                    : t('Only PDFs and images can be shown on the public page.')
+            }
             onClick={() =>
                 router.patch(
                     visibility.url([
@@ -573,7 +586,7 @@ function PublicSwitch({
                     { preserveScroll: true },
                 )
             }
-            className="focus-visible:ring-ring inline-flex items-center gap-2 rounded-full text-xs outline-none focus-visible:ring-2"
+            className="focus-visible:ring-ring inline-flex items-center gap-2 rounded-full text-xs outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
             <span
                 className={cn(

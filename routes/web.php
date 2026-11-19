@@ -65,6 +65,10 @@ Route::middleware(['throttle:public-product', SetPublicLocale::class])->group(fu
         ->scopeBindings()
         ->name('products.public.document');
 
+    Route::get('p/{product:uuid}/documents/{document}/download', [PublicProductController::class, 'downloadDocument'])
+        ->scopeBindings()
+        ->name('products.public.document.download');
+
     Route::get('o/{organization}/logo', [OrganizationLogoController::class, 'show'])->name('organizations.logo');
 });
 

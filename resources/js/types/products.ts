@@ -319,7 +319,10 @@ export type PublicProductDocument = {
     type: ProductDocumentType;
     name: string;
     size: number;
+    /** Shows the watermarked PDF inline, for the page's viewer. */
     url: string;
+    /** Hands the watermarked PDF over as a file to keep. */
+    downloadUrl: string;
 };
 
 /**

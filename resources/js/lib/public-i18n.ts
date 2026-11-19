@@ -80,6 +80,12 @@ const en = {
     documentsIntro:
         'Released for public access by the company that places this product on the market.',
     download: 'Download',
+    preview: 'Preview',
+    previewOf: 'Preview of {name}',
+    enlargePicture: 'Enlarge picture',
+    openInNewTab: 'Open in a new tab',
+    pdfNotShown:
+        'This browser cannot show PDFs here. Open it in a new tab or download it instead.',
     docType_test_report: 'Test report',
     docType_declaration_of_conformity: 'Declaration of conformity',
     docType_manual_or_instructions: 'Manual or instructions',
@@ -185,6 +191,12 @@ const de: Dictionary = {
     documentsIntro:
         'Vom Inverkehrbringer zur öffentlichen Einsicht freigegeben.',
     download: 'Herunterladen',
+    preview: 'Ansehen',
+    previewOf: 'Vorschau von {name}',
+    enlargePicture: 'Bild vergrössern',
+    openInNewTab: 'In neuem Tab öffnen',
+    pdfNotShown:
+        'Dieser Browser kann PDFs hier nicht anzeigen. Öffnen Sie es in einem neuen Tab oder laden Sie es herunter.',
     docType_test_report: 'Prüfbericht',
     docType_declaration_of_conformity: 'Konformitätserklärung',
     docType_manual_or_instructions: 'Bedienungsanleitung',
