@@ -44,6 +44,8 @@ const ICONS: Record<ProductEventType, LucideIcon> = {
     document_unpublished: Lock,
     assessment_requested: Sparkles,
     assessment_completed: Sparkles,
+    document_analysis_requested: Sparkles,
+    document_analysis_completed: Sparkles,
 };
 
 /**

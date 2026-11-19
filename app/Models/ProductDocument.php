@@ -7,9 +7,12 @@ use App\Enums\ProductDocumentType;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProductDocumentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -34,6 +37,8 @@ use Illuminate\Support\Facades\Storage;
  * @property CarbonImmutable|null $updated_at
  * @property-read Product $product
  * @property-read User|null $uploader
+ * @property-read Collection<int, ProductDocumentAnalysis> $analyses
+ * @property-read ProductDocumentAnalysis|null $latestAnalysis
  */
 #[Fillable(['type', 'name', 'path', 'source_url', 'mime_type', 'size', 'uploaded_by'])]
 class ProductDocument extends Model
@@ -120,5 +125,25 @@ class ProductDocument extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * Get every AI reading of this paper, newest first.
+     *
+     * @return HasMany<ProductDocumentAnalysis, $this>
+     */
+    public function analyses(): HasMany
+    {
+        return $this->hasMany(ProductDocumentAnalysis::class)->latest('id');
+    }
+
+    /**
+     * Get the most recent AI reading of this paper.
+     *
+     * @return HasOne<ProductDocumentAnalysis, $this>
+     */
+    public function latestAnalysis(): HasOne
+    {
+        return $this->hasOne(ProductDocumentAnalysis::class)->latestOfMany();
     }
 }

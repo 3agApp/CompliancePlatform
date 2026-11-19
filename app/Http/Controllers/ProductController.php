@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Products\AnalyzeProductDocument;
 use App\Actions\Products\AssessProductDocuments;
 use App\Actions\Products\ReviewProduct;
 use App\Data\ProductAssessmentView;
+use App\Data\ProductDocumentAnalysisView;
 use App\Data\ProductFilters;
 use App\Enums\Country;
 use App\Enums\ProductDocumentType;
@@ -248,6 +250,16 @@ class ProductController extends Controller
                 ])
                 : null,
             'assessmentUnavailableReason' => AssessProductDocuments::unavailableReason($product->organization),
+
+            /**
+             * The latest AI reading of each paper, keyed by the paper's id,
+             * for whoever rules on the product. Its own prop so the
+             * documents tab can poll it alone while a reading is going, and
+             * a closure so other partial reloads never pay for it.
+             */
+            'documentAnalyses' => $request->user()->can('assess', $product)
+                ? fn () => ProductDocumentAnalysisView::latestFor($product)
+                : null,
             /**
              * Where the product sits in the organization's own to-do, so the
              * page can step to the next one without a trip back to the list.
@@ -749,7 +761,7 @@ class ProductController extends Controller
      * the download link itself, so nothing here is a URL that could be
      * mistaken for one that works on its own.
      *
-     * @return array<array{id: int, type: string, type_label: string, name: string, size: int, preview_kind: string|null, uploaded_by: string|null, created_at: string|null}>
+     * @return array<array{id: int, type: string, type_label: string, is_public: bool, name: string, size: int, preview_kind: string|null, analyzable: bool, uploaded_by: string|null, created_at: string|null}>
      */
     protected function toDocumentArray(Product $product): array
     {
@@ -767,6 +779,11 @@ class ProductController extends Controller
                  * and the one decision that rests on it is made in one place.
                  */
                 'preview_kind' => $document->previewKind()?->value,
+                /**
+                 * Whether the AI could be sent this file at all, so the page
+                 * can say so before anyone presses the button.
+                 */
+                'analyzable' => AnalyzeProductDocument::canRead($document),
                 'uploaded_by' => $document->uploader?->name,
                 'created_at' => $document->created_at?->toISOString(),
             ])

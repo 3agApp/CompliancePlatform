@@ -30,6 +30,8 @@ enum ProductEventType: string
     case DocumentUnpublished = 'document_unpublished';
     case AssessmentRequested = 'assessment_requested';
     case AssessmentCompleted = 'assessment_completed';
+    case DocumentAnalysisRequested = 'document_analysis_requested';
+    case DocumentAnalysisCompleted = 'document_analysis_completed';
 
     /**
      * Get the display label for the event.
@@ -54,6 +56,8 @@ enum ProductEventType: string
             self::DocumentUnpublished => __('Document taken off the public page'),
             self::AssessmentRequested => __('AI document check started'),
             self::AssessmentCompleted => __('AI document check finished'),
+            self::DocumentAnalysisRequested => __('AI analysis of a document started'),
+            self::DocumentAnalysisCompleted => __('AI analysis of a document finished'),
         };
     }
 

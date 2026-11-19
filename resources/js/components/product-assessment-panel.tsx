@@ -36,6 +36,7 @@ import type {
     ProductAssessmentState,
     ProductAssessmentUnavailableReason,
     ProductDetail,
+    ProductDocumentAnalysisFinding,
     ProductFindingSeverity,
 } from '@/types';
 
@@ -62,7 +63,7 @@ const POLL_INTERVAL = 4000;
  * How each severity reads at a glance: an icon and a word as well as a
  * colour, so a printout still says it.
  */
-const SEVERITY_TONES: Record<
+export const SEVERITY_TONES: Record<
     ProductFindingSeverity,
     { icon: LucideIcon; className: string }
 > = {
@@ -87,7 +88,7 @@ const SEVERITY_TONES: Record<
     },
 };
 
-function unavailableNotes(): Record<
+export function unavailableNotes(): Record<
     ProductAssessmentUnavailableReason,
     string
 > {
@@ -527,13 +528,24 @@ function AssessmentRun({
 
 /**
  * One gap: what rule, how serious, why, and what to ask for.
+ *
+ * Shared with the reading of a single paper, whose findings carry no
+ * document of their own and nothing to compare against.
  */
-function FindingRow({
+export function FindingRow({
     finding,
-    href,
+    href = null,
+    testPrefix = 'assessment-finding',
 }: {
-    finding: ProductAssessmentFinding;
-    href: string | null;
+    finding: ProductDocumentAnalysisFinding &
+        Partial<
+            Pick<
+                ProductAssessmentFinding,
+                'document_name' | 'change' | 'previous_severity_label'
+            >
+        >;
+    href?: string | null;
+    testPrefix?: string;
 }) {
     const tone = SEVERITY_TONES[finding.severity] ?? SEVERITY_TONES.info;
     const Icon = tone.icon;
@@ -541,7 +553,7 @@ function FindingRow({
     return (
         <li
             className="space-y-1.5 rounded-md border p-3"
-            data-test={`assessment-finding-${finding.severity}`}
+            data-test={`${testPrefix}-${finding.severity}`}
         >
             <div className="flex flex-wrap items-center gap-2">
                 <span

@@ -42,6 +42,7 @@ import type {
     OrganizationType,
     ProductAssessmentState,
     ProductAssessmentUnavailableReason,
+    ProductDocumentAnalysis,
     ProductCategoryOption,
     ProductCompleteness,
     ProductCompletenessItem,
@@ -120,6 +121,11 @@ type Props = {
      */
     assessment?: ProductAssessmentState | null;
     assessmentUnavailableReason: ProductAssessmentUnavailableReason | null;
+    /**
+     * The latest AI reading of each paper, keyed by its id. Null for anyone
+     * who does not rule on the product.
+     */
+    documentAnalyses: Record<number, ProductDocumentAnalysis> | null;
     viewerType: OrganizationType;
     /** Where the product sits in the viewer's own to-do; null when empty. */
     todo: ProductTodo | null;
@@ -171,6 +177,7 @@ export default function ProductEdit({
     labelBatches,
     assessment,
     assessmentUnavailableReason,
+    documentAnalyses,
     viewerType,
     todo,
 }: Props) {
@@ -767,6 +774,10 @@ export default function ProductEdit({
                             canUpload={permissions.canUpdateProduct}
                             canPublish={permissions.canPublishDocuments}
                             canGuessKinds={canGuessDocumentKinds}
+                            analyses={documentAnalyses}
+                            analysisUnavailableReason={
+                                assessmentUnavailableReason
+                            }
                         />
                     </section>
                 </TabPanel>
