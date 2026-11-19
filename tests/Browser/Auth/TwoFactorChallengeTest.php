@@ -18,7 +18,7 @@ test('a user with two factor enabled is challenged after entering their password
         ->fill('password', 'password')
         ->click('@login-button')
         ->assertPathIs('/two-factor-challenge')
-        ->assertSee('Enter the authentication code provided by your authenticator application.')
+        ->assertSee('Authentication code')
         ->assertNoJavaScriptErrors();
 
     $this->assertGuest();
@@ -36,7 +36,7 @@ test('the challenge swaps to the recovery code field and signs the user in', fun
         ->fill('password', 'password')
         ->click('@login-button')
         ->click('login using a recovery code')
-        ->assertSee('Please confirm access to your account by entering one of your emergency recovery codes.')
+        ->assertSee('Recovery code')
         ->fill('recovery_code', 'recovery-code-1')
         ->click('Continue')
         ->assertPathIs('/acme-compliance/dashboard')

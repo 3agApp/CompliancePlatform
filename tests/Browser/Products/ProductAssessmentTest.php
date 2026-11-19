@@ -50,7 +50,6 @@ test('a reviewer sends the product back with the AI check draft as the note', fu
 
     visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id, 'tab' => 'assessment']))
         ->assertSee('AI document check')
-        ->assertSee('Advisory only')
         ->assertSee('EN 71-3 migration of elements')
         ->assertSee('No test report covers EN 71-3.')
         ->assertVisible('@assessment-finding-critical')

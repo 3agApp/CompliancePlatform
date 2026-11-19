@@ -277,27 +277,8 @@ export default function ProductsIndex({
             <Head title={t('Products')} />
 
             <div className="workspace-page">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="page-heading">
-                        <h1 className="page-title">{t('Products')}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {isSupplier
-                                ? t(
-                                      'Products distributors have assigned to :organization.',
-                                      {
-                                          organization:
-                                              currentOrganization?.name,
-                                      },
-                                  )
-                                : t(
-                                      'The products :organization is responsible for.',
-                                      {
-                                          organization:
-                                              currentOrganization?.name,
-                                      },
-                                  )}
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h1 className="page-title">{t('Products')}</h1>
 
                     <div className="flex flex-wrap gap-2">
                         {canImportProducts ? (
@@ -760,52 +741,16 @@ export default function ProductsIndex({
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <SearchX className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {t('No products match these filters')}
-                            </h2>
-                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {filters.search !== null
-                                    ? t(
-                                          'Try a different name, barcode or article number, or clear the filters.',
-                                      )
-                                    : t(
-                                          'Nothing matches the filters you have set. Try clearing one.',
-                                      )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">
+                            {t('No products match these filters')}
+                        </h2>
                     </div>
                 ) : (
                     <div className="workspace-panel flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <Package className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {t('No products yet')}
-                            </h2>
-                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {isSupplier
-                                    ? t(
-                                          'Products a distributor assigns to you will show up here.',
-                                      )
-                                    : canAddProducts
-                                      ? t(
-                                            'Add your first product to start tracking it.',
-                                        )
-                                      : needsSupplier
-                                        ? t(
-                                              'Invite a supplier first — every product is assigned to one.',
-                                          )
-                                        : needsTemplate
-                                          ? t(
-                                                'Add a template to one of your categories first — every product is held to one.',
-                                            )
-                                          : t(
-                                                'Products added to this organization will show up here.',
-                                            )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">{t('No products yet')}</h2>
                     </div>
                 )}
             </div>

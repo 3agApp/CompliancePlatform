@@ -10,7 +10,7 @@ import { send } from '@/routes/verification';
 export default function VerifyEmail({ status }: { status?: string }) {
     return (
         <>
-            <Head title={t('Email verification')} />
+            <Head title={t('Check your email')} />
 
             {status === 'verification-link-sent' && (
                 <div className="mb-4 text-center text-sm font-medium text-green-600">
@@ -42,8 +42,5 @@ export default function VerifyEmail({ status }: { status?: string }) {
 }
 
 VerifyEmail.layout = {
-    title: tk('Email verification'),
-    description: tk(
-        'Please verify your email address by clicking on the link we just emailed to you.',
-    ),
+    title: tk('Check your email'),
 };

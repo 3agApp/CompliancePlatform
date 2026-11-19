@@ -34,11 +34,7 @@ export default function Profile({
             <h1 className="sr-only">{t('Profile settings')}</h1>
 
             <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('Profile')}
-                    description={t('Update your name and email address')}
-                />
+                <Heading variant="small" title={t('Profile')} />
 
                 <Form
                     {...ProfileController.update.form()}
@@ -131,22 +127,12 @@ export default function Profile({
             </div>
 
             <div id="language" className="scroll-mt-6 space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('Language')}
-                    description={t(
-                        'Choose the language you read the app in. Following the organization keeps you in step if it changes its default.',
-                    )}
-                />
+                <Heading variant="small" title={t('Language')} />
                 <LanguageTabs />
             </div>
 
             <div id="appearance" className="scroll-mt-6 space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('Appearance')}
-                    description={t('Choose how the app looks on this device')}
-                />
+                <Heading variant="small" title={t('Appearance')} />
                 <AppearanceTabs />
             </div>
 

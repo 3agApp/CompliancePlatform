@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -20,7 +19,6 @@ type Props = {
     organizationSlug: string;
     /** The trade the maker is named under. */
     supplierConnectionId: number;
-    supplierLabel: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     /**
@@ -47,7 +45,6 @@ type Props = {
 export default function CreateBrandModal({
     organizationSlug,
     supplierConnectionId,
-    supplierLabel,
     open,
     onOpenChange,
     reloadOnly = ['availableBrands'],
@@ -57,7 +54,7 @@ export default function CreateBrandModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
                 <Form
                     key={String(open)}
                     {...store.form(organizationSlug)}
@@ -96,12 +93,6 @@ export default function CreateBrandModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>{t('Add a brand')}</DialogTitle>
-                                <DialogDescription>
-                                    {t(
-                                        'The maker behind the product. :supplier carries it, so the brand is filed under them and shows up on every product they supply.',
-                                        { supplier: supplierLabel },
-                                    )}
-                                </DialogDescription>
                             </DialogHeader>
 
                             <input

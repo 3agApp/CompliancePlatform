@@ -143,5 +143,4 @@ export default function Login({
 
 Login.layout = {
     title: tk('Log in to your account'),
-    description: tk('Enter your email and password below to log in'),
 };

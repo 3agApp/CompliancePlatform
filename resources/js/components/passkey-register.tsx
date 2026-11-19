@@ -91,9 +91,6 @@ export default function PasskeyRegistration({ onSuccess }: Props) {
                     className="border-foreground/20 mt-1 block w-full"
                     autoFocus
                 />
-                <p className="text-muted-foreground text-xs">
-                    {t('A name helps you identify this passkey later.')}
-                </p>
             </div>
 
             {error && <InputError message={error} />}

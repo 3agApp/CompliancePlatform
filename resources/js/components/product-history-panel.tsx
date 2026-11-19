@@ -111,13 +111,7 @@ function describe({ from, to }: { from: string | null; to: string | null }) {
 export default function ProductHistoryPanel({ events }: Props) {
     return (
         <div className="workspace-panel space-y-6 p-6">
-            <Heading
-                variant="small"
-                title={t('History')}
-                description={t(
-                    'Everything that has happened to this product, and who did it.',
-                )}
-            />
+            <Heading variant="small" title={t('History')} />
 
             {events.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
@@ -205,13 +199,7 @@ export default function ProductHistoryPanel({ events }: Props) {
 export function ProductHistorySkeleton() {
     return (
         <div className="workspace-panel space-y-6 p-6">
-            <Heading
-                variant="small"
-                title={t('History')}
-                description={t(
-                    'Everything that has happened to this product, and who did it.',
-                )}
-            />
+            <Heading variant="small" title={t('History')} />
 
             <div className="space-y-5">
                 {[0, 1, 2].map((row) => (

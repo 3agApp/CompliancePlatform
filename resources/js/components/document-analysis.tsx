@@ -336,13 +336,10 @@ function AnalysisDetails({ analysis }: { analysis: ProductDocumentAnalysis }) {
             ) : null}
 
             <p className="text-muted-foreground text-xs">
-                {t(
-                    'Read by :model on :date. Advisory only — a person decides.',
-                    {
-                        model: analysis.model_label,
-                        date: formatDay(analysis.completed_at),
-                    },
-                )}
+                {t(':model · :date', {
+                    model: analysis.model_label,
+                    date: formatDay(analysis.completed_at),
+                })}
             </p>
         </div>
     );

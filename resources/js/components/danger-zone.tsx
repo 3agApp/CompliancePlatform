@@ -4,8 +4,7 @@ import { t } from '@/lib/i18n';
 
 type Props = {
     title: string;
-    description: string;
-    /** What happens, in one sentence, shown above the button. */
+    /** What happens, in one sentence, shown beside the button. */
     warning?: string;
     children: ReactNode;
 };
@@ -17,18 +16,16 @@ type Props = {
  */
 export default function DangerZone({
     title,
-    description,
     warning = t('Please proceed with caution, this cannot be undone.'),
     children,
 }: Props) {
     return (
         <div className="space-y-6">
-            <Heading variant="small" title={title} description={description} />
+            <Heading variant="small" title={title} />
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
-                <div className="min-w-0 space-y-0.5 text-red-600 dark:text-red-100">
-                    <p className="font-medium">{t('Warning')}</p>
-                    <p className="text-sm">{warning}</p>
-                </div>
+                <p className="min-w-0 text-sm text-red-600 dark:text-red-100">
+                    {warning}
+                </p>
                 {children}
             </div>
         </div>

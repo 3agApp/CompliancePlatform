@@ -90,11 +90,6 @@ export default function ProductsCreate({
                     {t('Products')}
                 </Link>
                 <h1 className="page-title">{t('Add a product')}</h1>
-                <p className="text-muted-foreground text-sm">
-                    {t(
-                        'Say what kind of product it is and what it is called. The rest is filled in on the product itself.',
-                    )}
-                </p>
             </div>
 
             <Form
@@ -117,16 +112,9 @@ export default function ProductsCreate({
                             className="workspace-panel grid gap-6 p-6"
                             data-test="product-create-panel"
                         >
-                            <div className="grid gap-1">
-                                <h2 className="text-base font-semibold">
-                                    {t('Classify the product')}
-                                </h2>
-                                <p className="text-muted-foreground text-sm">
-                                    {t(
-                                        "Which supplier is responsible for it, which legal family it falls under, and which of that family's templates it is held to.",
-                                    )}
-                                </p>
-                            </div>
+                            <h2 className="text-base font-semibold">
+                                {t('Classify the product')}
+                            </h2>
 
                             <ProductClassificationFields
                                 errors={errors}
@@ -204,11 +192,6 @@ export default function ProductsCreate({
                                         }
                                         detailed
                                     />
-                                    <p className="text-muted-foreground text-xs">
-                                        {t(
-                                            'None of it is required to save. You fill it in on the product, which keeps score of what is still outstanding.',
-                                        )}
-                                    </p>
                                 </div>
                             ) : null}
 

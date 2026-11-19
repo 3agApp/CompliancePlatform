@@ -49,16 +49,9 @@ export default class ErrorBoundary extends Component<Props, State> {
                     <TriangleAlert className="text-muted-foreground size-6" />
                 </div>
 
-                <div className="space-y-1">
-                    <h1 className="text-lg font-semibold">
-                        {t('Something went wrong on this page')}
-                    </h1>
-                    <p className="text-muted-foreground text-sm">
-                        {t(
-                            'The page could not finish loading. Reloading usually clears it; if it keeps happening, the details below are worth reporting.',
-                        )}
-                    </p>
-                </div>
+                <h1 className="text-lg font-semibold">
+                    {t('Something went wrong on this page')}
+                </h1>
 
                 <div className="flex gap-2">
                     <Button onClick={() => window.location.reload()}>

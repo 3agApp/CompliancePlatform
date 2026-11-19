@@ -110,33 +110,17 @@ function StatTile({ stat }: { stat: Stat }) {
  * submitted are ready to go, and one bar across every stage of the review.
  *
  * Each stage in the legend is a link into the list, filtered to exactly the
- * products it counts, and says in a few words whose move they are.
+ * products it counts.
  */
 function Readiness({
     stages,
     insights,
     organizationSlug,
-    isSupplier,
 }: {
     stages: DashboardPipelineStage[];
     insights: DashboardInsights;
     organizationSlug: string;
-    isSupplier: boolean;
 }) {
-    const hints: Record<ProductReviewStatus, string> = isSupplier
-        ? {
-              draft: t('Not submitted yet'),
-              in_review: t('With the distributor'),
-              changes_requested: t('Sent back to you'),
-              approved: t('Signed off'),
-          }
-        : {
-              draft: t('Still being filled in'),
-              in_review: t('Waiting on your decision'),
-              changes_requested: t('Back with the supplier'),
-              approved: t('Signed off'),
-          };
-
     const counts = Object.fromEntries(
         stages.map((stage) => [stage.status, stage.count]),
     ) as Record<ProductReviewStatus, number>;
@@ -195,9 +179,6 @@ function Readiness({
                             <span className="font-medium tabular-nums">
                                 {stage.count}
                             </span>
-                            <span className="text-muted-foreground text-xs max-sm:hidden">
-                                {hints[stage.status]}
-                            </span>
                         </Link>
                     </li>
                 ))}
@@ -236,11 +217,6 @@ function Gaps({
                 <h2 id="gaps-heading" className="font-medium">
                     {t("What's holding products back")}
                 </h2>
-                <p className="text-muted-foreground text-sm">
-                    {t(
-                        'Missing across the products not yet submitted. Same answer for a whole series? Fill it once for all.',
-                    )}
-                </p>
             </div>
 
             <ul className="divide-y">
@@ -346,9 +322,6 @@ function Attention({
                 <h2 id="attention-heading" className="font-medium">
                     {t('Needs your attention')}
                 </h2>
-                <p className="text-muted-foreground text-sm">
-                    {t('Things that are stuck until someone acts.')}
-                </p>
             </div>
 
             <ul className="divide-y">
@@ -410,9 +383,6 @@ function Attention({
                         title={tc(
                             '1 supplier has not been invited yet|:count suppliers have not been invited yet',
                             notInvited,
-                        )}
-                        body={t(
-                            'They cannot see their products until they are sent an invitation.',
                         )}
                         action={{
                             label: t('Go to suppliers'),
@@ -522,7 +492,7 @@ function AttentionRow({
     tag: string;
     title: string;
     titleHref?: string;
-    body: string;
+    body?: string;
     action?: { label: string; href: string };
     testId: string;
 }) {
@@ -552,7 +522,9 @@ function AttentionRow({
                         <span className="text-sm font-medium">{title}</span>
                     )}
                 </div>
-                <p className="text-muted-foreground text-sm">{body}</p>
+                {body ? (
+                    <p className="text-muted-foreground text-sm">{body}</p>
+                ) : null}
             </div>
 
             {action ? (
@@ -587,15 +559,10 @@ function SupplierProgress({
             aria-labelledby="suppliers-heading"
             data-test="dashboard-supplier-progress"
         >
-            <div className="flex items-end justify-between gap-4 border-b px-6 py-4">
-                <div>
-                    <h2 id="suppliers-heading" className="font-medium">
-                        {t('Progress by supplier')}
-                    </h2>
-                    <p className="text-muted-foreground text-sm">
-                        {t('Who is keeping up, and who is not.')}
-                    </p>
-                </div>
+            <div className="flex items-center justify-between gap-4 border-b px-6 py-4">
+                <h2 id="suppliers-heading" className="font-medium">
+                    {t('Progress by supplier')}
+                </h2>
                 <Link
                     href={suppliersIndex(organizationSlug).url}
                     className="text-muted-foreground hover:text-foreground text-sm"
@@ -742,7 +709,6 @@ function Queue({
     title,
     queue,
     emptyTitle,
-    emptyBody,
     viewAllHref,
     showStatus,
     organizationSlug,
@@ -750,7 +716,6 @@ function Queue({
     title: string;
     queue: DashboardQueue;
     emptyTitle: string;
-    emptyBody: string;
     viewAllHref: string;
     showStatus: boolean;
     organizationSlug: string;
@@ -783,14 +748,9 @@ function Queue({
             </div>
 
             {queue.items.length === 0 ? (
-                <div className="flex items-start gap-3 px-6 py-6">
-                    <Inbox className="text-muted-foreground mt-0.5 size-5 shrink-0" />
-                    <div className="space-y-1">
-                        <p className="text-sm font-medium">{emptyTitle}</p>
-                        <p className="text-muted-foreground text-sm">
-                            {emptyBody}
-                        </p>
-                    </div>
+                <div className="flex items-center gap-3 px-6 py-6">
+                    <Inbox className="text-muted-foreground size-5 shrink-0" />
+                    <p className="text-sm font-medium">{emptyTitle}</p>
                 </div>
             ) : (
                 <ul className="divide-y">
@@ -908,9 +868,6 @@ export default function Dashboard({
         ? stats.distributors === 0
             ? {
                   title: t('Waiting on a distributor'),
-                  body: t(
-                      'Once a distributor connects with you and assigns products, they will show up here.',
-                  ),
                   action: null,
               }
             : null
@@ -919,9 +876,6 @@ export default function Dashboard({
             stats.notInvited === 0
           ? {
                 title: t('Invite your first supplier'),
-                body: t(
-                    'Every product is assigned to a supplier, so start by inviting one.',
-                ),
                 action: {
                     label: t('Invite a supplier'),
                     href: suppliersIndex(organizationSlug).url,
@@ -931,7 +885,6 @@ export default function Dashboard({
           : stats.products === 0
             ? {
                   title: t('Add your first product'),
-                  body: t('You have a supplier to assign products to.'),
                   action: {
                       label: t('Go to products'),
                       href: productsIndex(organizationSlug).url,
@@ -958,14 +911,7 @@ export default function Dashboard({
 
             <div className="workspace-page">
                 <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div className="page-heading">
-                        <h1 className="page-title">{t('Dashboard')}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {t("You're working in :organization.", {
-                                organization: currentOrganization?.name,
-                            })}
-                        </p>
-                    </div>
+                    <h1 className="page-title">{t('Dashboard')}</h1>
 
                     {canInviteSupplier || canCreateProduct ? (
                         <div className="flex flex-wrap gap-2">
@@ -998,12 +944,9 @@ export default function Dashboard({
                         className="workspace-panel flex flex-wrap items-center justify-between gap-4 px-6 py-5"
                         data-test="dashboard-next-step"
                     >
-                        <div className="min-w-0 space-y-1">
-                            <h2 className="font-medium">{nextStep.title}</h2>
-                            <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-                                {nextStep.body}
-                            </p>
-                        </div>
+                        <h2 className="min-w-0 font-medium">
+                            {nextStep.title}
+                        </h2>
 
                         {nextStep.action ? (
                             <Button asChild>
@@ -1023,7 +966,6 @@ export default function Dashboard({
                         stages={pipeline}
                         insights={insights}
                         organizationSlug={organizationSlug}
-                        isSupplier={isSupplier}
                     />
                 ) : null}
 
@@ -1071,15 +1013,7 @@ export default function Dashboard({
                                         ? t('Nothing to fill in right now')
                                         : t('Nothing is waiting on your review')
                                 }
-                                emptyBody={
-                                    isSupplier
-                                        ? t(
-                                              'Products sent back to you, and ones not yet submitted, show up here.',
-                                          )
-                                        : t(
-                                              'Products show up here as soon as a supplier submits them.',
-                                          )
-                                }
+
                                 viewAllHref={
                                     productsIndex(organizationSlug, {
                                         query: { status: viewAllStatus },

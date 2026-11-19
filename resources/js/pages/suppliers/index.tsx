@@ -113,16 +113,8 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
             <Head title={t('Suppliers')} />
 
             <div className="workspace-page">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="page-heading">
-                        <h1 className="page-title">{t('Suppliers')}</h1>
-                        <p className="text-muted-foreground text-sm">
-                            {t(
-                                'The companies that provide compliance data for :organization.',
-                                { organization: currentOrganization?.name },
-                            )}
-                        </p>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h1 className="page-title">{t('Suppliers')}</h1>
 
                     {permissions.canManageConnection ? (
                         <InviteSupplierModal
@@ -172,20 +164,7 @@ export default function SuppliersIndex({ connections, permissions }: Props) {
                         <div className="bg-muted flex size-12 items-center justify-center rounded-full">
                             <Factory className="text-muted-foreground size-6" />
                         </div>
-                        <div className="space-y-1">
-                            <h2 className="font-medium">
-                                {t('No suppliers yet')}
-                            </h2>
-                            <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                                {permissions.canManageConnection
-                                    ? t(
-                                          'Add your first supplier, then assign products to them. You can invite them now or later.',
-                                      )
-                                    : t(
-                                          'Suppliers invited to this organization will show up here.',
-                                      )}
-                            </p>
-                        </div>
+                        <h2 className="font-medium">{t('No suppliers yet')}</h2>
                     </div>
                 )}
             </div>

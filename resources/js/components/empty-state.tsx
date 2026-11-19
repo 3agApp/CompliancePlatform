@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 type Props = {
     icon: LucideIcon;
     title: string;
-    description?: string;
     /** A button or link that gets the person out of the empty state. */
     action?: ReactNode;
     className?: string;
@@ -14,7 +13,6 @@ type Props = {
 export default function EmptyState({
     icon: Icon,
     title,
-    description,
     action,
     className,
 }: Props) {
@@ -24,11 +22,6 @@ export default function EmptyState({
                 <Icon className="text-muted-foreground h-7 w-7" />
             </div>
             <p className="font-medium">{title}</p>
-            {description ? (
-                <p className="text-muted-foreground mt-1 text-sm">
-                    {description}
-                </p>
-            ) : null}
             {action ? <div className="mt-4">{action}</div> : null}
         </div>
     );

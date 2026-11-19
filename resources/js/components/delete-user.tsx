@@ -21,10 +21,7 @@ export default function DeleteUser() {
     const passwordInput = useRef<HTMLInputElement>(null);
 
     return (
-        <DangerZone
-            title={t('Delete account')}
-            description={t('Delete your account and all of its resources')}
-        >
+        <DangerZone title={t('Delete account')}>
             <Dialog>
                 <DialogTrigger asChild>
                     <Button

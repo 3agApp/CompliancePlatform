@@ -9,7 +9,6 @@ import { t } from '@/lib/i18n';
 
 type Props = {
     completeness: ProductCompleteness;
-    templateLabel: string;
     /**
      * Leave out what is still needed, where the page lists it already --
      * the panel then shows the score and what is done.
@@ -27,7 +26,6 @@ type Props = {
  */
 export default function ProductRequirementsPanel({
     completeness,
-    templateLabel,
     hideOutstanding = false,
 }: Props) {
     const { score, items } = completeness;
@@ -59,13 +57,6 @@ export default function ProductRequirementsPanel({
                     hideLabel
                     fill
                 />
-
-                <p className="text-muted-foreground text-xs">
-                    {t(
-                        'What the :template template expects. Nothing here blocks saving.',
-                        { template: templateLabel },
-                    )}
-                </p>
             </div>
 
             {items.length === 0 ? (
@@ -73,9 +64,7 @@ export default function ProductRequirementsPanel({
                     className="text-muted-foreground text-sm"
                     data-test="product-requirements-empty"
                 >
-                    {t(
-                        'This template asks for nothing. Add requirements to it under Categories to turn it into a checklist.',
-                    )}
+                    {t('This template asks for nothing.')}
                 </p>
             ) : null}
 

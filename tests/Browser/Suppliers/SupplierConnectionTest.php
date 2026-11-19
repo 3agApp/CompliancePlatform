@@ -50,7 +50,6 @@ test('a supplier is added without an invitation and invited later from the list'
         ->fill('@supplier-company-name', 'Acme Supplies AG')
         ->fill('@supplier-contact-email', 'compliance@acme.test')
         ->click('@supplier-send-invitation')
-        ->assertSee('Nothing is sent.')
         ->assertSeeIn('@invite-supplier-submit', 'Add supplier')
         ->click('@invite-supplier-submit')
         ->assertSee('Supplier added. Invite them whenever you are ready.')
@@ -225,7 +224,6 @@ test('a distributor with no suppliers is pointed at the suppliers page', functio
     $this->actingAs($user);
 
     visit(route('products.index', ['current_organization' => $distributor->slug]))
-        ->assertSee('Invite a supplier first')
         ->assertMissing('@products-new-product-button')
         ->assertPresent('@products-invite-supplier-button')
         ->assertNoJavaScriptErrors();

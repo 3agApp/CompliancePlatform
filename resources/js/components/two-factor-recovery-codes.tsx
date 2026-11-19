@@ -3,14 +3,8 @@ import { Eye, EyeOff, LockKeyhole, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AlertError from '@/components/alert-error';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import { t, tn } from '@/lib/i18n';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { t } from '@/lib/i18n';
 import { regenerateRecoveryCodes } from '@/routes/two-factor';
 
 type Props = {
@@ -60,11 +54,6 @@ export default function TwoFactorRecoveryCodes({
                     <LockKeyhole className="size-4" aria-hidden="true" />
                     {t('2FA recovery codes')}
                 </CardTitle>
-                <CardDescription>
-                    {t(
-                        'Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.',
-                    )}
-                </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col gap-3 select-none sm:flex-row sm:items-center sm:justify-between">
@@ -94,7 +83,6 @@ export default function TwoFactorRecoveryCodes({
                                     variant="secondary"
                                     type="submit"
                                     disabled={processing}
-                                    aria-describedby="regenerate-warning"
                                 >
                                     <RefreshCw /> {t('Regenerate codes')}
                                 </Button>
@@ -147,21 +135,6 @@ export default function TwoFactorRecoveryCodes({
                                             )}
                                         </div>
                                     )}
-                                </div>
-
-                                <div className="text-muted-foreground text-xs select-none">
-                                    <p id="regenerate-warning">
-                                        {tn(
-                                            'Each recovery code can be used once to access your account and will be removed after use. If you need more, click :button above.',
-                                            {
-                                                button: (
-                                                    <span className="font-bold">
-                                                        {t('Regenerate codes')}
-                                                    </span>
-                                                ),
-                                            },
-                                        )}
-                                    </p>
                                 </div>
                             </>
                         )}

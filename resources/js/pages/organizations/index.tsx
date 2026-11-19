@@ -51,13 +51,7 @@ export default function OrganizationsIndex({ organizations }: Props) {
 
             <div className="flex flex-col space-y-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                    <Heading
-                        variant="small"
-                        title={t('Organizations')}
-                        description={t(
-                            'Manage your organizations and organization memberships',
-                        )}
-                    />
+                    <Heading variant="small" title={t('Organizations')} />
 
                     <CreateOrganizationModal>
                         <Button data-test="organizations-new-organization-button">
@@ -72,9 +66,6 @@ export default function OrganizationsIndex({ organizations }: Props) {
                             icon={Building2}
                             title={t(
                                 "You don't belong to any organizations yet",
-                            )}
-                            description={t(
-                                'Create one, or ask an owner to invite you to theirs.',
                             )}
                         />
                     </div>

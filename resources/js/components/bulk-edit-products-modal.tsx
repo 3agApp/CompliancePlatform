@@ -10,7 +10,6 @@ import {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -298,7 +297,10 @@ export default function BulkEditProductsModal({
 
     return (
         <Dialog open={open} onOpenChange={changeOpen}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogContent
+                aria-describedby={undefined}
+                className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+            >
                 <DialogHeader>
                     <DialogTitle>
                         {tc(
@@ -306,11 +308,6 @@ export default function BulkEditProductsModal({
                             products.length,
                         )}
                     </DialogTitle>
-                    <DialogDescription>
-                        {t(
-                            'Tick the fields to change. Everything else is left as each product has it.',
-                        )}
-                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-4">
@@ -477,11 +474,7 @@ export default function BulkEditProductsModal({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <p className="text-muted-foreground text-xs">
-                                {t(
-                                    'The template decides what each product is asked for, so its checklist changes with it.',
-                                )}
-                            </p>
+
                             <InputError message={errors.product_category_id} />
                             <InputError message={errors.product_template_id} />
                         </BulkField>
@@ -501,18 +494,14 @@ export default function BulkEditProductsModal({
                             invalid={errors.country_of_origin !== undefined}
                             data-test="bulk-country"
                         />
-                        {allowedCountries !== null && (
+                        {allowedCountries?.length === 0 && (
                             <p
                                 className="text-muted-foreground text-xs"
                                 data-test="bulk-country-restriction"
                             >
-                                {allowedCountries.length === 0
-                                    ? t(
-                                          'The suppliers of these products have no country of production in common.',
-                                      )
-                                    : t(
-                                          'Limited to the countries the suppliers of these products produce in.',
-                                      )}
+                                {t(
+                                    'The suppliers of these products have no country of production in common.',
+                                )}
                             </p>
                         )}
                         <InputError message={errors.country_of_origin} />
@@ -524,11 +513,6 @@ export default function BulkEditProductsModal({
                         enabled={enabled}
                         onToggle={toggle}
                     >
-                        <p className="text-muted-foreground text-xs">
-                            {t(
-                                'Fill in what the whole series shares. Boxes left blank are left as each product has them.',
-                            )}
-                        </p>
                         <div className="grid gap-3 sm:grid-cols-2">
                             {safetyFields().map((field) => {
                                 const id = `bulk-${field.key}`;

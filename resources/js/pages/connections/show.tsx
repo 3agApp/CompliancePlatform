@@ -97,11 +97,6 @@ export default function ConnectionShow({
                                             <span className="block text-sm font-medium">
                                                 {t('A company I already run')}
                                             </span>
-                                            <span className="text-muted-foreground mt-1 block text-xs">
-                                                {t(
-                                                    'Use this if you already supply another distributor here.',
-                                                )}
-                                            </span>
 
                                             {mode === 'existing' ? (
                                                 <div className="mt-3 grid gap-2">
@@ -154,11 +149,6 @@ export default function ConnectionShow({
                                             />
                                             <span className="block text-sm font-medium">
                                                 {t('A new company')}
-                                            </span>
-                                            <span className="text-muted-foreground mt-1 block text-xs">
-                                                {t(
-                                                    'Sets up a new supplier company with you as its owner.',
-                                                )}
                                             </span>
                                         </label>
 

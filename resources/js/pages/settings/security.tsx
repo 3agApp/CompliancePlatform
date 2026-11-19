@@ -30,13 +30,7 @@ export default function Security(props: Props) {
             <h1 className="sr-only">{t('Security settings')}</h1>
 
             <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('Update password')}
-                    description={t(
-                        'Ensure your account is using a long, random password to stay secure',
-                    )}
-                />
+                <Heading variant="small" title={t('Update password')} />
 
                 <Form
                     {...SecurityController.update.form()}

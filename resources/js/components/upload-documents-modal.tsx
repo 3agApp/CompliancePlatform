@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -353,16 +352,12 @@ export default function UploadDocumentsModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
+                aria-describedby={undefined}
                 className="sm:max-w-2xl"
                 data-test="upload-documents-modal"
             >
                 <DialogHeader>
                     <DialogTitle>{t('Upload documents')}</DialogTitle>
-                    <DialogDescription>
-                        {t(
-                            'Add as many files as you like, then say what each one is. Only file names, types and sizes are ever sent to the AI — never the contents of a document.',
-                        )}
-                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-4">
@@ -411,9 +406,6 @@ export default function UploadDocumentsModal({
                                     </span>
                                 ),
                             })}
-                        </span>
-                        <span className="text-muted-foreground text-xs">
-                            {t('PDF, image, Word or Excel, up to 10 MB each.')}
                         </span>
                     </label>
 
