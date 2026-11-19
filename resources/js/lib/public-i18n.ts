@@ -85,7 +85,7 @@ const en = {
     docType_manual_or_instructions: 'Manual or instructions',
     docType_certificate: 'Certificate',
     docType_product_image: 'Product image',
-    docType_safety_image: 'Safety image',
+    docType_safety_image: 'Warning image',
     docType_regulatory_document: 'Regulatory document',
     docType_other: 'Document',
 
@@ -190,7 +190,7 @@ const de: Dictionary = {
     docType_manual_or_instructions: 'Bedienungsanleitung',
     docType_certificate: 'Zertifikat',
     docType_product_image: 'Produktbild',
-    docType_safety_image: 'Sicherheitsbild',
+    docType_safety_image: 'Warnbild',
     docType_regulatory_document: 'Regulatorisches Dokument',
     docType_other: 'Dokument',
 

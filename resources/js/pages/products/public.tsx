@@ -36,6 +36,8 @@ import type {
 type Props = {
     product: PublicProduct;
     safety: PublicProductSafety;
+    /** The symbols printed beside the warning. */
+    warningImages: PublicProductImage[];
     seal: ProductSeal;
     images: PublicProductImage[];
     documents: PublicProductDocument[];
@@ -91,6 +93,7 @@ const HERO: Record<ProductSealStatus, { icon: LucideIcon; gradient: string }> =
 export default function PublicProduct({
     product,
     safety,
+    warningImages,
     seal,
     images,
     documents,
@@ -187,7 +190,11 @@ export default function PublicProduct({
                             />
                         ) : null}
 
-                        <Safety safety={safety} t={t} />
+                        <Safety
+                            safety={safety}
+                            warningImages={warningImages}
+                            t={t}
+                        />
 
                         {documents.length > 0 ? (
                             <section
@@ -466,9 +473,11 @@ function Gallery({
  */
 function Safety({
     safety,
+    warningImages,
     t,
 }: {
     safety: PublicProductSafety;
+    warningImages: PublicProductImage[];
     t: PublicTranslate;
 }) {
     const notes = (
@@ -480,7 +489,9 @@ function Safety({
         ] as const
     ).filter((key) => safety[key]);
 
-    if (!safety.age_grading && !safety.warning_text && notes.length === 0) {
+    const hasWarning = Boolean(safety.warning_text) || warningImages.length > 0;
+
+    if (!safety.age_grading && !hasWarning && notes.length === 0) {
         return null;
     }
 
@@ -513,17 +524,40 @@ function Safety({
                     </div>
                 ) : null}
 
-                {safety.warning_text ? (
-                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                {hasWarning ? (
+                    <div
+                        className="rounded-xl border border-red-200 bg-red-50 p-4"
+                        data-test="product-public-warning"
+                    >
                         <div className="mb-2 flex items-center gap-2">
                             <AlertTriangle className="size-4 shrink-0 text-red-500" />
                             <p className="text-xs font-bold tracking-wide text-red-800 uppercase">
                                 {t('warning_text')}
                             </p>
                         </div>
-                        <p className="text-sm leading-relaxed whitespace-pre-line text-red-700">
-                            {safety.warning_text}
-                        </p>
+                        {warningImages.length > 0 ? (
+                            <ul className="mb-3 flex flex-wrap gap-2 last:mb-0">
+                                {warningImages.map((image) => (
+                                    <li
+                                        key={image.id}
+                                        className="flex size-16 items-center justify-center rounded-lg border border-red-100 bg-white p-1.5"
+                                        data-test="product-public-warning-image"
+                                    >
+                                        <img
+                                            src={image.url}
+                                            alt={image.name}
+                                            loading="lazy"
+                                            className="max-h-full max-w-full object-contain"
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                        {safety.warning_text ? (
+                            <p className="text-sm leading-relaxed whitespace-pre-line text-red-700">
+                                {safety.warning_text}
+                            </p>
+                        ) : null}
                     </div>
                 ) : null}
 

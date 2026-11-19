@@ -322,6 +322,66 @@ test('no paper other than a picture of the article is reachable in public', func
     $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $pdfImage->id]))->assertNotFound();
 });
 
+test('a released warning image is shown with the warning and served, not offered as a download', function () {
+    Storage::fake('local');
+
+    [$user, $organization, $product] = productWithTemplate(['warning_text' => 'Not suitable for children under 3 years.']);
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.documents.store', ['current_organization' => $organization->slug, 'product' => $product->id]), [
+            'documents' => [
+                ['type' => ProductDocumentType::SafetyImage->value, 'file' => UploadedFile::fake()->image('under-3.png')],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $warningImage = $product->documents()->sole();
+
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page->has('warningImages', 0));
+
+    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $warningImage->id]))
+        ->assertNotFound();
+
+    $warningImage->forceFill(['is_public' => true])->save();
+
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('warningImages', 1)
+            ->where('warningImages.0.id', $warningImage->id)
+            ->has('images', 0)
+            ->has('documents', 0),
+        );
+
+    $this
+        ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $warningImage->id]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/png');
+});
+
+test('a released warning image the browser cannot draw stays a download', function () {
+    [, , $product] = productWithTemplate();
+
+    $sheet = ProductDocument::factory()
+        ->for($product)
+        ->ofType(ProductDocumentType::SafetyImage)
+        ->create(['name' => 'warnings.pdf', 'mime_type' => 'application/pdf', 'is_public' => true]);
+
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('warningImages', 0)
+            ->has('documents', 1)
+            ->where('documents.0.id', $sheet->id),
+        );
+
+    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $sheet->id]))
+        ->assertNotFound();
+});
+
 test('a picture whose file is gone is a missing page rather than a crash', function () {
     Storage::fake('local');
 

@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import InputError from '@/components/input-error';
 import {
     FieldMarker,
@@ -23,6 +24,13 @@ type Props = {
     product?: ProductComplianceDetails;
     disabled?: boolean;
     idPrefix?: string;
+    /**
+     * The warning images, drawn under the warning text they go with. Only
+     * the edit page has a product to file them against.
+     */
+    warningImages?: ReactNode;
+    /** Whether the product has warning images, which keeps the warning on screen. */
+    hasWarningImages?: boolean;
 };
 
 type TextField = {
@@ -54,6 +62,8 @@ export default function ProductComplianceFields({
     product,
     disabled = false,
     idPrefix = 'product',
+    warningImages,
+    hasWarningImages = false,
 }: Props) {
     const needs = (requirement: ProductRequirementKey) =>
         requirements.includes(requirement);
@@ -147,7 +157,9 @@ export default function ProductComplianceFields({
         needs(field.requirement) ||
         Boolean(product?.[field.name]) ||
         Boolean(errors[field.name]) ||
-        revealed.includes(field.name);
+        revealed.includes(field.name) ||
+        (field.name === 'warning_text' &&
+            (hasWarningImages || needs('requires_safety_image')));
 
     const hidden = fields.filter((field) => !isShown(field));
 
@@ -207,6 +219,9 @@ export default function ProductComplianceFields({
                     />
 
                     <InputError message={errors[field.name]} />
+                    {field.name === 'warning_text' && warningImages ? (
+                        <div className="pt-2">{warningImages}</div>
+                    ) : null}
                 </div>
             ))}
 
