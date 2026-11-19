@@ -2,6 +2,7 @@
 
 namespace App\Data;
 
+use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
 use Illuminate\Http\Request;
 
@@ -44,6 +45,7 @@ readonly class ProductFilters
         public ?int $brand = null,
         public ?string $search = null,
         public ?ProductReviewStatus $status = null,
+        public ?ProductRequirement $missing = null,
         public int $perPage = self::PAGE_SIZES[0],
         public string $sort = self::SORTS[0],
     ) {
@@ -61,6 +63,7 @@ readonly class ProductFilters
             brand: self::id($request, 'brand'),
             search: self::value($request, 'search', self::MAX_SEARCH_LENGTH),
             status: self::status($request),
+            missing: ProductRequirement::tryFrom(trim((string) $request->query('missing', ''))),
             perPage: self::perPage($request),
             sort: self::sort($request),
         );

@@ -33,6 +33,41 @@ class BulkUpdateProductsRequest extends FormRequest
     public const int MAX_PRODUCTS = 500;
 
     /**
+     * The compliance details a series of products usually shares, which
+     * either side may fill in for many products at once, with the longest
+     * each may be. Mirrors SaveProductRequest.
+     *
+     * @var array<string, int>
+     */
+    public const array COMPLIANCE_FIELDS = [
+        'age_grading' => 255,
+        'safety_notice' => 5000,
+        'warning_text' => 5000,
+        'material_information' => 5000,
+        'usage_restrictions' => 5000,
+        'safety_instructions' => 5000,
+    ];
+
+    /**
+     * Prepare the input for validation.
+     *
+     * The customs tariff number loses its separators the same way it does
+     * on a single product, so a bulk fill stores it the same way.
+     */
+    protected function prepareForValidation(): void
+    {
+        $tariffNumber = $this->input('customs_tariff_number');
+
+        if (! is_string($tariffNumber)) {
+            return;
+        }
+
+        $digits = (string) preg_replace('/[\s.\-]/', '', $tariffNumber);
+
+        $this->merge(['customs_tariff_number' => $digits === '' ? null : $digits]);
+    }
+
+    /**
      * Determine whether the user may make bulk changes at all.
      *
      * Each product is authorized on its own by the controller; this only
@@ -56,6 +91,16 @@ class BulkUpdateProductsRequest extends FormRequest
             'ids.*' => ['integer', 'distinct'],
             'is_active' => ['sometimes', 'boolean'],
             'country_of_origin' => ['sometimes', 'nullable', Rule::enum(Country::class)],
+            'customs_tariff_number' => ['sometimes', 'nullable', 'string', 'regex:/^\d{6,12}$/'],
+            ...collect(self::COMPLIANCE_FIELDS)
+                ->map(fn (int $max) => ['sometimes', 'nullable', 'string', 'max:'.$max])
+                ->all(),
+            /**
+             * Fill only the products that have nothing there yet, so one
+             * answer for a series never overwrites a product that was given
+             * its own.
+             */
+            'only_empty' => ['sometimes', 'boolean'],
         ];
 
         $organization = $this->route('current_organization');

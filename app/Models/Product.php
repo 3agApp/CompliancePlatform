@@ -6,6 +6,7 @@ use App\Data\ProductCompleteness;
 use App\Data\ProductSeal;
 use App\Enums\Country;
 use App\Enums\ProductEventType;
+use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
 use App\Enums\ProductSealStatus;
 use App\Support\LikePattern;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
+use LogicException;
 
 /**
  * @property int $id
@@ -422,5 +424,63 @@ class Product extends Model
             ->orWhereRaw("lower(products.ean) like lower(?) escape '!'", [$pattern])
             ->orWhereRaw("lower(products.internal_article_number) like lower(?) escape '!'", [$pattern])
             ->orWhereRaw("lower(products.supplier_article_number) like lower(?) escape '!'", [$pattern]));
+    }
+
+    /**
+     * Scope the query to the products whose sheet asks for something they
+     * have not been given.
+     *
+     * The query-side twin of ProductCompleteness::isSatisfied(): a document
+     * is missing until one paper of its kind is filed, and a field until it
+     * holds something other than blanks. Products whose sheet does not ask
+     * for the requirement never match -- nothing is owed.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeMissingRequirement(Builder $query, ProductRequirement $requirement): void
+    {
+        $query->whereHas('template', fn (Builder $template) => $template->where($requirement->value, true));
+
+        $documentType = $requirement->documentType();
+
+        if ($documentType !== null) {
+            $query->whereDoesntHave('documents', fn (Builder $documents) => $documents->where('type', $documentType));
+
+            return;
+        }
+
+        $query->where(fn (Builder $query) => $query
+            ->whereNull('products.'.$requirement->productAttribute())
+            ->orWhereRaw(self::blankClause($requirement)));
+    }
+
+    /**
+     * Get the clause that holds when a field requirement's column has only
+     * blanks in it.
+     *
+     * Spelled out per column rather than built from the name, so no SQL is
+     * ever assembled from a string; a document requirement has no column.
+     *
+     * @return literal-string
+     */
+    protected static function blankClause(ProductRequirement $requirement): string
+    {
+        return match ($requirement) {
+            ProductRequirement::Brand => "trim(products.brand_id) = ''",
+            ProductRequirement::Ean => "trim(products.ean) = ''",
+            ProductRequirement::InternalArticleNumber => "trim(products.internal_article_number) = ''",
+            ProductRequirement::SupplierArticleNumber => "trim(products.supplier_article_number) = ''",
+            ProductRequirement::OrderNumber => "trim(products.order_number) = ''",
+            ProductRequirement::CustomsTariffNumber => "trim(products.customs_tariff_number) = ''",
+            ProductRequirement::CountryOfOrigin => "trim(products.country_of_origin) = ''",
+            ProductRequirement::AgeGrading => "trim(products.age_grading) = ''",
+            ProductRequirement::SafetyNotice => "trim(products.safety_notice) = ''",
+            ProductRequirement::WarningText => "trim(products.warning_text) = ''",
+            ProductRequirement::MaterialInformation => "trim(products.material_information) = ''",
+            ProductRequirement::UsageRestrictions => "trim(products.usage_restrictions) = ''",
+            ProductRequirement::SafetyInstructions => "trim(products.safety_instructions) = ''",
+            ProductRequirement::AdditionalNotes => "trim(products.additional_notes) = ''",
+            default => throw new LogicException("{$requirement->value} is not a field requirement."),
+        };
     }
 }

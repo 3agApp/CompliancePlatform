@@ -27,7 +27,7 @@ function aStoredImage(Product $product, string $name = 'front.png'): ProductDocu
     return ProductDocument::factory()
         ->for($product)
         ->ofType(ProductDocumentType::ProductImage)
-        ->create(['name' => $name, 'path' => $path, 'mime_type' => 'image/png']);
+        ->create(['name' => $name, 'path' => $path, 'mime_type' => 'image/png', 'is_public' => true]);
 }
 
 /**

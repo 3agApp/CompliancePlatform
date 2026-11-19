@@ -15,6 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -23,7 +24,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { t, tc } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { update as bulkUpdate } from '@/routes/products/bulk';
 import type {
     BrandOption,
@@ -41,7 +44,59 @@ import type {
  */
 const NONE = 'none';
 
-type Field = 'is_active' | 'supplier' | 'brand' | 'category' | 'country';
+type Field =
+    | 'is_active'
+    | 'supplier'
+    | 'brand'
+    | 'category'
+    | 'country'
+    | 'safety';
+
+/**
+ * The compliance details a series usually shares, filled in together.
+ * Mirrors BulkUpdateProductsRequest::COMPLIANCE_FIELDS, plus the customs
+ * tariff number.
+ */
+type SafetyKey =
+    | 'age_grading'
+    | 'warning_text'
+    | 'safety_notice'
+    | 'material_information'
+    | 'safety_instructions'
+    | 'usage_restrictions'
+    | 'customs_tariff_number';
+
+function safetyFields(): {
+    key: SafetyKey;
+    label: string;
+    multiline: boolean;
+}[] {
+    return [
+        { key: 'age_grading', label: t('Age grading'), multiline: false },
+        {
+            key: 'customs_tariff_number',
+            label: t('Customs tariff number'),
+            multiline: false,
+        },
+        { key: 'warning_text', label: t('Warning text'), multiline: true },
+        { key: 'safety_notice', label: t('Safety notice'), multiline: true },
+        {
+            key: 'material_information',
+            label: t('Material information'),
+            multiline: true,
+        },
+        {
+            key: 'safety_instructions',
+            label: t('Safety instructions'),
+            multiline: true,
+        },
+        {
+            key: 'usage_restrictions',
+            label: t('Usage restrictions'),
+            multiline: true,
+        },
+    ];
+}
 
 type Props = {
     organizationSlug: string;
@@ -58,6 +113,8 @@ type Props = {
     availableCountries: CountryOption[];
     /** Each trade's own list of countries, keyed by connection, where one is kept. */
     countryRestrictions: Record<number, CountryRestriction>;
+    /** The fields ticked when the dialog opens, e.g. from the dashboard. */
+    initialFields?: Field[];
 };
 
 /**
@@ -80,8 +137,15 @@ export default function BulkEditProductsModal({
     availableTemplates,
     availableCountries,
     countryRestrictions,
+    initialFields = [],
 }: Props) {
-    const [enabled, setEnabled] = useState<Set<Field>>(new Set());
+    const [enabled, setEnabled] = useState<Set<Field>>(
+        () => new Set(initialFields),
+    );
+    const [safety, setSafety] = useState<Partial<Record<SafetyKey, string>>>(
+        {},
+    );
+    const [onlyEmpty, setOnlyEmpty] = useState(true);
     const [isActive, setIsActive] = useState('1');
     const [connectionId, setConnectionId] = useState<string>();
     const [brandId, setBrandId] = useState<string>(NONE);
@@ -93,6 +157,8 @@ export default function BulkEditProductsModal({
 
     const reset = () => {
         setEnabled(new Set());
+        setSafety({});
+        setOnlyEmpty(true);
         setIsActive('1');
         setConnectionId(undefined);
         setBrandId(NONE);
@@ -200,6 +266,24 @@ export default function BulkEditProductsModal({
             data.country_of_origin = country === NONE ? null : country;
         }
 
+        /*
+         * A blank box means "leave it", not "clear it": a series answer is
+         * for filling in, and clearing is done product by product.
+         */
+        if (enabled.has('safety')) {
+            for (const { key } of safetyFields()) {
+                const value = safety[key]?.trim() ?? '';
+
+                if (value !== '') {
+                    data[key] = value;
+                }
+            }
+        }
+
+        if (enabled.has('safety') || enabled.has('country')) {
+            data.only_empty = onlyEmpty;
+        }
+
         router.patch(bulkUpdate(organizationSlug).url, data, {
             preserveScroll: true,
             onStart: () => setProcessing(true),
@@ -214,7 +298,7 @@ export default function BulkEditProductsModal({
 
     return (
         <Dialog open={open} onOpenChange={changeOpen}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>
                         {tc(
@@ -433,6 +517,85 @@ export default function BulkEditProductsModal({
                         )}
                         <InputError message={errors.country_of_origin} />
                     </BulkField>
+
+                    <BulkField
+                        field="safety"
+                        label={t('Safety details')}
+                        enabled={enabled}
+                        onToggle={toggle}
+                    >
+                        <p className="text-muted-foreground text-xs">
+                            {t(
+                                'Fill in what the whole series shares. Boxes left blank are left as each product has them.',
+                            )}
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {safetyFields().map((field) => {
+                                const id = `bulk-${field.key}`;
+                                const Control = field.multiline
+                                    ? Textarea
+                                    : Input;
+
+                                return (
+                                    <div
+                                        key={field.key}
+                                        className={cn(
+                                            'grid content-start gap-1.5',
+                                            field.multiline && 'sm:col-span-2',
+                                        )}
+                                    >
+                                        <Label htmlFor={id}>
+                                            {field.label}
+                                        </Label>
+                                        <Control
+                                            id={id}
+                                            data-test={id}
+                                            value={safety[field.key] ?? ''}
+                                            rows={
+                                                field.multiline ? 2 : undefined
+                                            }
+                                            onChange={(
+                                                event: React.ChangeEvent<
+                                                    | HTMLInputElement
+                                                    | HTMLTextAreaElement
+                                                >,
+                                            ) =>
+                                                setSafety((current) => ({
+                                                    ...current,
+                                                    [field.key]:
+                                                        event.target.value,
+                                                }))
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors[field.key]}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </BulkField>
+
+                    {enabled.has('safety') || enabled.has('country') ? (
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="bulk-only-empty"
+                                checked={onlyEmpty}
+                                onCheckedChange={(checked) =>
+                                    setOnlyEmpty(checked === true)
+                                }
+                                data-test="bulk-only-empty"
+                            />
+                            <Label
+                                htmlFor="bulk-only-empty"
+                                className="text-muted-foreground font-normal"
+                            >
+                                {t(
+                                    'Only fill products where this is still empty',
+                                )}
+                            </Label>
+                        </div>
+                    ) : null}
 
                     <InputError message={errors.ids} />
                 </div>

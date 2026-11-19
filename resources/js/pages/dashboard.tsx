@@ -1,5 +1,12 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ChevronRight, Inbox, Plus, UserPlus } from 'lucide-react';
+import {
+    ChevronRight,
+    FileText,
+    Inbox,
+    PenLine,
+    Plus,
+    UserPlus,
+} from 'lucide-react';
 import CompletenessMeter from '@/components/completeness-meter';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
 import ReviewProgress, { STAGE_TONES } from '@/components/review-progress';
@@ -13,11 +20,13 @@ import { index as suppliersIndex } from '@/routes/suppliers';
 import type {
     DashboardActivityItem,
     DashboardAttention,
+    DashboardInsights,
     DashboardPipelineStage,
     DashboardQueue,
     DashboardQueueItem,
     DashboardSupplierProgress,
     DistributorDashboardStats,
+    ProductRequirementKey,
     ProductReviewStatus,
     SupplierDashboardStats,
 } from '@/types';
@@ -27,6 +36,7 @@ type Props = (
     | { viewerType: 'supplier'; stats: SupplierDashboardStats }
 ) & {
     pipeline: DashboardPipelineStage[];
+    insights: DashboardInsights;
     queue: DashboardQueue;
     /** Each supplier's progress; empty for a supplier looking at it. */
     suppliers: DashboardSupplierProgress[];
@@ -34,7 +44,23 @@ type Props = (
     attention: DashboardAttention | null;
     activity: DashboardActivityItem[];
     canCreateProduct: boolean;
+    canUpdateProduct: boolean;
     canInviteSupplier: boolean;
+};
+
+/**
+ * The bulk change on the product list that answers a gap, where one does:
+ * the details a whole series shares can be filled in for all of it at once.
+ */
+const FILL_FOR: Partial<Record<ProductRequirementKey, 'safety' | 'country'>> = {
+    requires_age_grading: 'safety',
+    requires_warning_text: 'safety',
+    requires_safety_notice: 'safety',
+    requires_material_information: 'safety',
+    requires_safety_instructions: 'safety',
+    requires_usage_restrictions: 'safety',
+    requires_customs_tariff_number: 'safety',
+    requires_country_of_origin: 'country',
 };
 
 type Stat = {
@@ -80,17 +106,20 @@ function StatTile({ stat }: { stat: Stat }) {
 }
 
 /**
- * Where the whole catalog stands, one tile per stage of the review.
+ * Where the whole catalog stands: how many of the products not yet
+ * submitted are ready to go, and one bar across every stage of the review.
  *
- * Every tile is a link into the list, filtered to exactly the products it
- * counts, and says in a few words whose move those products are.
+ * Each stage in the legend is a link into the list, filtered to exactly the
+ * products it counts, and says in a few words whose move they are.
  */
-function StatusTiles({
+function Readiness({
     stages,
+    insights,
     organizationSlug,
     isSupplier,
 }: {
     stages: DashboardPipelineStage[];
+    insights: DashboardInsights;
     organizationSlug: string;
     isSupplier: boolean;
 }) {
@@ -102,47 +131,177 @@ function StatusTiles({
               approved: t('Signed off'),
           }
         : {
-              draft: t('Suppliers still filling in'),
+              draft: t('Still being filled in'),
               in_review: t('Waiting on your decision'),
               changes_requested: t('Back with the supplier'),
               approved: t('Signed off'),
           };
 
+    const counts = Object.fromEntries(
+        stages.map((stage) => [stage.status, stage.count]),
+    ) as Record<ProductReviewStatus, number>;
+
     return (
         <section
             aria-label={t('Products by status')}
-            className="grid grid-cols-2 gap-3 xl:grid-cols-4"
+            className="workspace-panel grid gap-4 px-6 py-5"
             data-test="dashboard-pipeline"
         >
-            {stages.map((stage) => (
-                <Link
-                    key={stage.status}
-                    href={
-                        productsIndex(organizationSlug, {
-                            query: { status: stage.status },
-                        }).url
-                    }
-                    data-test={`dashboard-stage-${stage.status}`}
-                    className="workspace-panel hover:border-foreground/30 grid gap-1 px-5 py-4 transition-colors"
-                >
-                    <span className="text-muted-foreground flex items-center gap-2 text-sm">
-                        <span
-                            className={cn(
-                                'size-2 shrink-0 rounded-full',
-                                STAGE_TONES[stage.status],
-                            )}
-                            aria-hidden
-                        />
-                        {stage.label}
-                    </span>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <p data-test="dashboard-readiness">
                     <span className="text-3xl font-semibold tracking-tight tabular-nums">
-                        {stage.count}
+                        {insights.ready}
+                    </span>{' '}
+                    <span className="text-muted-foreground">
+                        {tc(
+                            'of 1 open product ready to submit|of :count open products ready to submit',
+                            insights.open,
+                        )}
                     </span>
-                    <span className="text-muted-foreground text-xs">
-                        {hints[stage.status]}
+                </p>
+                {insights.open > 0 ? (
+                    <span className="text-muted-foreground text-sm">
+                        {t('Average completeness :score%', {
+                            score: insights.averageCompleteness,
+                        })}
                     </span>
-                </Link>
-            ))}
+                ) : null}
+            </div>
+
+            <ReviewProgress counts={counts} />
+
+            <ul className="flex flex-wrap gap-x-6 gap-y-2">
+                {stages.map((stage) => (
+                    <li key={stage.status}>
+                        <Link
+                            href={
+                                productsIndex(organizationSlug, {
+                                    query: { status: stage.status },
+                                }).url
+                            }
+                            data-test={`dashboard-stage-${stage.status}`}
+                            className="group flex items-center gap-2 text-sm"
+                        >
+                            <span
+                                className={cn(
+                                    'size-2 shrink-0 rounded-full',
+                                    STAGE_TONES[stage.status],
+                                )}
+                                aria-hidden
+                            />
+                            <span className="group-hover:underline">
+                                {stage.label}
+                            </span>
+                            <span className="font-medium tabular-nums">
+                                {stage.count}
+                            </span>
+                            <span className="text-muted-foreground text-xs max-sm:hidden">
+                                {hints[stage.status]}
+                            </span>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+/**
+ * What holds the most unsubmitted products back, with the way to fix it
+ * for all of them at once where there is one.
+ *
+ * A series of products usually shares its safety details, so the answer is
+ * typed once on the list rather than once per product.
+ */
+function Gaps({
+    insights,
+    organizationSlug,
+    canUpdate,
+}: {
+    insights: DashboardInsights;
+    organizationSlug: string;
+    canUpdate: boolean;
+}) {
+    if (insights.gaps.length === 0) {
+        return null;
+    }
+
+    return (
+        <section
+            className="workspace-panel min-w-0 overflow-hidden"
+            aria-labelledby="gaps-heading"
+            data-test="dashboard-gaps"
+        >
+            <div className="border-b px-6 py-4">
+                <h2 id="gaps-heading" className="font-medium">
+                    {t("What's holding products back")}
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                    {t(
+                        'Missing across the products not yet submitted. Same answer for a whole series? Fill it once for all.',
+                    )}
+                </p>
+            </div>
+
+            <ul className="divide-y">
+                {insights.gaps.map((gap) => {
+                    const fill = canUpdate
+                        ? FILL_FOR[gap.requirement]
+                        : undefined;
+                    const Icon = gap.group === 'document' ? FileText : PenLine;
+
+                    return (
+                        <li
+                            key={gap.requirement}
+                            className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3"
+                            data-test="dashboard-gap"
+                        >
+                            <Icon
+                                className={cn(
+                                    'size-4 shrink-0',
+                                    gap.group === 'document'
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-amber-600 dark:text-amber-400',
+                                )}
+                                aria-hidden
+                            />
+                            <span className="min-w-0 flex-1 text-sm font-medium">
+                                {gap.label}
+                            </span>
+                            <span className="text-muted-foreground text-sm tabular-nums">
+                                {tc(
+                                    'Missing on 1 of :total|Missing on :count of :total',
+                                    gap.count,
+                                    { total: insights.open },
+                                )}
+                            </span>
+                            <Button variant="outline" size="sm" asChild>
+                                <Link
+                                    href={
+                                        productsIndex(organizationSlug, {
+                                            query: {
+                                                missing: gap.requirement,
+                                                ...(fill
+                                                    ? { fill, per_page: 100 }
+                                                    : {}),
+                                            },
+                                        }).url
+                                    }
+                                    data-test={
+                                        fill
+                                            ? 'dashboard-gap-fill'
+                                            : 'dashboard-gap-view'
+                                    }
+                                >
+                                    {fill
+                                        ? t('Fill for all')
+                                        : t('View products')}
+                                </Link>
+                            </Button>
+                        </li>
+                    );
+                })}
+            </ul>
         </section>
     );
 }
@@ -162,11 +321,13 @@ function Attention({
     notInvited: number;
     organizationSlug: string;
 }) {
-    const { sentBack, expiredInvitations, quietSuppliers } = attention;
+    const { sentBack, expiredInvitations, waitingSuppliers, quietSuppliers } =
+        attention;
 
     if (
         sentBack.total === 0 &&
         expiredInvitations.length === 0 &&
+        waitingSuppliers.length === 0 &&
         quietSuppliers.length === 0 &&
         notInvited === 0
     ) {
@@ -218,6 +379,29 @@ function Attention({
                         testId="dashboard-attention-expired"
                     />
                 ) : null}
+
+                {waitingSuppliers.map((supplier) => (
+                    <AttentionRow
+                        key={supplier.id}
+                        tone="amber"
+                        tag={t("Hasn't joined yet")}
+                        title={supplier.label}
+                        body={tc(
+                            '1 draft is waiting on them. You can fill it in yourself instead.|:count drafts are waiting on them. You can fill them in yourself instead.',
+                            supplier.draft,
+                        )}
+                        action={{
+                            label: t('Fill in myself'),
+                            href: productsIndex(organizationSlug, {
+                                query: {
+                                    connection: supplier.id,
+                                    status: 'draft',
+                                },
+                            }).url,
+                        }}
+                        testId="dashboard-attention-waiting"
+                    />
+                ))}
 
                 {notInvited > 0 ? (
                     <AttentionRow
@@ -516,17 +700,26 @@ function Activity({
                                     {event.type_label}
                                 </span>{' '}
                                 ·{' '}
-                                <Link
-                                    href={
-                                        edit([
-                                            organizationSlug,
-                                            event.product.id,
-                                        ]).url
-                                    }
-                                    className="hover:underline"
-                                >
-                                    {event.product.name}
-                                </Link>
+                                {event.count > 1 ? (
+                                    <span data-test="dashboard-activity-run">
+                                        {tc(
+                                            '1 product|:count products',
+                                            event.count,
+                                        )}
+                                    </span>
+                                ) : (
+                                    <Link
+                                        href={
+                                            edit([
+                                                organizationSlug,
+                                                event.product.id,
+                                            ]).url
+                                        }
+                                        className="hover:underline"
+                                    >
+                                        {event.product.name}
+                                    </Link>
+                                )}
                             </span>
                             <span className="text-muted-foreground text-xs">
                                 {[event.actor, formatRelative(event.created_at)]
@@ -672,11 +865,13 @@ export default function Dashboard({
     viewerType,
     stats,
     pipeline,
+    insights,
     queue,
     suppliers,
     attention,
     activity,
     canCreateProduct,
+    canUpdateProduct,
     canInviteSupplier,
 }: Props) {
     const { currentOrganization } = usePage().props;
@@ -753,7 +948,9 @@ export default function Dashboard({
         ? stats.changesRequested > 0
             ? 'changes_requested'
             : 'draft'
-        : 'in_review';
+        : stats.awaitingReview > 0
+          ? 'in_review'
+          : 'draft';
 
     return (
         <>
@@ -822,8 +1019,9 @@ export default function Dashboard({
                 ) : null}
 
                 {stats.products > 0 ? (
-                    <StatusTiles
+                    <Readiness
                         stages={pipeline}
+                        insights={insights}
                         organizationSlug={organizationSlug}
                         isSupplier={isSupplier}
                     />
@@ -848,12 +1046,24 @@ export default function Dashboard({
                                 '[&>[data-test=dashboard-attention]]:order-first',
                         )}
                     >
-                        {stats.products > 0 ? (
+                        <Gaps
+                            insights={insights}
+                            organizationSlug={organizationSlug}
+                            canUpdate={canUpdateProduct}
+                        />
+
+                        {/*
+                         * A distributor's empty queue says nothing the gaps
+                         * and the readiness above do not, so it only shows
+                         * once there is something in it.
+                         */}
+                        {stats.products > 0 &&
+                        (isSupplier || queue.total > 0) ? (
                             <Queue
                                 title={
                                     isSupplier
                                         ? t('Your to-do')
-                                        : t('Waiting on your review')
+                                        : t('Waiting on you')
                                 }
                                 queue={queue}
                                 emptyTitle={
@@ -875,7 +1085,7 @@ export default function Dashboard({
                                         query: { status: viewAllStatus },
                                     }).url
                                 }
-                                showStatus={isSupplier}
+                                showStatus
                                 organizationSlug={organizationSlug}
                             />
                         ) : null}
