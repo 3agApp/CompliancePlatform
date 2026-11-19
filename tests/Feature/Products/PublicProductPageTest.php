@@ -271,18 +271,8 @@ test('the public page shows the pictures of the article and serves them without 
 
     $image = $product->documents()->sole();
 
-    /**
-     * Filed hidden, like any paper: not shown, and not served, until
-     * somebody switches it on.
-     */
-    $this
-        ->get(route('products.public', ['product' => $product->uuid]))
-        ->assertInertia(fn (Assert $page) => $page->has('images', 0));
-
-    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
-        ->assertNotFound();
-
-    $image->forceFill(['is_public' => true])->save();
+    /** A picture of the article is filed to be seen, so it is on show at once. */
+    expect($image->is_public)->toBeTrue();
 
     $this
         ->get(route('products.public', ['product' => $product->uuid]))
@@ -297,6 +287,16 @@ test('the public page shows the pictures of the article and serves them without 
         ->assertOk()
         ->assertHeader('Content-Type', 'image/png')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+    /** Switched off, it is neither shown nor served. */
+    $image->forceFill(['is_public' => false])->save();
+
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page->has('images', 0));
+
+    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
+        ->assertNotFound();
 });
 
 test('no paper other than a picture of the article is reachable in public', function () {
@@ -322,7 +322,7 @@ test('no paper other than a picture of the article is reachable in public', func
     $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $pdfImage->id]))->assertNotFound();
 });
 
-test('a released warning image is shown with the warning and served, not offered as a download', function () {
+test('a warning image is shown with the warning and served, not offered as a download', function () {
     Storage::fake('local');
 
     [$user, $organization, $product] = productWithTemplate(['warning_text' => 'Not suitable for children under 3 years.']);
@@ -338,14 +338,8 @@ test('a released warning image is shown with the warning and served, not offered
 
     $warningImage = $product->documents()->sole();
 
-    $this
-        ->get(route('products.public', ['product' => $product->uuid]))
-        ->assertInertia(fn (Assert $page) => $page->has('warningImages', 0));
-
-    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $warningImage->id]))
-        ->assertNotFound();
-
-    $warningImage->forceFill(['is_public' => true])->save();
+    /** Filed to be seen with the warning, so it is on show at once. */
+    expect($warningImage->is_public)->toBeTrue();
 
     $this
         ->get(route('products.public', ['product' => $product->uuid]))
@@ -360,6 +354,35 @@ test('a released warning image is shown with the warning and served, not offered
         ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $warningImage->id]))
         ->assertOk()
         ->assertHeader('Content-Type', 'image/png');
+
+    /** Switched off, it is neither shown nor served. */
+    $warningImage->forceFill(['is_public' => false])->save();
+
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page->has('warningImages', 0));
+
+    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $warningImage->id]))
+        ->assertNotFound();
+});
+
+test('papers are filed hidden until somebody releases them', function () {
+    Storage::fake('local');
+
+    [$user, $organization, $product] = productWithTemplate();
+
+    $this
+        ->actingAs($user)
+        ->post(route('products.documents.store', ['current_organization' => $organization->slug, 'product' => $product->id]), [
+            'documents' => [
+                ['type' => ProductDocumentType::TestReport->value, 'file' => UploadedFile::fake()->create('en71.pdf', 10, 'application/pdf')],
+                ['type' => ProductDocumentType::Certificate->value, 'file' => UploadedFile::fake()->create('ce.pdf', 10, 'application/pdf')],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($product->documents()->where('is_public', true)->count())->toBe(0)
+        ->and($product->documents()->count())->toBe(2);
 });
 
 test('a released warning image the browser cannot draw stays a download', function () {

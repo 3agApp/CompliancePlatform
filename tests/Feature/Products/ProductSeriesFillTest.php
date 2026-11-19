@@ -232,7 +232,7 @@ test('a distributor shows or hides every product image of a product at once', fu
     [$user, $organization] = distributorWithSeries(products: 1);
     $product = $organization->products()->first();
 
-    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ProductImage)->count(3)->create();
+    ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ProductImage)->count(3)->create(['is_public' => false]);
     $report = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create();
 
     $this->actingAs($user)
@@ -263,7 +263,7 @@ test('the images already on show stay on show after the switch starts to count',
     [, $organization] = distributorWithSeries(products: 1);
     $product = $organization->products()->first();
 
-    $image = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ProductImage)->create();
+    $image = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::ProductImage)->create(['is_public' => false]);
     $report = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create();
 
     $migration = require database_path('migrations/2026_11_19_052358_publish_existing_product_images.php');
