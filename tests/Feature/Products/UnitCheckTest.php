@@ -3,8 +3,10 @@
 use App\Models\LabelBatch;
 use App\Models\Product;
 use App\Models\ProductUnit;
-use App\Support\Captcha;
+use App\Support\Turnstile;
 use App\Support\UnitDevice;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -27,14 +29,27 @@ function aPacket(array $attributes = []): ProductUnit
         ->create($attributes);
 }
 
+beforeEach(function () {
+    /** Inertia's server-side rendering, when a dev server runs, is the only other request let through. */
+    Http::preventStrayRequests()->allowStrayRequests(['*/__inertia_ssr']);
+    config(['services.turnstile.hostnames' => ['swiss-product-seal.ch']]);
+});
+
 /**
- * A session holding a captcha whose answer is ABCDE.
+ * Have Cloudflare's Siteverify answer every token with the given body,
+ * by default a pass for the check form on our own site.
  *
- * @return array<string, array{code: string, expires_at: int}>
+ * @param  array<string, mixed>  $answer
  */
-function aSolvedCaptcha(): array
+function cloudflareAnswers(array $answer = []): void
 {
-    return [Captcha::SESSION_KEY => ['code' => 'ABCDE', 'expires_at' => now()->addMinutes(5)->getTimestamp()]];
+    Http::fake([Turnstile::VERIFY_URL => Http::response([
+        'success' => true,
+        'action' => Turnstile::UNIT_CHECK_ACTION,
+        'hostname' => 'swiss-product-seal.ch',
+        'error-codes' => [],
+        ...$answer,
+    ])]);
 }
 
 /**
@@ -50,11 +65,12 @@ function aBrowser(): array
 }
 
 /**
- * Check a packet's serial from a browser, with the captcha answered.
+ * Check a packet's serial from a browser, with Turnstile passed.
  */
 function checkPacket(ProductUnit $unit, ?string $browser = null, ?string $serial = null, ?Product $on = null): TestResponse
 {
-    $test = test()->withSession(aSolvedCaptcha());
+    cloudflareAnswers();
+    $test = test();
 
     if ($browser !== null) {
         $test = $test->withCookie(UnitDevice::COOKIE, $browser);
@@ -62,7 +78,7 @@ function checkPacket(ProductUnit $unit, ?string $browser = null, ?string $serial
 
     return $test->post(
         route('products.public.check', ['product' => ($on ?? $unit->product)->uuid]),
-        ['serial' => $serial ?? $unit->formattedSerial(), 'captcha' => 'abcde'],
+        ['serial' => $serial ?? $unit->formattedSerial(), Turnstile::RESPONSE_FIELD => 'a-token'],
     );
 }
 
@@ -222,54 +238,96 @@ test('a withdrawn code says so, and the check is not kept', function () {
     expect($unit->checks()->count())->toBe(0);
 });
 
-test('checking takes the captcha, and a wrong answer checks nothing', function () {
+test('checking asks Cloudflare first, and a token it turns down checks nothing', function () {
     $unit = aPacket();
+    cloudflareAnswers(['success' => false, 'error-codes' => ['invalid-input-response']]);
 
-    $this->withSession(aSolvedCaptcha())
-        ->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), 'captcha' => 'WRONG'])
-        ->assertSessionHasErrors(['captcha' => 'The code did not match. Type the new code shown in the picture.']);
+    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), Turnstile::RESPONSE_FIELD => 'a-token'])
+        ->assertSessionHasErrors(['turnstile' => 'We could not confirm you are a person. Wait for the security check to finish, then press Check again.']);
+
+    Http::assertSent(fn (Request $request) => $request->url() === Turnstile::VERIFY_URL
+        && $request['secret'] === config('services.turnstile.secret_key')
+        && $request['response'] === 'a-token'
+        && $request['remoteip'] === '127.0.0.1');
+
+    expect($unit->checks()->count())->toBe(0);
+});
+
+test('a check without a token is turned away without asking Cloudflare', function () {
+    $unit = aPacket();
+    cloudflareAnswers();
 
     $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial()])
-        ->assertSessionHasErrors('captcha');
+        ->assertSessionHasErrors('turnstile');
+
+    Http::assertNothingSent();
+    expect($unit->checks()->count())->toBe(0);
+});
+
+test('a token Cloudflare passed for another action or another site checks nothing', function (array $answer) {
+    $unit = aPacket();
+    cloudflareAnswers($answer);
+
+    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), Turnstile::RESPONSE_FIELD => 'a-token'])
+        ->assertSessionHasErrors('turnstile');
+
+    expect($unit->checks()->count())->toBe(0);
+})->with([
+    'another action' => [['action' => 'login']],
+    'another site' => [['hostname' => 'counterfeit.example']],
+]);
+
+test('Cloudflare\'s testing keys pass without an action or a hostname', function () {
+    $unit = aPacket();
+
+    Http::fake([Turnstile::VERIFY_URL => Http::response([
+        'success' => true,
+        'hostname' => 'example.com',
+        'error-codes' => [],
+        'metadata' => ['result_with_testing_key' => true],
+    ])]);
+
+    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), Turnstile::RESPONSE_FIELD => 'a-token'])
+        ->assertSessionHasNoErrors();
+
+    expect($unit->checks()->count())->toBe(1);
+});
+
+test('nothing is checked while Cloudflare cannot be reached', function () {
+    $unit = aPacket();
+    Http::fake([Turnstile::VERIFY_URL => Http::failedConnection()]);
+
+    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), Turnstile::RESPONSE_FIELD => 'a-token'])
+        ->assertSessionHasErrors('turnstile');
 
     expect($unit->checks()->count())->toBe(0);
 });
 
-test('a captcha answers once, so it cannot be replayed against another serial', function () {
+test('nothing is checked while no secret is set, and Cloudflare is not asked', function () {
     $unit = aPacket();
+    config(['services.turnstile.secret_key' => null]);
+    cloudflareAnswers();
 
-    checkPacket($unit, serial: 'ZZZZ-ZZZZ-ZZZZ');
+    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), Turnstile::RESPONSE_FIELD => 'a-token'])
+        ->assertSessionHasErrors('turnstile');
 
-    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), 'captcha' => 'ABCDE'])
-        ->assertSessionHasErrors('captcha');
-
+    Http::assertNothingSent();
     expect($unit->checks()->count())->toBe(0);
 });
 
-test('an expired captcha is not an answer', function () {
+test('the page hands the widget its site key', function () {
     $unit = aPacket();
+    config(['services.turnstile.site_key' => '1x00000000000000000000AA']);
 
-    $this->withSession([Captcha::SESSION_KEY => ['code' => 'ABCDE', 'expires_at' => now()->subSecond()->getTimestamp()]])
-        ->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), 'captcha' => 'ABCDE'])
-        ->assertSessionHasErrors('captcha');
+    $this->get($unit->url())
+        ->assertInertia(fn (Assert $page) => $page->where('turnstileSiteKey', '1x00000000000000000000AA'));
 });
 
 test('a serial has to be typed', function () {
     $unit = aPacket();
 
-    $this->withSession(aSolvedCaptcha())
-        ->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => '', 'captcha' => 'ABCDE'])
+    $this->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => ''])
         ->assertSessionHasErrors(['serial' => 'Enter the serial printed beside the QR code.']);
-});
-
-test('the captcha is a fresh picture every time, and never cached', function () {
-    $response = $this->get(route('captcha'))
-        ->assertOk()
-        ->assertHeader('Content-Type', 'image/png')
-        ->assertSessionHas(Captcha::SESSION_KEY);
-
-    expect($response->headers->get('Cache-Control'))->toContain('no-store')
-        ->and(getimagesizefromstring($response->getContent()))->not->toBeFalse();
 });
 
 test('the packet page says nothing more about the trade than the plain page', function () {
@@ -331,9 +389,8 @@ test('the reader\'s language is read off the switch\'s cookie, and the server an
         ->assertInertia(fn (Assert $page) => $page->where('locale', 'de'));
 
     $this->withUnencryptedCookie('public_lang', 'de')
-        ->withSession(aSolvedCaptcha())
-        ->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial(), 'captcha' => 'WRONG'])
-        ->assertSessionHasErrors(['captcha' => 'Der Code stimmte nicht. Bitte geben Sie den neuen Code aus dem Bild ein.']);
+        ->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial()])
+        ->assertSessionHasErrors(['turnstile' => 'Wir konnten nicht bestätigen, dass Sie ein Mensch sind. Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist, und drücken Sie dann erneut auf Prüfen.']);
 
     $this->withUnencryptedCookie('public_lang', 'fr')
         ->get($unit->url())

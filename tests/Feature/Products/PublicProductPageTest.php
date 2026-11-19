@@ -437,6 +437,44 @@ test('a large picture is handed out scaled down, the full size kept behind the l
     expect(array_slice(getimagesizefromstring($served), 0, 2))->toBe([2000, 1000]);
 });
 
+test('a picture is stamped small and faint, so the article stays the thing to look at', function () {
+    Storage::fake('local');
+    config(['watermark.text' => 'swiss-product-seal.ch']);
+
+    [, , $product] = productWithTemplate();
+
+    $black = imagecreatetruecolor(1000, 600);
+    ob_start();
+    imagepng($black);
+    $path = ProductDocument::directoryFor($product).'/black.png';
+    Storage::disk('local')->put($path, (string) ob_get_clean());
+
+    $image = ProductDocument::factory()
+        ->for($product)
+        ->ofType(ProductDocumentType::ProductImage)
+        ->create(['path' => $path, 'mime_type' => 'image/png']);
+
+    $served = imagecreatefromstring($this
+        ->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
+        ->assertOk()
+        ->streamedContent());
+
+    $brightest = 0;
+    $stamped = 0;
+
+    for ($x = 0; $x < 1000; $x++) {
+        for ($y = 0; $y < 600; $y++) {
+            $blue = imagecolorat($served, $x, $y) & 0xFF;
+            $brightest = max($brightest, $blue);
+            $stamped += $blue > 0 ? 1 : 0;
+        }
+    }
+
+    /** On black, the white stamp shows only as bright as it is opaque, and only as wide as its letters. */
+    expect($brightest)->toBeGreaterThan(0)->toBeLessThanOrEqual(130)
+        ->and($stamped / (1000 * 600))->toBeLessThan(0.011);
+});
+
 test('a picture whose file is gone is a missing page rather than a crash', function () {
     Storage::fake('local');
 

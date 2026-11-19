@@ -52,6 +52,7 @@ type Props = {
      * Whether the product's packets carry serials that can be checked.
      */
     checkable: boolean;
+    turnstileSiteKey: string | null;
     /**
      * The serial off the scanned label, when the page was reached off one.
      */
@@ -105,6 +106,7 @@ export default function PublicProduct({
     locale: initialLocale,
     checkUrl,
     checkable,
+    turnstileSiteKey,
     serial,
     checkResult,
 }: Props) {
@@ -191,6 +193,7 @@ export default function PublicProduct({
                                 serial={serial}
                                 result={checkResult}
                                 checkUrl={checkUrl}
+                                turnstileSiteKey={turnstileSiteKey}
                                 locale={locale}
                                 t={t}
                             />

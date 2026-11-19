@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\BrandController;
-use App\Http\Controllers\CaptchaController;
 use App\Http\Controllers\CheckUnitController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
@@ -82,8 +81,6 @@ Route::middleware(['throttle:unit-check', SetPublicLocale::class])->group(functi
         ->name('products.public.unit');
 
     Route::post('p/{product:uuid}/check', [PublicProductController::class, 'check'])->name('products.public.check');
-
-    Route::get('captcha', CaptchaController::class)->name('captcha');
 
     Route::get('check', [CheckUnitController::class, 'show'])->name('check');
     Route::post('check', [CheckUnitController::class, 'store'])->name('check.store');

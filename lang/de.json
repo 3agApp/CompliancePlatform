@@ -943,7 +943,6 @@
     "The check found nothing to flag.": "Die Prüfung hat nichts zu beanstanden gefunden.",
     "The check never finished and was given up on. Try again.": "Die Prüfung wurde nie abgeschlossen und abgebrochen. Versuchen Sie es erneut.",
     "The check took too long and was stopped. Try again.": "Die Prüfung hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut.",
-    "The code did not match. Type the new code shown in the picture.": "Der Code stimmte nicht. Bitte geben Sie den neuen Code aus dem Bild ein.",
     "The compliance check has not finished yet.": "Die Compliance-Prüfung ist noch nicht abgeschlossen.",
     "The customs tariff number must be 6 to 12 digits.": "Die Zolltarifnummer muss 6 bis 12 Ziffern haben.",
     "The EAN/barcode must be 8, 12, 13, or 14 digits.": "Die EAN bzw. der Strichcode muss 8, 12, 13 oder 14 Ziffern haben.",
@@ -1113,5 +1112,6 @@
     "{1}:name is still used by one product. Move it to another category first.|[2,*]:name is still used by :count products. Move them to another category first.": "{1}:name wird noch von einem Produkt verwendet. Ordnen Sie es zuerst einer anderen Kategorie zu.|[2,*]:name wird noch von :count Produkten verwendet. Ordnen Sie sie zuerst einer anderen Kategorie zu.",
     "{1}:name is still used by one product. Move it to another template first.|[2,*]:name is still used by :count products. Move them to another template first.": "{1}:name wird noch von einem Produkt verwendet. Ordnen Sie es zuerst einer anderen Vorlage zu.|[2,*]:name wird noch von :count Produkten verwendet. Ordnen Sie sie zuerst einer anderen Vorlage zu.",
     "© :year :name. All rights reserved.": "© :year :name. Alle Rechte vorbehalten.",
-    "•••• :hint — leave blank to keep this key": "•••• :hint – leer lassen, um diesen Schlüssel zu behalten"
+    "•••• :hint — leave blank to keep this key": "•••• :hint – leer lassen, um diesen Schlüssel zu behalten",
+    "We could not confirm you are a person. Wait for the security check to finish, then press Check again.": "Wir konnten nicht bestätigen, dass Sie ein Mensch sind. Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist, und drücken Sie dann erneut auf Prüfen."
 }

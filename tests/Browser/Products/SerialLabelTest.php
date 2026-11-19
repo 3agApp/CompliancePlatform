@@ -3,9 +3,36 @@
 use App\Models\LabelBatch;
 use App\Models\Product;
 use App\Models\ProductUnit;
-use App\Support\Captcha;
+use App\Support\Turnstile;
+use Illuminate\Support\Facades\Http;
 
-afterEach(fn () => Captcha::fake(null));
+/**
+ * The widget is Cloudflare's own, drawn with its always-passing test key;
+ * what Siteverify answers is faked here.
+ */
+beforeEach(fn () => config([
+    'services.turnstile.site_key' => '1x00000000000000000000AA',
+    'services.turnstile.hostnames' => ['swiss-product-seal.ch'],
+]));
+
+/**
+ * Have Siteverify pass each token for the check form, or turn it down.
+ */
+function siteverifyAnswers(bool ...$passes): void
+{
+    $sequence = Http::sequence();
+
+    foreach ($passes as $pass) {
+        $sequence->push([
+            'success' => $pass,
+            'action' => Turnstile::UNIT_CHECK_ACTION,
+            'hostname' => 'swiss-product-seal.ch',
+            'error-codes' => $pass ? [] : ['invalid-input-response'],
+        ]);
+    }
+
+    Http::fake([Turnstile::VERIFY_URL => $sequence]);
+}
 
 /**
  * A packet off a run of one.
@@ -25,18 +52,17 @@ function aPacketToScan(): ProductUnit
         ->create();
 }
 
-test('a buyer scans a label, types the captcha and checks the packet', function () {
+test('a buyer scans a label, passes Turnstile and checks the packet', function () {
     $unit = aPacketToScan();
-    Captcha::fake('ACDEF');
+    siteverifyAnswers(false, true);
 
     visit($unit->url())
         ->assertValue('@check-serial', $unit->formattedSerial())
         ->assertMissing('@check-result')
-        ->fill('@captcha-input', 'WRONG')
         ->click('@check-submit')
-        ->assertSee('The code did not match.')
+        ->assertSee('We could not confirm you are a person.')
         ->assertMissing('@check-result')
-        ->fill('@captcha-input', 'acdef')
+        /** The widget hands out a fresh token, as the first one is spent. */
         ->click('@check-submit')
         ->assertSee('Genuine product')
         ->assertSee('this is the first time anyone has checked it')
@@ -48,10 +74,9 @@ test('a buyer scans a label, types the captcha and checks the packet', function 
 test('a buyer checking a code someone else checked sees the warning and the history', function () {
     $unit = aPacketToScan();
     $unit->check(str_repeat('a', 64));
-    Captcha::fake('ACDEF');
+    siteverifyAnswers(true);
 
     visit($unit->url())
-        ->fill('@captcha-input', 'ACDEF')
         ->click('@check-submit')
         ->assertSee('Checked before')
         ->assertSee('1 earlier check')
@@ -63,14 +88,13 @@ test('a buyer checking a code someone else checked sees the warning and the hist
 
 test('the public page switches to German, and the server answers in German too', function () {
     $unit = aPacketToScan();
-    Captcha::fake('ACDEF');
+    siteverifyAnswers(false);
 
     visit($unit->url())
         ->click('@public-locale-toggle')
         ->assertSee('Ist dieses Produkt echt?')
-        ->fill('@captcha-input', 'WRONG')
         ->click('@check-submit')
-        ->assertSee('Der Code stimmte nicht.')
+        ->assertSee('Wir konnten nicht bestätigen, dass Sie ein Mensch sind.')
         ->assertNoJavaScriptErrors();
 });
 

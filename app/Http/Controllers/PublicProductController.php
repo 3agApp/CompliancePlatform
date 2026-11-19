@@ -9,8 +9,8 @@ use App\Enums\ProductUnitStatus;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\ProductUnit;
-use App\Support\Captcha;
 use App\Support\PublicImage;
+use App\Support\Turnstile;
 use App\Support\UnitDevice;
 use App\Support\UnitSerial;
 use App\Support\Watermark;
@@ -75,8 +75,8 @@ class PublicProductController extends Controller
     /**
      * Check a serial against this product, and show what the check found.
      *
-     * The captcha is checked before the serial is even looked at, so
-     * walking through serials costs a typed code each. A serial issued for
+     * Turnstile is asked before the serial is even looked at, so walking
+     * through serials costs a solved widget each. A serial issued for
      * some other product reads exactly like one nobody issued: a label
      * copied off another article is not genuine for this one, and saying
      * which article it does belong to would hand a counterfeiter a list of
@@ -94,9 +94,9 @@ class PublicProductController extends Controller
             'serial.required' => __('Enter the serial printed beside the QR code.'),
         ]);
 
-        if (! Captcha::check($request->session(), $request->string('captcha')->toString())) {
+        if (! Turnstile::verify($request->string(Turnstile::RESPONSE_FIELD)->toString(), $request->ip(), Turnstile::UNIT_CHECK_ACTION)) {
             throw ValidationException::withMessages([
-                'captcha' => __('The code did not match. Type the new code shown in the picture.'),
+                'turnstile' => __('We could not confirm you are a person. Wait for the security check to finish, then press Check again.'),
             ]);
         }
 
@@ -236,7 +236,7 @@ class PublicProductController extends Controller
     /**
      * Get what the public page shows about the product itself.
      *
-     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, warningImages: array<array{id: int, url: string, name: string}>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string, downloadUrl: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool}
+     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, warningImages: array<array{id: int, url: string, name: string}>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string, downloadUrl: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool, turnstileSiteKey: string|null}
      */
     protected function toPageArray(Product $product): array
     {
@@ -288,6 +288,7 @@ class PublicProductController extends Controller
              * page only offers to check one when there is one to check.
              */
             'checkable' => $product->units()->exists(),
+            'turnstileSiteKey' => Turnstile::siteKey(),
         ];
     }
 

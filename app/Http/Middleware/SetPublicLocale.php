@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Read the language a reader picked on the public pages.
  *
  * Kept in a plain cookie the page's own switch writes, so the messages the
- * server sends back -- a captcha typed wrong, a serial nobody issued -- come
+ * server sends back -- a security check that failed, a serial nobody issued -- come
  * back in the language the rest of the page is in.
  */
 class SetPublicLocale
