@@ -38,7 +38,7 @@ return [
     'pdf' => [
         'stamps' => (int) env('WATERMARK_PDF_STAMPS', 1),
         'colour' => env('WATERMARK_PDF_COLOUR', '#2F5D9B'),
-        'opacity' => (float) env('WATERMARK_PDF_OPACITY', 0.08),
+        'opacity' => (float) env('WATERMARK_PDF_OPACITY', 0.05),
         'blend_mode' => 'Multiply',
         'font_size_ratio' => 48 / 595,
         'min_font_size' => 8.0,
@@ -65,10 +65,10 @@ return [
 
     'image' => [
         'stamps' => 1,
-        'opacity' => (float) env('WATERMARK_IMAGE_OPACITY', 0.45),
-        'font_size_ratio' => 0.07,
+        'opacity' => (float) env('WATERMARK_IMAGE_OPACITY', 0.28),
+        'font_size_ratio' => 0.045,
         'min_font_size' => 10.0,
-        'max_font_size' => 140.0,
+        'max_font_size' => 90.0,
         'line_height_ratio' => 96 / 72,
         'max_edge' => 2000,
     ],

@@ -38,7 +38,7 @@ class Watermark
      * Raised whenever the look of the stamp changes, so every copy made
      * under the old look is made again.
      */
-    public const int VERSION = 3;
+    public const int VERSION = 4;
 
     /**
      * How long a stamp on a PDF may take before it is given up on.
