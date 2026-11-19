@@ -15,9 +15,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::table('product_documents')
-            ->where('type', 'product_image')
-            ->update(['is_public' => true]);
+        /**
+         * One plain statement rather than a query builder update: compiling
+         * an update for MySQL asks the server for its version, which the
+         * migration test's pretend run has no server to answer.
+         */
+        DB::statement("update product_documents set is_public = 1 where type = 'product_image'");
     }
 
     /**
