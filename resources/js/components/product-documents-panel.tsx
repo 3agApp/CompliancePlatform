@@ -24,9 +24,6 @@ import type {
     ProductDocumentTypeOption,
 } from '@/types';
 
-/** The kinds shown as pictures rather than as rows. */
-const GALLERY_TYPES: ProductDocumentType[] = ['product_image', 'safety_image'];
-
 type Props = {
     organizationSlug: string;
     productId: number;
@@ -180,14 +177,13 @@ export default function ProductDocumentsPanel({
     };
 
     /**
-     * Photos of the product and its safety marks are recognised by sight,
-     * so they get a gallery. Any other paper stays under its kind even when
-     * it was filed as a picture -- a scanned certificate is still looked
-     * for among the certificates.
+     * Photos of the product, its safety marks and its packaging are
+     * recognised by sight, so they get a gallery. Any other paper stays
+     * under its kind even when it was filed as a picture -- a scanned
+     * certificate is still looked for among the certificates.
      */
     const isPicture = (document: ProductDocument) =>
-        document.preview_kind === 'image' &&
-        GALLERY_TYPES.includes(document.type);
+        document.preview_kind === 'image' && document.is_picture;
 
     const images = documents.filter(isPicture);
 
@@ -536,10 +532,10 @@ function PublicSwitch({
 
     /*
      * The public page watermarks what it hands out, and only a PDF or a
-     * picture can carry one. A file released before that rule can still
-     * be taken back.
+     * picture of a kind it has a place for can go there. A file released
+     * before that rule can still be taken back.
      */
-    const publishable = document.preview_kind !== null || document.is_public;
+    const publishable = document.publishable || document.is_public;
 
     if (!actions.canPublish) {
         return document.is_public ? (
@@ -573,7 +569,13 @@ function PublicSwitch({
             title={
                 publishable
                     ? undefined
-                    : t('Only PDFs and images can be shown on the public page.')
+                    : document.preview_kind === null
+                      ? t(
+                            'Only PDFs and images can be shown on the public page.',
+                        )
+                      : t(
+                            'Only product images and warning images can be shown on the public page as pictures.',
+                        )
             }
             onClick={() =>
                 router.patch(

@@ -195,6 +195,27 @@ test('an image can be filed as a product image', function () {
     expect(ProductDocument::sole()->type)->toBe(ProductDocumentType::ProductImage);
 });
 
+test('a close-up of the packaging can be filed, and stays off the public page until released', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocument($organization, $product, UploadedFile::fake()->image('box-back-label.jpg'), 'packaging_closeup')
+        ->assertSessionHasNoErrors();
+
+    $document = ProductDocument::sole();
+
+    expect($document->type)->toBe(ProductDocumentType::PackagingCloseUp)
+        ->and($document->is_public)->toBeFalse()
+        ->and($document->type->label())->toBe('Packaging close-up');
+
+    app()->setLocale('de');
+
+    expect($document->type->label())->toBe('Verpackungsdetail');
+});
+
 test('the file is handed back under the name it was uploaded with', function () {
     Storage::fake(ProductDocument::DISK);
 
@@ -234,7 +255,7 @@ test('the documents of a product are shared with its page', function () {
             ->where('product.documents.0.name', 'doc.pdf')
             ->where('product.documents.0.size', 2048)
             ->where('product.documents.0.uploaded_by', $user->name)
-            ->has('availableDocumentTypes', 8),
+            ->has('availableDocumentTypes', 9),
         );
 });
 

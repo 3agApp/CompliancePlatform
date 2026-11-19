@@ -10,6 +10,7 @@ enum ProductDocumentType: string
     case Certificate = 'certificate';
     case ProductImage = 'product_image';
     case SafetyImage = 'safety_image';
+    case PackagingCloseUp = 'packaging_closeup';
     case RegulatoryDocument = 'regulatory_document';
     case Other = 'other';
 
@@ -25,6 +26,7 @@ enum ProductDocumentType: string
             self::Certificate => __('Certificate'),
             self::ProductImage => __('Product image'),
             self::SafetyImage => __('Warning image'),
+            self::PackagingCloseUp => __('Packaging close-up'),
             self::RegulatoryDocument => __('Regulatory document'),
             self::Other => __('Other'),
         };
@@ -35,9 +37,32 @@ enum ProductDocumentType: string
      *
      * Pictures of the article and of its warning are filed to be seen by
      * buyers, so they are switched on as they arrive. Papers start hidden
-     * until the distributor chooses to release them.
+     * until the distributor chooses to release them, and so do close-ups of
+     * the packaging: they are evidence for the reviewer -- batch numbers,
+     * the label as printed -- and the public page has no place to show them.
      */
     public function isPublicByDefault(): bool
+    {
+        return $this->showsPicturePublicly();
+    }
+
+    /**
+     * Determine if a file of this kind is a picture, recognised by sight and
+     * shown in a gallery rather than listed as a paper.
+     */
+    public function isPicture(): bool
+    {
+        return in_array($this, [self::ProductImage, self::SafetyImage, self::PackagingCloseUp], true);
+    }
+
+    /**
+     * Determine if the public page has a place to show a picture of this
+     * kind: the gallery for the article, the warning for its safety image.
+     *
+     * Any other picture -- a packaging close-up, a scanned certificate --
+     * would be released to nowhere, so it cannot be released at all.
+     */
+    public function showsPicturePublicly(): bool
     {
         return in_array($this, [self::ProductImage, self::SafetyImage], true);
     }

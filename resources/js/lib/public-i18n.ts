@@ -92,6 +92,7 @@ const en = {
     docType_certificate: 'Certificate',
     docType_product_image: 'Product image',
     docType_safety_image: 'Warning image',
+    docType_packaging_closeup: 'Packaging close-up',
     docType_regulatory_document: 'Regulatory document',
     docType_other: 'Document',
 
@@ -203,6 +204,7 @@ const de: Dictionary = {
     docType_certificate: 'Zertifikat',
     docType_product_image: 'Produktbild',
     docType_safety_image: 'Warnbild',
+    docType_packaging_closeup: 'Verpackungsdetail',
     docType_regulatory_document: 'Regulatorisches Dokument',
     docType_other: 'Dokument',
 

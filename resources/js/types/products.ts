@@ -465,6 +465,7 @@ export type ProductDocumentType =
     | 'certificate'
     | 'product_image'
     | 'safety_image'
+    | 'packaging_closeup'
     | 'regulatory_document'
     | 'other';
 
@@ -486,6 +487,10 @@ export type ProductDocument = {
     name: string;
     size: number;
     preview_kind: DocumentPreviewKind | null;
+    /** Whether this kind is a picture, shown in the gallery rather than listed. */
+    is_picture: boolean;
+    /** Whether the file may be switched onto the public page. */
+    publishable: boolean;
     /** Whether the AI can be sent this file at all: a PDF or image within the size limit. */
     analyzable: boolean;
     /** Whether this kind is offered for an AI reading at all; false for product images. */

@@ -164,6 +164,33 @@ test('the run reads the PDFs and images and records what it found against the ri
         && $prompt->contains('materials.xlsx'));
 });
 
+test('close-ups of the packaging are sent to the model as images, and it is told what they are', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    fileAssessedDocument($product, 'DoC.pdf', 'application/pdf', ProductDocumentType::DeclarationOfConformity);
+    fileAssessedDocument($product, 'box-back.jpg', 'image/jpeg', ProductDocumentType::PackagingCloseUp);
+    $oversized = fileAssessedDocument($product, 'box-side.png', 'image/png', ProductDocumentType::PackagingCloseUp);
+    $oversized->update(['size' => AssessProductDocuments::SIZE_BUDGET + 1]);
+
+    DocumentAssessmentAgent::fake([assessmentAnswer(documentIndex: 1)])->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product)->assertSessionHasNoErrors();
+
+    $assessment = $product->assessments()->sole();
+
+    expect(array_column($assessment->documents, 'name'))->toBe(['DoC.pdf', 'box-back.jpg'])
+        ->and(array_column($assessment->documents, 'type'))->toBe(['declaration_of_conformity', 'packaging_closeup'])
+        ->and($assessment->skipped_documents)->toBe([['id' => $oversized->id, 'name' => 'box-side.png', 'reason' => 'over_size_budget']])
+        ->and($assessment->findings()->sole()->document_name)->toBe('box-back.jpg');
+
+    DocumentAssessmentAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->attachments->count() === 2
+        && $prompt->attachments[1] instanceof Image
+        && $prompt->contains('1. box-back.jpg -- filed as: packaging_closeup')
+        && str_contains((string) $prompt->agent->instructions(), 'packaging_closeup'));
+});
+
 test('a finding pointed at a document that is not on the list is kept against the product as a whole', function () {
     [$user, $organization, $product] = reviewerWithDocumentAnalysis();
 
