@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
-import CaptchaField from '@/components/captcha-field';
 import InputError from '@/components/input-error';
+import TurnstileField from '@/components/turnstile-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,8 @@ type Props = {
     /** What the check the reader just made found, once they made one. */
     result: UnitCheckResult | null;
     checkUrl: string;
+    /** Cloudflare Turnstile's public key, which the check form asks first. */
+    turnstileSiteKey: string | null;
     locale: PublicLocale;
     t: PublicTranslate;
 };
@@ -61,8 +63,8 @@ const LOOKS: Record<
  * Whether the packet in the reader's hand is genuine.
  *
  * The serial comes filled in off the scanned label, and can be changed to
- * check another. Nothing about the packet shows until the reader types the
- * code and presses Check: the answer is for whoever asked, not for anybody
+ * check another. Nothing about the packet shows until the reader passes the
+ * security check and presses Check: the answer is for whoever asked, not for anybody
  * who scans a box on a shelf. A code checked before shows when, and
  * whether from this device or another.
  */
@@ -70,10 +72,12 @@ export default function ProductUnitCheck({
     serial,
     result,
     checkUrl,
+    turnstileSiteKey,
     locale,
     t,
 }: Props) {
     const [nonce, setNonce] = useState(0);
+    const [verified, setVerified] = useState(false);
 
     return (
         <section
@@ -104,8 +108,6 @@ export default function ProductUnitCheck({
                     action={checkUrl}
                     method="post"
                     options={{ preserveScroll: true }}
-                    resetOnError={['captcha']}
-                    resetOnSuccess={['captcha']}
                     onFinish={() => setNonce((value) => value + 1)}
                     className="space-y-4"
                 >
@@ -142,17 +144,20 @@ export default function ProductUnitCheck({
                                 />
                             </div>
 
-                            <CaptchaField
+                            <TurnstileField
+                                siteKey={turnstileSiteKey}
+                                action="unit_check"
                                 nonce={nonce}
-                                onRefresh={() => setNonce((value) => value + 1)}
-                                error={errors.captcha}
+                                onSolvedChange={setVerified}
+                                error={errors.turnstile}
+                                locale={locale}
                                 t={t}
                             />
 
                             <div className="space-y-2">
                                 <Button
                                     type="submit"
-                                    disabled={processing}
+                                    disabled={processing || !verified}
                                     className="h-11 w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                                     data-test="check-submit"
                                 >

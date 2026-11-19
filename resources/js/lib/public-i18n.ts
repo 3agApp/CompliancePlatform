@@ -38,10 +38,8 @@ const en = {
         'Every box carries its own serial. Check it to see whether it is genuine and whether anyone has checked it before you.',
     serial: 'Serial',
     serialHint: 'Printed beside the QR code on the box',
-    captchaLabel: 'Type the code shown',
-    captchaAlt: 'Security code',
-    captchaRefresh: 'Show a different code',
-    captchaPlaceholder: 'Code',
+    turnstileUnavailable:
+        'The security check could not load. Reload the page to try again.',
     checkSubmit: 'Check',
     checkNote:
         'Every check is recorded, so whoever checks this code after you can see when it was checked.',
@@ -150,10 +148,8 @@ const de: Dictionary = {
         'Jede Verpackung trägt eine eigene Seriennummer. Prüfen Sie sie, um zu sehen, ob sie echt ist und ob sie schon vor Ihnen geprüft wurde.',
     serial: 'Seriennummer',
     serialHint: 'Neben dem QR-Code auf der Verpackung',
-    captchaLabel: 'Angezeigten Code eingeben',
-    captchaAlt: 'Sicherheitscode',
-    captchaRefresh: 'Anderen Code anzeigen',
-    captchaPlaceholder: 'Code',
+    turnstileUnavailable:
+        'Die Sicherheitsprüfung konnte nicht geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.',
     checkSubmit: 'Prüfen',
     checkNote:
         'Jede Prüfung wird gespeichert, damit alle, die diesen Code nach Ihnen prüfen, sehen, wann er geprüft wurde.',

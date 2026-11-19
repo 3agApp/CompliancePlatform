@@ -22,6 +22,20 @@ return [
         'binary' => env('GHOSTSCRIPT_BINARY'),
     ],
 
+    /*
+     * Cloudflare Turnstile, asked before a packet's serial is checked on
+     * the public page. A token is only taken from the hostnames listed,
+     * the host of APP_URL when left empty.
+     */
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+        'hostnames' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) (env('TURNSTILE_HOSTNAMES') ?: parse_url((string) env('APP_URL'), PHP_URL_HOST))),
+        ))),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
