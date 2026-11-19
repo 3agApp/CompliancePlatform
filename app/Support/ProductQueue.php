@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\ProductReviewStatus;
+use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\SupplierConnection;
@@ -15,7 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * them.
  *
  * A distributor's move is the review, so its queue is what has been
- * submitted, longest waiting first. A supplier's move is the filling in:
+ * submitted, longest waiting first -- then the drafts nobody else will fill
+ * in, because their supplier has not joined (or has left), oldest first. A supplier's move is the filling in:
  * what was sent back comes first, oldest first, then everything never
  * submitted at all. The dashboard lists the head of this queue and the
  * product page steps through it, so both read it from here.
@@ -32,7 +34,7 @@ class ProductQueue
     {
         return $asSupplier
             ? [ProductReviewStatus::ChangesRequested, ProductReviewStatus::Draft]
-            : [ProductReviewStatus::InReview];
+            : [ProductReviewStatus::InReview, ProductReviewStatus::Draft];
     }
 
     /**
@@ -49,7 +51,16 @@ class ProductQueue
             ));
 
         if (! $asSupplier) {
-            return $query->orderBy('products.submitted_at')->orderBy('products.id');
+            $inReview = ProductReviewStatus::InReview->value;
+
+            return $query
+                ->where(fn (Builder $query) => $query
+                    ->where('products.review_status', $inReview)
+                    ->orWhereDoesntHave('supplierConnection', fn (Builder $connection) => $connection
+                        ->where('status', SupplierConnectionStatus::Active)))
+                ->orderByRaw('case when products.review_status = ? then 0 else 1 end', [$inReview])
+                ->orderByRaw('case when products.review_status = ? then products.submitted_at else products.created_at end', [$inReview])
+                ->orderBy('products.id');
         }
 
         $sentBack = ProductReviewStatus::ChangesRequested->value;

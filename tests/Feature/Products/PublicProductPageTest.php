@@ -271,6 +271,19 @@ test('the public page shows the pictures of the article and serves them without 
 
     $image = $product->documents()->sole();
 
+    /**
+     * Filed hidden, like any paper: not shown, and not served, until
+     * somebody switches it on.
+     */
+    $this
+        ->get(route('products.public', ['product' => $product->uuid]))
+        ->assertInertia(fn (Assert $page) => $page->has('images', 0));
+
+    $this->get(route('products.public.image', ['product' => $product->uuid, 'document' => $image->id]))
+        ->assertNotFound();
+
+    $image->forceFill(['is_public' => true])->save();
+
     $this
         ->get(route('products.public', ['product' => $product->uuid]))
         ->assertOk()

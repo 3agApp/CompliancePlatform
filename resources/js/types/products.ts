@@ -431,6 +431,8 @@ export type ProductFilters = {
     brand: number | null;
     search: string | null;
     status: ProductReviewStatus | null;
+    /** A requirement the product's template asks for and it has not been given. */
+    missing: ProductRequirementKey | null;
     perPage: number;
     sort: ProductSort;
 };

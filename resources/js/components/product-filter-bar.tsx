@@ -18,6 +18,7 @@ import type {
     ProductCategoryOption,
     ProductCounterparty,
     ProductFilters,
+    ProductRequirementOption,
 } from '@/types';
 
 /**
@@ -38,6 +39,7 @@ type Query = {
     category?: string;
     brand?: string;
     status?: string;
+    missing?: string;
     sort?: string;
     search?: string;
     per_page?: string;
@@ -51,6 +53,8 @@ type Props = {
     counterpartyKind: 'supplier' | 'distributor';
     filterableCategories: ProductCategoryOption[];
     filterableBrands: BrandOption[];
+    /** Everything a template can ask for, for the "Missing" filter. */
+    requirements?: ProductRequirementOption[];
 };
 
 export default function ProductFilterBar({
@@ -60,6 +64,7 @@ export default function ProductFilterBar({
     counterpartyKind,
     filterableCategories,
     filterableBrands,
+    requirements = [],
 }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const debouncedSearch = useDebouncedValue(search);
@@ -109,6 +114,7 @@ export default function ProductFilterBar({
             connection: undefined,
             category: undefined,
             brand: undefined,
+            missing: undefined,
             search: undefined,
         });
     };
@@ -237,6 +243,40 @@ export default function ProductFilterBar({
                         {filterableBrands.map((brand) => (
                             <SelectItem key={brand.id} value={String(brand.id)}>
                                 {brand.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            ) : null}
+
+            {requirements.length > 0 ? (
+                <Select
+                    value={filters.missing ?? NO_FILTER}
+                    onValueChange={(value) =>
+                        visit({
+                            missing: value === NO_FILTER ? undefined : value,
+                        })
+                    }
+                >
+                    <SelectTrigger
+                        data-test="product-filter-missing"
+                        aria-label={t('Filter by what is missing')}
+                        className="w-full sm:w-56"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value={NO_FILTER}>
+                            {t('Any completeness')}
+                        </SelectItem>
+                        {requirements.map((requirement) => (
+                            <SelectItem
+                                key={requirement.value}
+                                value={requirement.value}
+                            >
+                                {t('Missing: :requirement', {
+                                    requirement: requirement.label,
+                                })}
                             </SelectItem>
                         ))}
                     </SelectContent>

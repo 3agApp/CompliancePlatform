@@ -12,7 +12,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BulkDeleteProductsModal from '@/components/bulk-delete-products-modal';
 import BulkEditProductsModal from '@/components/bulk-edit-products-modal';
 import CompletenessMeter from '@/components/completeness-meter';
@@ -64,6 +64,7 @@ import type {
     ProductFilters,
     ProductPermissions,
     ProductReviewStatus,
+    ProductRequirementOption,
     ProductReviewStatusOption,
     ProductTemplateOption,
     SupplierConnectionOption,
@@ -103,6 +104,7 @@ type Props = {
     countryRestrictions: Record<number, CountryRestriction>;
     filters: ProductFilters;
     availableStatuses: ProductReviewStatusOption[];
+    availableRequirements: ProductRequirementOption[];
     /** How many products each tab would show, under the other filters. */
     statusCounts: Record<ProductReviewStatus, number>;
     hasProducts: boolean;
@@ -123,11 +125,13 @@ export default function ProductsIndex({
     countryRestrictions,
     filters,
     availableStatuses,
+    availableRequirements,
     statusCounts,
     hasProducts,
     viewerType,
 }: Props) {
     const { currentOrganization } = usePage().props;
+    const pageUrl = usePage().url;
     const organizationSlug = currentOrganization?.slug ?? '';
 
     const isSupplier = viewerType === 'supplier';
@@ -138,6 +142,7 @@ export default function ProductsIndex({
         filters.category !== null ||
         filters.brand !== null ||
         filters.status !== null ||
+        filters.missing !== null ||
         filters.search !== null;
 
     /**
@@ -240,8 +245,32 @@ export default function ProductsIndex({
 
     const clearSelection = () => setSelectedIds(new Set());
 
-    const [bulkEditOpen, setBulkEditOpen] = useState(false);
+    /**
+     * Arriving with ?fill=safety or ?fill=country -- from a gap on the
+     * dashboard -- ticks every product on the page and opens the change on
+     * that field, so "fill for all" is one step rather than four.
+     */
+    const [fillOnArrival] = useState<'safety' | 'country' | null>(() => {
+        const fill = new URL(pageUrl, 'http://localhost').searchParams.get(
+            'fill',
+        );
+
+        return permissions.canUpdateProduct &&
+            products.data.length > 0 &&
+            (fill === 'safety' || fill === 'country')
+            ? fill
+            : null;
+    });
+    const [bulkEditOpen, setBulkEditOpen] = useState(fillOnArrival !== null);
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+    useEffect(() => {
+        if (fillOnArrival !== null) {
+            setSelectedIds(new Set(products.data.map((product) => product.id)));
+        }
+        // Only on arrival: later visits keep the reader's own selection.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <>
@@ -331,6 +360,7 @@ export default function ProductsIndex({
                         }
                         filterableCategories={filterableCategories}
                         filterableBrands={filterableBrands}
+                        requirements={availableRequirements}
                     />
                 ) : null}
 
@@ -800,6 +830,7 @@ export default function ProductsIndex({
                 availableTemplates={availableTemplates}
                 availableCountries={availableCountries}
                 countryRestrictions={countryRestrictions}
+                initialFields={fillOnArrival === null ? [] : [fillOnArrival]}
             />
 
             <BulkDeleteProductsModal

@@ -100,6 +100,7 @@ class ProductController extends Controller
             'countryRestrictions' => $this->countryRestrictions($currentOrganization),
             'filters' => $filters,
             'availableStatuses' => ProductReviewStatus::options(),
+            'availableRequirements' => ProductRequirement::options(),
             'statusCounts' => $this->statusCounts($currentOrganization, $isSupplier, $filters),
             'hasProducts' => $products->total() > 0
                 || $this->visibleProducts($currentOrganization, $isSupplier)->exists(),
@@ -382,7 +383,8 @@ class ProductController extends Controller
             ->when($filters->connection, fn ($query, int $connectionId) => $query->assignedTo($connectionId))
             ->when($filters->category, fn ($query, int $categoryId) => $query->inCategory($categoryId))
             ->when($filters->brand, fn ($query, int $brandId) => $query->ofBrand($brandId))
-            ->when($filters->search, fn ($query, string $term) => $query->matching($term));
+            ->when($filters->search, fn ($query, string $term) => $query->matching($term))
+            ->when($filters->missing, fn ($query, ProductRequirement $requirement) => $query->missingRequirement($requirement));
     }
 
     /**

@@ -1,12 +1,16 @@
 <?php
 
 use App\Enums\OrganizationRole;
+use App\Enums\ProductDocumentType;
 use App\Enums\ProductEventType;
+use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\OrganizationInvitation;
 use App\Models\Product;
+use App\Models\ProductDocument;
+use App\Models\ProductTemplate;
 use App\Models\User;
 
 test('guests are redirected to the login page', function () {
@@ -291,8 +295,8 @@ test('the dashboard lists the latest events on the organization products only, n
     $product = Product::factory()->for($distributor)->create(['name' => 'Wooden Train', 'supplier_connection_id' => $connection->id]);
     $foreign = Product::factory()->for($other)->create(['supplier_connection_id' => newSupplierConnection($other)->id]);
 
-    foreach (range(1, 9) as $_) {
-        $product->recordEvent(ProductEventType::Updated, $user, $distributor);
+    foreach (range(1, 9) as $index) {
+        $product->recordEvent($index % 2 === 0 ? ProductEventType::Updated : ProductEventType::DocumentUploaded, $user, $distributor);
     }
 
     $latest = $product->recordEvent(ProductEventType::Submitted, $user, $distributor);
@@ -307,6 +311,23 @@ test('the dashboard lists the latest events on the organization products only, n
             ->where('activity.0.type', 'submitted')
             ->where('activity.0.product.name', 'Wooden Train')
             ->where('activity.0.actor', $user->name),
+        );
+});
+
+test('a run of the same event on one day reads as one line with a count', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    Product::factory()->for($distributor)->count(3)->create(['supplier_connection_id' => $connection->id])
+        ->each(fn (Product $product) => $product->recordEvent(ProductEventType::Created, $user, $distributor));
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->has('activity', 1)
+            ->where('activity.0.type', 'created')
+            ->where('activity.0.count', 3),
         );
 });
 
@@ -348,4 +369,63 @@ test('a distributor touching a supplier products does not count as the supplier 
             ->where('suppliers.0.lastActivity', null)
             ->where('attention.quietSuppliers.0.id', $connection->id),
         );
+});
+
+test('the dashboard says how many open products are ready and what holds the rest back', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor);
+
+    $template = ProductTemplate::factory()
+        ->for(legalFamily($distributor), 'category')
+        ->requiring(ProductRequirement::DeclarationOfConformity, ProductRequirement::AgeGrading, ProductRequirement::OrderNumber)
+        ->create();
+
+    $onTemplate = ['supplier_connection_id' => $connection->id, 'product_category_id' => $template->product_category_id, 'product_template_id' => $template->id];
+
+    Product::factory()->for($distributor)->count(2)->create([...$onTemplate, 'age_grading' => null, 'order_number' => null]);
+    $ready = Product::factory()->for($distributor)->create([...$onTemplate, 'age_grading' => '3+', 'order_number' => 'A-1']);
+    ProductDocument::factory()->for($ready)->ofType(ProductDocumentType::DeclarationOfConformity)->create();
+    Product::factory()->for($distributor)->create([...$onTemplate, 'review_status' => ProductReviewStatus::Approved]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('insights.open', 3)
+            ->where('insights.ready', 1)
+            ->has('insights.gaps', 3)
+            ->where('insights.gaps.0.requirement', ProductRequirement::DeclarationOfConformity->value)
+            ->where('insights.gaps.0.count', 2)
+            ->where('canUpdateProduct', true),
+        );
+});
+
+test('a supplier that was invited and has not joined is named with the drafts waiting on it', function () {
+    [$user, $distributor] = newOrganizationMember();
+    $connection = newSupplierConnection($distributor, attributes: ['company_name' => 'Magna Supplies']);
+
+    Product::factory()->for($distributor)->count(2)->create(['supplier_connection_id' => $connection->id]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_organization' => $distributor->slug]))
+        ->assertInertia(fn ($page) => $page
+            ->where('attention.waitingSuppliers.0.label', 'Magna Supplies')
+            ->where('attention.waitingSuppliers.0.draft', 2)
+            ->where('queue.total', 2),
+        );
+});
+
+test('a supplier dashboard scores its own open products', function () {
+    [, $distributor] = newOrganizationMember();
+    [$supplierUser, $supplier] = newSupplierMember();
+    $connection = newSupplierConnection($distributor, $supplier);
+
+    Product::factory()->for($distributor)->count(2)->create(['supplier_connection_id' => $connection->id]);
+    Product::factory()->for($distributor)->create(['supplier_connection_id' => newSupplierConnection($distributor)->id]);
+
+    $this
+        ->actingAs($supplierUser)
+        ->get(route('dashboard', ['current_organization' => $supplier->slug]))
+        ->assertInertia(fn ($page) => $page->where('insights.open', 2));
 });

@@ -16,6 +16,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductDocumentAnalysisController;
 use App\Http\Controllers\ProductDocumentController;
 use App\Http\Controllers\ProductDocumentVisibilityController;
+use App\Http\Controllers\ProductImageVisibilityController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
@@ -160,6 +161,12 @@ Route::prefix('{current_organization}')
              * Releasing a document to the public page, or taking it back.
              */
             Route::patch('products/{product}/documents/{document}/visibility', ProductDocumentVisibilityController::class)->name('products.documents.visibility');
+
+            /**
+             * Every product image at once: imported products arrive with a
+             * handful each.
+             */
+            Route::patch('products/{product}/images/visibility', ProductImageVisibilityController::class)->name('products.images.visibility');
 
             /**
              * An AI reading of one paper. Advisory, and on the same budget as

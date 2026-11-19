@@ -311,11 +311,12 @@ class PublicProductController extends Controller
 
     /**
      * Determine if a document is a picture of the article that may be shown
-     * to anyone.
+     * to anyone: one switched on for the public page, like any document.
      */
     protected function isPublicImage(ProductDocument $document): bool
     {
         return $document->type === ProductDocumentType::ProductImage
+            && $document->is_public
             && $document->previewKind() === DocumentPreviewKind::Image;
     }
 }

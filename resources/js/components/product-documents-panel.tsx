@@ -15,6 +15,7 @@ import { formatDay, formatFileSize } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { preview, show, visibility } from '@/routes/products/documents';
+import { visibility as imagesVisibility } from '@/routes/products/images';
 import type {
     ProductAssessmentUnavailableReason,
     ProductDocument,
@@ -190,6 +191,14 @@ export default function ProductDocumentsPanel({
 
     const images = documents.filter(isPicture);
 
+    /** Only product photos are switched together; a safety image is evidence. */
+    const productImages = documents.filter(
+        (document) => document.type === 'product_image',
+    );
+    const allImagesPublic = productImages.every(
+        (document) => document.is_public,
+    );
+
     const groups = availableDocumentTypes
         .map((option) => ({
             ...option,
@@ -282,12 +291,37 @@ export default function ProductDocumentsPanel({
                         className="workspace-panel grid gap-4 p-5"
                         data-test="product-document-images"
                     >
-                        <h3 className="flex items-center gap-2 text-sm font-semibold">
-                            {t('Images')}
-                            <span className="bg-muted-foreground/15 text-muted-foreground rounded-full px-1.5 text-xs font-normal tabular-nums">
-                                {images.length}
-                            </span>
-                        </h3>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="flex items-center gap-2 text-sm font-semibold">
+                                {t('Images')}
+                                <span className="bg-muted-foreground/15 text-muted-foreground rounded-full px-1.5 text-xs font-normal tabular-nums">
+                                    {images.length}
+                                </span>
+                            </h3>
+
+                            {canPublish && productImages.length > 1 ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    data-test="product-images-visibility-all"
+                                    onClick={() =>
+                                        router.patch(
+                                            imagesVisibility.url([
+                                                organizationSlug,
+                                                productId,
+                                            ]),
+                                            { is_public: !allImagesPublic },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    {allImagesPublic
+                                        ? t('Hide all from public page')
+                                        : t('Show all on public page')}
+                                </Button>
+                            ) : null}
+                        </div>
 
                         <ul className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4">
                             {images.map((document) => (

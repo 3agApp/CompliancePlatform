@@ -46,7 +46,7 @@ test('a pipeline stage opens the product list narrowed to that stage', function 
     $this->actingAs($user);
 
     visit(route('dashboard', ['current_organization' => $distributor->slug]))
-        ->assertSeeIn('@dashboard-queue', 'Nothing is waiting on your review')
+        ->assertSeeIn('@dashboard-queue', 'Magnetic Building Set')
         ->click('@dashboard-stage-approved')
         ->assertSee('Wooden Train')
         ->assertDontSee('Magnetic Building Set')

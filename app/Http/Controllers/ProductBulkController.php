@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\SupplierConnection;
 use App\Support\ProductChanges;
+use BackedEnum;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,15 +47,16 @@ class ProductBulkController extends Controller
             Gate::authorize('update', $product);
         }
 
-        $attributes = collect($request->validated())->except('ids')->all();
+        $attributes = collect($request->validated())->except(['ids', 'only_empty'])->all();
+        $onlyEmpty = $request->boolean('only_empty');
 
         $this->ensureCountryIsProduced($products, $attributes);
 
-        $changed = DB::transaction(function () use ($products, $attributes, $request, $currentOrganization) {
+        $changed = DB::transaction(function () use ($products, $attributes, $onlyEmpty, $request, $currentOrganization) {
             $changed = 0;
 
             foreach ($products as $product) {
-                $product->update($this->attributesFor($product, $attributes));
+                $product->update($this->attributesFor($product, $attributes, $onlyEmpty));
 
                 $changes = ProductChanges::of($product);
 
@@ -190,11 +192,22 @@ class ProductBulkController extends Controller
      * moved to another supplier cannot keep it: unless a brand was chosen
      * for the new one in the same change, it loses the old.
      *
+     * Filling only the empty ones leaves every detail a product already
+     * holds alone, so a series answer never replaces a product's own.
+     *
      * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
      */
-    protected function attributesFor(Product $product, array $attributes): array
+    protected function attributesFor(Product $product, array $attributes, bool $onlyEmpty = false): array
     {
+        if ($onlyEmpty) {
+            $fillable = [...array_keys(BulkUpdateProductsRequest::COMPLIANCE_FIELDS), 'customs_tariff_number', 'country_of_origin'];
+
+            $attributes = collect($attributes)
+                ->reject(fn (mixed $value, string $key): bool => in_array($key, $fillable, true) && $this->isFilled($product->getAttribute($key)))
+                ->all();
+        }
+
         $movesSupplier = array_key_exists('supplier_connection_id', $attributes)
             && (int) $attributes['supplier_connection_id'] !== $product->supplier_connection_id;
 
@@ -203,5 +216,17 @@ class ProductBulkController extends Controller
         }
 
         return $attributes;
+    }
+
+    /**
+     * Determine if a product already holds something for a detail.
+     */
+    protected function isFilled(mixed $value): bool
+    {
+        if ($value instanceof BackedEnum) {
+            $value = $value->value;
+        }
+
+        return $value !== null && trim((string) $value) !== '';
     }
 }

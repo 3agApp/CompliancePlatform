@@ -26,6 +26,20 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
+    /**
+     * How many gaps the dashboard names: enough to see the pattern, few
+     * enough to act on.
+     */
+    protected const int GAP_LIMIT = 6;
+
+    /**
+     * How many lines of activity the dashboard shows, and how many recent
+     * events are read to fill them once runs are folded together.
+     */
+    protected const int ACTIVITY_LIMIT = 8;
+
+    protected const int ACTIVITY_SCAN = 200;
+
     public function __invoke(Request $request, Organization $currentOrganization): Response
     {
         Gate::authorize('viewAny', [Product::class, $currentOrganization]);
@@ -40,11 +54,13 @@ class DashboardController extends Controller
                 ? $this->supplierStats($currentOrganization)
                 : $this->distributorStats($currentOrganization),
             'pipeline' => $this->pipeline($currentOrganization, $isSupplier),
+            'insights' => $this->insights($currentOrganization, $isSupplier),
             'queue' => $this->queue($currentOrganization, $isSupplier),
             'suppliers' => $suppliers,
             'attention' => $isSupplier ? null : $this->attention($currentOrganization, $suppliers),
             'activity' => $this->activity($currentOrganization, $isSupplier),
             'canCreateProduct' => $request->user()->toProductPermissions($currentOrganization)->canCreateProduct,
+            'canUpdateProduct' => $request->user()->toProductPermissions($currentOrganization)->canUpdateProduct,
             'canInviteSupplier' => ! $isSupplier && $request->user()->can('create', [SupplierConnection::class, $currentOrganization]),
         ]);
     }
@@ -105,7 +121,10 @@ class DashboardController extends Controller
      * likely forgotten them. Each is named so the next step is obvious.
      *
      * @param  array<array{id: int, label: string, status: string, products: int, draft: int, lastActivity: string|null}>  $suppliers
-     * @return array{sentBack: array{items: array<array{id: int, name: string, counterparty: string|null, since: string|null}>, total: int}, expiredInvitations: array<array{id: int, label: string, products: int}>, quietSuppliers: array<array{id: int, label: string, draft: int, lastActivity: string|null}>}
+     *                                                                                                                                 A supplier that was invited and has not joined yet holds its drafts
+     *                                                                                                                                 hostage just as surely, and the distributor may fill them in itself
+     *                                                                                                                                 rather than wait, so those are named with that way out.
+     * @return array{sentBack: array{items: array<array{id: int, name: string, counterparty: string|null, since: string|null}>, total: int}, expiredInvitations: array<array{id: int, label: string, products: int}>, waitingSuppliers: array<array{id: int, label: string, draft: int}>, quietSuppliers: array<array{id: int, label: string, draft: int, lastActivity: string|null}>}
      */
     protected function attention(Organization $organization, array $suppliers): array
     {
@@ -139,6 +158,15 @@ class DashboardController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'waitingSuppliers' => collect($suppliers)
+                ->filter(fn (array $supplier) => $supplier['status'] === 'invited' && $supplier['draft'] > 0)
+                ->map(fn (array $supplier) => [
+                    'id' => $supplier['id'],
+                    'label' => $supplier['label'],
+                    'draft' => $supplier['draft'],
+                ])
+                ->values()
+                ->all(),
             'quietSuppliers' => collect($suppliers)
                 ->filter(fn (array $supplier) => $supplier['status'] === 'active'
                     && $supplier['draft'] > 0
@@ -158,27 +186,115 @@ class DashboardController extends Controller
      * Get the latest things to happen to any product the organization can
      * see, newest first.
      *
-     * @return array<array{id: int, type: string, type_label: string, product: array{id: int, name: string}, actor: string|null, created_at: string|null}>
+     * A run of the same thing done by the same person on the same day -- an
+     * import, a bulk change -- reads as one line with a count, so fifty-seven
+     * "Product created" lines do not push everything else off the list.
+     *
+     * @return array<array{id: int, type: string, type_label: string, product: array{id: int, name: string}, count: int, actor: string|null, created_at: string|null}>
      */
     protected function activity(Organization $organization, bool $asSupplier): array
     {
         $visible = $this->visibleProducts($organization, $asSupplier)->toBase()->select('products.id');
 
-        return ProductEvent::query()
+        $runs = [];
+
+        ProductEvent::query()
             ->whereIn('product_id', $visible)
             ->with(['product:id,name', 'user:id,name'])
             ->latest('id')
-            ->limit(8)
+            ->limit(self::ACTIVITY_SCAN)
             ->get()
-            ->map(fn (ProductEvent $event) => [
-                'id' => $event->id,
-                'type' => $event->type->value,
-                'type_label' => $event->type->label(),
-                'product' => ['id' => $event->product->id, 'name' => $event->product->name],
-                'actor' => $event->actorName(),
-                'created_at' => $event->created_at?->toISOString(),
+            ->each(function (ProductEvent $event) use (&$runs) {
+                $key = implode('|', [$event->type->value, $event->actorName(), $event->created_at?->toDateString()]);
+                $last = array_key_last($runs);
+
+                if ($last !== null && $runs[$last]['key'] === $key) {
+                    $runs[$last]['products'][$event->product_id] = true;
+
+                    return;
+                }
+
+                $runs[] = ['key' => $key, 'event' => $event, 'products' => [$event->product_id => true]];
+            });
+
+        return collect($runs)
+            ->take(self::ACTIVITY_LIMIT)
+            ->map(fn (array $run) => [
+                'id' => $run['event']->id,
+                'type' => $run['event']->type->value,
+                'type_label' => $run['event']->type->label(),
+                'product' => ['id' => $run['event']->product->id, 'name' => $run['event']->product->name],
+                'count' => count($run['products']),
+                'actor' => $run['event']->actorName(),
+                'created_at' => $run['event']->created_at?->toISOString(),
             ])
+            ->values()
             ->all();
+    }
+
+    /**
+     * Get how close the unsubmitted products are to done, and what holds
+     * the most of them back.
+     *
+     * A count per stage says where products are, not why they are stuck
+     * there. Here every product not yet submitted is scored against its
+     * template: how many have nothing left open, the average score, and the
+     * requirements missing across the most of them, weighted the same way
+     * the score is, so a missing declaration outranks a missing order
+     * number. Each gap names the requirement, which the product list can
+     * filter by.
+     *
+     * @return array{open: int, ready: int, averageCompleteness: int, gaps: array<array{requirement: string, label: string, group: string, count: int}>}
+     */
+    protected function insights(Organization $organization, bool $asSupplier): array
+    {
+        $open = 0;
+        $ready = 0;
+        $scoreTotal = 0;
+        $missing = [];
+
+        $this->visibleProducts($organization, $asSupplier)
+            ->whereIn('products.review_status', [ProductReviewStatus::Draft, ProductReviewStatus::ChangesRequested])
+            ->with(['template', 'documents:id,product_id,type'])
+            ->select('products.*')
+            ->lazyById(200, 'products.id', 'id')
+            ->each(function (Product $product) use (&$open, &$ready, &$scoreTotal, &$missing) {
+                $completeness = $product->completeness();
+
+                $open++;
+                $scoreTotal += $completeness->score;
+
+                $unsatisfied = array_filter($completeness->items, fn (array $item) => ! $item['satisfied']);
+
+                if ($unsatisfied === []) {
+                    $ready++;
+                }
+
+                foreach ($unsatisfied as $item) {
+                    $missing[$item['requirement']] ??= ['label' => $item['label'], 'group' => $item['group'], 'weight' => $item['weight'], 'count' => 0];
+                    $missing[$item['requirement']]['count']++;
+                }
+            });
+
+        $gaps = collect($missing)
+            ->map(fn (array $gap, string $requirement) => [...$gap, 'requirement' => $requirement])
+            ->sortByDesc(fn (array $gap) => [$gap['count'] * max($gap['weight'], 1), $gap['count']])
+            ->take(self::GAP_LIMIT)
+            ->map(fn (array $gap) => [
+                'requirement' => $gap['requirement'],
+                'label' => $gap['label'],
+                'group' => $gap['group'],
+                'count' => $gap['count'],
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'open' => $open,
+            'ready' => $ready,
+            'averageCompleteness' => $open === 0 ? 100 : (int) round($scoreTotal / $open),
+            'gaps' => $gaps,
+        ];
     }
 
     /**
