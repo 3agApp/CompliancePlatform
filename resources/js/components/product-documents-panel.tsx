@@ -595,7 +595,7 @@ function DocumentButtons({
 }) {
     return (
         <div className="flex items-center justify-end">
-            {actions.analyses !== null ? (
+            {actions.analyses !== null && document.offers_analysis ? (
                 <AnalyzeDocumentButton
                     organizationSlug={actions.organizationSlug}
                     productId={actions.productId}
@@ -784,7 +784,7 @@ function AnalysisLine({
     document: ProductDocument;
     actions: DocumentActions;
 }) {
-    if (actions.analyses === null) {
+    if (actions.analyses === null || !document.offers_analysis) {
         return null;
     }
 

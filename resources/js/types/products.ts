@@ -483,6 +483,8 @@ export type ProductDocument = {
     preview_kind: DocumentPreviewKind | null;
     /** Whether the AI can be sent this file at all: a PDF or image within the size limit. */
     analyzable: boolean;
+    /** Whether this kind is offered for an AI reading at all; false for product images. */
+    offers_analysis: boolean;
     is_public: boolean;
     uploaded_by: string | null;
     created_at: string | null;

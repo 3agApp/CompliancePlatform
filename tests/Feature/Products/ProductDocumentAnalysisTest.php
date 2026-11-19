@@ -270,6 +270,24 @@ test('a Word file is refused, because the providers do not read one', function (
     Queue::assertNothingPushed();
 });
 
+test('a product image is refused, because there is no claim in a photo to check', function () {
+    Queue::fake();
+
+    [$user, $organization, $product, $document] = reviewerWithAnalyzableDocument(mimeType: 'image/jpeg', name: 'front.jpg');
+    $document->update(['type' => ProductDocumentType::ProductImage]);
+
+    $this->actingAs($user);
+
+    startDocumentAnalysis($organization, $product, $document)->assertSessionHasErrors('analysis');
+
+    Queue::assertNothingPushed();
+
+    $this->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertInertia(fn ($page) => $page
+            ->where('product.documents.0.offers_analysis', false)
+            ->where('product.documents.0.analyzable', false));
+});
+
 test('a second run is refused while one is still going', function () {
     Queue::fake();
 
