@@ -99,11 +99,38 @@ test('a released PDF is handed out watermarked, stamped once and kept', function
 
     $copies = Storage::disk(ProductDocument::DISK)->files(ProductDocument::directoryFor($product).'/watermarked');
 
+    /** Locked: it opens and prints, but takes an unknown password to edit. */
     expect($first)->toStartWith('%PDF')
         ->not->toBe($original)
+        ->toContain('/Encrypt')
         ->and($second)->toBe($first)
         ->and($copies)->toHaveCount(1)
         ->and(Storage::disk(ProductDocument::DISK)->get($document->path))->toBe($original);
+});
+
+test('a scanned page is flattened into one picture with the stamp in it, while typed pages stay text', function () {
+    [, , $product, $document] = productWithReport();
+    $document->forceFill(['is_public' => true])->save();
+
+    /** A page with a picture on it and no text: what a scanner hands over. */
+    Storage::disk(ProductDocument::DISK)->put($document->path, Pdf::loadHTML(
+        '<p>EN 71-1 test report: the article meets every requirement.</p>'
+        .'<div style="page-break-before: always; height: 300px; background: #444"></div>'
+    )->output());
+
+    $stamped = $this->get(route('products.public.document', ['product' => $product->uuid, 'document' => $document->id]))
+        ->assertOk()
+        ->streamedContent();
+
+    $file = tempnam(sys_get_temp_dir(), 'scan-test-');
+    file_put_contents($file, $stamped);
+    $text = Process::run(['gs', '-q', '-dSAFER', '-sDEVICE=txtwrite', '-o', '-', $file])->output();
+    unlink($file);
+
+    /** The scan comes back as a JPEG; the typed page can still be read. */
+    expect($stamped)->toContain('/DCTDecode')
+        ->and(Storage::disk(ProductDocument::DISK)->get($document->path))->not->toContain('/DCTDecode')
+        ->and($text)->toContain('EN 71-1 test report');
 });
 
 test('a new watermark text gets a fresh copy and the old copy goes', function () {

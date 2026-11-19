@@ -19,24 +19,36 @@ return [
     | PDFs
     |--------------------------------------------------------------------------
     |
-    | Each page is split into `stamps` horizontal bands and every band gets
-    | one stamp at a random position and tilt, so there is no fixed spot to
-    | cover up. The stamps blend with Multiply: on white paper they show as a
-    | faint tint of `colour`, while black text crossing them stays black.
-    | Sizes are in points; the font scales with the page's shorter side,
-    | 36pt on A4.
+    | Every page gets `stamps` stamps (one band each) at a random position
+    | and tilt, so there is no fixed spot to cover up. The stamps blend with
+    | Multiply: on white paper they show as a faint tint of `colour`, while
+    | black text crossing them stays black. Sizes are in points; the font
+    | scales with the page's shorter side, 48pt on A4.
+    |
+    | The stamps are drawn as shapes, not text, so no "remove text" tool
+    | finds them. A page with at most `scan_characters` characters of text
+    | is a scan: it is flattened into one JPEG of `scan_dpi` with the stamp
+    | in its pixels, so the stamp cannot be lifted off the picture beneath.
+    | The whole file is then slimmed with Ghostscript's `quality` preset
+    | and, with `lock`, encrypted so it opens and prints but cannot be
+    | edited or taken apart.
     |
     */
 
     'pdf' => [
-        'stamps' => (int) env('WATERMARK_PDF_STAMPS', 3),
+        'stamps' => (int) env('WATERMARK_PDF_STAMPS', 1),
         'colour' => env('WATERMARK_PDF_COLOUR', '#2F5D9B'),
-        'opacity' => (float) env('WATERMARK_PDF_OPACITY', 0.12),
+        'opacity' => (float) env('WATERMARK_PDF_OPACITY', 0.08),
         'blend_mode' => 'Multiply',
-        'font_size_ratio' => 36 / 595,
+        'font_size_ratio' => 48 / 595,
         'min_font_size' => 8.0,
         'max_font_size' => 120.0,
         'line_height_ratio' => 1.0,
+        'scan_characters' => 20,
+        'scan_dpi' => 150,
+        'scan_quality' => 60,
+        'quality' => 'ebook',
+        'lock' => (bool) env('WATERMARK_PDF_LOCK', true),
     ],
 
     /*

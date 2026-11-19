@@ -13,8 +13,14 @@ function roughWidth(string $text, float $size): float
     return mb_strlen($text) * $size * 0.5;
 }
 
-test('a PDF page gets one stamp per band, each wholly inside its band', function () {
+test('a PDF page gets one stamp by default', function () {
     $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
+
+    expect($stamp->placements('swiss-product-seal.ch', roughWidth(...), new Randomizer(new Mt19937(7))))->toHaveCount(1);
+});
+
+test('more stamps take one band each, each wholly inside its band', function () {
+    $stamp = new WatermarkStamp(595.0, 842.0, [...config('watermark.pdf'), 'stamps' => 3]);
 
     $placements = $stamp->placements('swiss-product-seal.ch', roughWidth(...), new Randomizer(new Mt19937(7)));
 

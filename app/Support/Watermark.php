@@ -6,7 +6,9 @@ use App\Enums\DocumentPreviewKind;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use GdImage;
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,9 +21,9 @@ use Throwable;
  * The copy of a picture or a PDF that the public page hands out.
  *
  * Whatever leaves the public page carries the site's domain across it, so
- * a copy passed along still says where it came from. A picture gets one
- * stamp; a PDF page gets several, scattered at random. Every stamp is
- * tilted at random and bent along a random wave (see WatermarkStamp). The
+ * a copy passed along still says where it came from. A picture and every
+ * PDF page get one stamp each, tilted at random and bent along a random
+ * wave (see WatermarkStamp). The
  * original on the private disk is never touched, and those signed in keep
  * getting it clean.
  *
@@ -36,12 +38,19 @@ class Watermark
      * Raised whenever the look of the stamp changes, so every copy made
      * under the old look is made again.
      */
-    public const int VERSION = 2;
+    public const int VERSION = 3;
 
     /**
      * How long a stamp on a PDF may take before it is given up on.
      */
     protected const int PDF_TIMEOUT_SECONDS = 60;
+
+    /**
+     * What a locked copy still allows: printing, at full quality, and
+     * reading out to a screen reader. Copying, editing, filling in and
+     * taking pages out all need the owner's password, which nobody keeps.
+     */
+    protected const int PRINT_ONLY = -1340;
 
     /**
      * The widths of Helvetica Bold's glyphs, in thousandths of the font
@@ -185,48 +194,22 @@ class Watermark
 
             if ($scaled instanceof GdImage) {
                 $image = $scaled;
-                $width = imagesx($image);
-                $height = imagesy($image);
             }
         }
 
         imagealphablending($image, true);
         imagesavealpha($image, true);
 
-        $font = resource_path('fonts/DejaVuSans-Bold.ttf');
         $settings = config('watermark.image');
         $opacity = max(0.0, min(1.0, (float) $settings['opacity']));
-        $transparency = fn (float $opacity): int => max(0, min(127, (int) round(127 * (1 - $opacity))));
-        $fill = imagecolorallocatealpha($image, 255, 255, 255, $transparency($opacity));
-        $edge = imagecolorallocatealpha($image, 0, 0, 0, $transparency($opacity * 0.6));
+        $fill = imagecolorallocatealpha($image, 255, 255, 255, static::gdTransparency($opacity));
+        $edge = imagecolorallocatealpha($image, 0, 0, 0, static::gdTransparency($opacity * 0.6));
 
         if ($fill === false || $edge === false) {
             throw new RuntimeException('The watermark colours could not be allocated.');
         }
 
-        $measure = function (string $text, float $size) use ($font): float {
-            $box = imagettfbbox($size, 0, $font, $text);
-
-            return $box === false ? $size * 0.6 * mb_strlen($text) : (float) abs($box[4] - $box[6]);
-        };
-
-        $stamp = new WatermarkStamp($width, $height, $settings);
-        $lineHeightRatio = (float) $settings['line_height_ratio'];
-
-        foreach ($stamp->glyphsFor($text, $measure, new Randomizer) as $glyph) {
-            /**
-             * GD writes from the left end of the baseline, so step back
-             * half a glyph along the text and down a third of a line.
-             */
-            $radians = deg2rad($glyph['angleDegrees']);
-            $half = $measure($glyph['text'], $glyph['fontSize']) / 2;
-            $drop = $glyph['fontSize'] * $lineHeightRatio * 0.35;
-            $x = (int) round($glyph['x'] - ($half * cos($radians)) + ($drop * sin($radians)));
-            $y = (int) round($glyph['y'] + ($half * sin($radians)) + ($drop * cos($radians)));
-
-            imagettftext($image, $glyph['fontSize'], $glyph['angleDegrees'], $x + 1, $y + 1, $edge, $font, $glyph['text']);
-            imagettftext($image, $glyph['fontSize'], $glyph['angleDegrees'], $x, $y, $fill, $font, $glyph['text']);
-        }
+        static::drawStamp($image, $text, $settings, $fill, $edge);
 
         ob_start();
 
@@ -240,60 +223,263 @@ class Watermark
     }
 
     /**
-     * Stamp the text across every page of a PDF, with Ghostscript.
+     * Paint the stamps across a picture, letter by letter along their wave,
+     * with an optional edge one pixel down and right of each letter.
      *
-     * Each page's stamps are laid out here, for that page's own size, and
-     * drawn last on the page, over whatever it holds, so a scan is marked
-     * as surely as typed text. They blend with Multiply, so text crossing
-     * them stays readable. Every letter goes in as hex, so nothing in the
-     * text is ever read as PostScript, and -dSAFER keeps a hostile file
-     * from reaching anything beyond itself.
+     * @param  array{stamps: int, font_size_ratio: float, min_font_size: float, max_font_size: float, line_height_ratio: float}  $settings
+     */
+    protected static function drawStamp(GdImage $image, string $text, array $settings, int $fill, ?int $edge = null): void
+    {
+        $font = resource_path('fonts/DejaVuSans-Bold.ttf');
+
+        $measure = function (string $text, float $size) use ($font): float {
+            $box = imagettfbbox($size, 0, $font, $text);
+
+            return $box === false ? $size * 0.6 * mb_strlen($text) : (float) abs($box[4] - $box[6]);
+        };
+
+        $stamp = new WatermarkStamp(imagesx($image), imagesy($image), $settings);
+        $lineHeightRatio = (float) $settings['line_height_ratio'];
+
+        foreach ($stamp->glyphsFor($text, $measure, new Randomizer) as $glyph) {
+            /**
+             * GD writes from the left end of the baseline, so step back
+             * half a glyph along the text and down a third of a line.
+             */
+            $radians = deg2rad($glyph['angleDegrees']);
+            $half = $measure($glyph['text'], $glyph['fontSize']) / 2;
+            $drop = $glyph['fontSize'] * $lineHeightRatio * 0.35;
+            $x = (int) round($glyph['x'] - ($half * cos($radians)) + ($drop * sin($radians)));
+            $y = (int) round($glyph['y'] + ($half * sin($radians)) + ($drop * cos($radians)));
+
+            if ($edge !== null) {
+                imagettftext($image, $glyph['fontSize'], $glyph['angleDegrees'], $x + 1, $y + 1, $edge, $font, $glyph['text']);
+            }
+
+            imagettftext($image, $glyph['fontSize'], $glyph['angleDegrees'], $x, $y, $fill, $font, $glyph['text']);
+        }
+    }
+
+    /**
+     * Get GD's alpha for an opacity: 0 is solid, 127 fully see-through.
+     *
+     * @return int<0, 127>
+     */
+    protected static function gdTransparency(float $opacity): int
+    {
+        return max(0, min(127, (int) round(127 * (1 - max(0.0, min(1.0, $opacity))))));
+    }
+
+    /**
+     * Stamp the text across every page of a PDF, with Ghostscript, and seal
+     * the result.
+     *
+     * Each page's stamp is laid out here, for that page's own size, and
+     * drawn last on the page, over whatever it holds. Its letters are
+     * filled outlines rather than text, so nothing that strips text takes
+     * them along. A scanned page is flattened with its stamp into a single
+     * picture, so the stamp is part of the scan rather than a layer over
+     * it. The copy is then slimmed down and, unless switched off, locked
+     * against editing.
+     *
+     * Every letter and path goes in as hex, so nothing in them is ever read
+     * as PostScript, and -dSAFER keeps a hostile file from reaching
+     * anything beyond itself.
      */
     protected static function stampPdf(string $bytes, string $text): string
     {
-        $input = tempnam(sys_get_temp_dir(), 'wm-in-');
-        $output = tempnam(sys_get_temp_dir(), 'wm-out-');
-        $program = tempnam(sys_get_temp_dir(), 'wm-ps-');
+        $workspace = sys_get_temp_dir().'/watermark-'.Str::random(20);
 
-        if ($input === false || $output === false || $program === false) {
-            throw new RuntimeException('No temporary file for the watermark.');
+        if (! mkdir($workspace, 0700)) {
+            throw new RuntimeException('No temporary directory for the watermark.');
         }
 
         try {
+            $input = "{$workspace}/in.pdf";
+            $output = "{$workspace}/out.pdf";
             file_put_contents($input, $bytes);
-            file_put_contents($program, static::pageStamps(static::pageSizes($input), $text));
 
-            $result = Process::timeout(self::PDF_TIMEOUT_SECONDS)->run([
-                static::ghostscript(),
-                '-dSAFER',
-                '-dALLOWPSTRANSPARENCY',
-                '-dBATCH',
-                '-dNOPAUSE',
-                '-dQUIET',
+            $settings = config('watermark.pdf');
+            $sizes = static::pageSizes($input);
+            $stamps = static::pageStamps($sizes, $text);
+            $scanned = static::scannedPages($input, $workspace, count($sizes));
+
+            $pages = [];
+
+            foreach ($sizes as $index => $size) {
+                $pages[] = ['page' => $index + 1, 'stamp' => $stamps[$index]];
+            }
+
+            foreach (static::bakePages($input, $workspace, $scanned, $text) as $index => $picture) {
+                $pages[$index] = $picture + ['size' => $sizes[$index]];
+            }
+
+            $result = static::runGhostscript([
                 '-sDEVICE=pdfwrite',
+                '-dPDFSETTINGS=/'.(in_array($settings['quality'], ['screen', 'ebook', 'printer', 'prepress'], true) ? $settings['quality'] : 'ebook'),
+                ...($settings['lock'] ? [
+                    '-sOwnerPassword='.Str::random(32),
+                    '-dEncryptionR=3',
+                    '-dKeyLength=128',
+                    '-dPermissions='.self::PRINT_ONLY,
+                ] : []),
+                '--permit-file-read='.$workspace.'/',
                 '-sOutputFile='.$output,
-                $program,
-                '-f', $input,
-            ]);
+            ], $workspace, static::pageProgram($input, $pages));
 
-            $stamped = (string) file_get_contents($output);
+            $stamped = is_file($output) ? (string) file_get_contents($output) : '';
 
-            /**
-             * Ghostscript drops a page it cannot draw and carries on, so a
-             * clean exit is not enough: a copy missing pages is no copy.
-             */
-            if ($result->failed()
-                || ! str_starts_with($stamped, '%PDF')
-                || str_contains($result->output().$result->errorOutput(), 'Could not draw this page')) {
+            if ($result->failed() || ! str_starts_with($stamped, '%PDF')) {
                 throw new RuntimeException('Ghostscript could not watermark the PDF: '.Str::limit($result->errorOutput().$result->output(), 500));
             }
 
             return $stamped;
         } finally {
-            @unlink($input);
-            @unlink($output);
-            @unlink($program);
+            File::deleteDirectory($workspace);
         }
+    }
+
+    /**
+     * Get the numbers of the pages that hold next to no text: scans, or
+     * text already turned into shapes.
+     *
+     * @return array<int, int>
+     */
+    protected static function scannedPages(string $input, string $workspace, int $pageCount): array
+    {
+        $result = static::runGhostscript([
+            '-sDEVICE=txtwrite',
+            '-sOutputFile='.$workspace.'/text-%d.txt',
+            '-f', $input,
+        ]);
+
+        if ($result->failed()) {
+            throw new RuntimeException('Ghostscript could not read the PDF text: '.Str::limit($result->errorOutput().$result->output(), 500));
+        }
+
+        $limit = (int) config('watermark.pdf.scan_characters');
+
+        return array_values(array_filter(range(1, $pageCount), function (int $page) use ($workspace, $limit): bool {
+            $file = "{$workspace}/text-{$page}.txt";
+            $characters = is_file($file) ? (string) preg_replace('/\s+/u', '', (string) file_get_contents($file)) : '';
+
+            return mb_strlen($characters) <= $limit;
+        }));
+    }
+
+    /**
+     * Draw the scanned pages as pictures with the stamp painted into them,
+     * and get each one, as a JPEG, by its page's index.
+     *
+     * Ghostscript draws the bare page and GD paints the stamp, the same way
+     * it does on a photo: Ghostscript's own drawing of a see-through stamp
+     * onto a picture leaves stray tinted blocks behind.
+     *
+     * @param  array<int, int>  $scanned
+     * @return array<int, array{picture: string, width: int, height: int}>
+     */
+    protected static function bakePages(string $input, string $workspace, array $scanned, string $text): array
+    {
+        if ($scanned === []) {
+            return [];
+        }
+
+        $settings = config('watermark.pdf');
+        $dpi = (int) $settings['scan_dpi'];
+
+        $result = static::runGhostscript([
+            '-sDEVICE=png16m',
+            '-r'.$dpi,
+            '-sPageList='.implode(',', $scanned),
+            '-sOutputFile='.$workspace.'/scan-%d.png',
+            '-f', $input,
+        ]);
+
+        if ($result->failed()) {
+            throw new RuntimeException('Ghostscript could not draw the scanned pages: '.Str::limit($result->errorOutput().$result->output(), 500));
+        }
+
+        /** The stamp's sizes are set in points; the picture counts pixels. */
+        $pixelsPerPoint = $dpi / 72;
+        $stampSettings = [
+            'stamps' => (int) $settings['stamps'],
+            'font_size_ratio' => (float) $settings['font_size_ratio'],
+            'min_font_size' => (float) $settings['min_font_size'] * $pixelsPerPoint,
+            'max_font_size' => (float) $settings['max_font_size'] * $pixelsPerPoint,
+            'line_height_ratio' => (float) $settings['line_height_ratio'],
+        ];
+        $channel = fn (float $share): int => max(0, min(255, (int) round($share * 255)));
+
+        $pictures = [];
+
+        foreach ($scanned as $position => $page) {
+            $drawn = "{$workspace}/scan-".($position + 1).'.png';
+            $image = is_file($drawn) ? @imagecreatefrompng($drawn) : false;
+
+            if (! $image instanceof GdImage) {
+                throw new RuntimeException("Ghostscript drew no picture of page {$page}.");
+            }
+
+            [$red, $green, $blue] = static::rgb((string) $settings['colour']);
+            $colour = imagecolorallocatealpha(
+                $image,
+                $channel($red),
+                $channel($green),
+                $channel($blue),
+                static::gdTransparency((float) $settings['opacity']),
+            );
+
+            if ($colour === false) {
+                throw new RuntimeException('The watermark colour could not be allocated.');
+            }
+
+            imagealphablending($image, true);
+            static::drawStamp($image, $text, $stampSettings, $colour);
+
+            $picture = "{$workspace}/scan-".($position + 1).'.jpg';
+            imagejpeg($image, $picture, (int) $settings['scan_quality']);
+
+            $pictures[$page - 1] = ['picture' => $picture, 'width' => imagesx($image), 'height' => imagesy($image)];
+        }
+
+        return $pictures;
+    }
+
+    /**
+     * Run Ghostscript on a PDF the way every pass here does: safely, with
+     * the extra arguments given and, if any, a program written beside it.
+     *
+     * @param  array<int, string>  $arguments
+     */
+    protected static function runGhostscript(array $arguments, ?string $workspace = null, ?string $program = null): ProcessResult
+    {
+        $programFile = null;
+
+        if ($program !== null && $workspace !== null) {
+            $programFile = $workspace.'/program-'.Str::random(8).'.ps';
+            file_put_contents($programFile, $program);
+        }
+
+        $result = Process::timeout(self::PDF_TIMEOUT_SECONDS)->run([
+            static::ghostscript(),
+            '-dSAFER',
+            '-dALLOWPSTRANSPARENCY',
+            '-dBATCH',
+            '-dNOPAUSE',
+            '-dQUIET',
+            ...$arguments,
+            ...($programFile !== null ? [$programFile] : []),
+        ]);
+
+        /**
+         * Ghostscript drops a page it cannot draw and carries on, so a clean
+         * exit is not enough: a copy missing pages is no copy.
+         */
+        if ($result->successful() && str_contains($result->output().$result->errorOutput(), 'Could not draw this page')) {
+            throw new RuntimeException('Ghostscript dropped a page: '.Str::limit($result->errorOutput().$result->output(), 500));
+        }
+
+        return $result;
     }
 
     /**
@@ -331,22 +517,22 @@ class Watermark
     }
 
     /**
-     * Get the PostScript that draws each page's stamps at its end.
-     *
-     * Each letter is [x y angle size <hex>], placed from the page's
+     * Lay out each page's stamp, for that page's own size, as a PostScript
+     * array of letters: [x y angle size <hex>], placed from the page's
      * top-left as WatermarkStamp lays it out and turned here into
      * PostScript's bottom-up space.
      *
      * @param  array<int, array{0: float, 1: float}>  $pageSizes
+     * @return array<int, string>
      */
-    protected static function pageStamps(array $pageSizes, string $text): string
+    protected static function pageStamps(array $pageSizes, string $text): array
     {
         $settings = config('watermark.pdf');
         $text = mb_convert_encoding($text, 'ISO-8859-1', 'UTF-8');
         $measure = fn (string $text, float $size): float => static::helveticaWidth($text) * $size / 1000;
         $randomizer = new Randomizer;
 
-        $pages = array_map(function (array $size) use ($settings, $text, $measure, $randomizer): string {
+        return array_map(function (array $size) use ($settings, $text, $measure, $randomizer): string {
             [$width, $height] = $size;
 
             $glyphs = (new WatermarkStamp($width, $height, $settings))->glyphsFor($text, $measure, $randomizer);
@@ -360,36 +546,73 @@ class Watermark
                 bin2hex($glyph['text']),
             ), $glyphs)).']';
         }, $pageSizes);
+    }
 
+    /**
+     * Get the PostScript that puts out the given pages one by one: a page
+     * of the PDF with its stamp drawn over it at its end, or a flattened
+     * scan drawn as the whole page.
+     *
+     * Each stamp letter is filled as an outline of Helvetica Bold.
+     *
+     * @param  array<int, array{page: int, stamp: string}|array{picture: string, width: int, height: int, size: array{0: float, 1: float}}>  $pages
+     */
+    protected static function pageProgram(string $input, array $pages): string
+    {
+        $settings = config('watermark.pdf');
         [$red, $green, $blue] = static::rgb((string) $settings['colour']);
         $opacity = max(0.0, min(1.0, (float) $settings['opacity']));
         $blendMode = in_array($settings['blend_mode'], ['Normal', 'Multiply', 'Darken'], true) ? $settings['blend_mode'] : 'Normal';
+
+        $body = array_map(function (array $page): string {
+            if (isset($page['picture'])) {
+                [$width, $height] = $page['size'];
+
+                return sprintf(
+                    "userdict /WMStamp [] put\n"
+                    ."<< /PageSize [%1\$.2F %2\$.2F] >> setpagedevice\n"
+                    ."gsave %1\$.2F %2\$.2F scale /DeviceRGB setcolorspace\n"
+                    ."<< /ImageType 1 /Width %3\$d /Height %4\$d /BitsPerComponent 8 /Decode [0 1 0 1 0 1]\n"
+                    ."   /ImageMatrix [%3\$d 0 0 -%4\$d 0 %4\$d] /DataSource <%5\$s> (r) file /DCTDecode filter >> image\n"
+                    .'grestore showpage',
+                    $width,
+                    $height,
+                    $page['width'],
+                    $page['height'],
+                    bin2hex($page['picture']),
+                );
+            }
+
+            return "userdict /WMStamp {$page['stamp']} put\n{$page['page']} pdfgetpage pdfshowpage";
+        }, $pages);
 
         return sprintf(<<<'PS'
             /WMFont /Helvetica-Bold findfont dup length dict begin
               { 1 index /FID ne { def } { pop pop } ifelse } forall
               /Encoding ISOLatin1Encoding def currentdict
             end definefont pop
-            /WMPages [
-            %s
-            ] def
+            userdict /WMStamp [] put
             << /EndPage {
-              exch /WMIndex exch def
+              exch pop
               dup 2 lt {
                 pop
                 gsave initmatrix
                 %.4F %.4F %.4F setrgbcolor %.3F .setfillconstantalpha /%s .setblendmode
-                WMPages WMIndex WMPages length mod get {
+                userdict /WMStamp get {
                   aload pop /WMChar exch def /WMSize exch def /WMAngle exch def
                   gsave translate WMAngle rotate
-                  /WMFont WMSize selectfont
-                  WMChar stringwidth pop -2 div WMSize -0.35 mul moveto WMChar show
+                  /WMFont WMSize selectfont newpath
+                  WMChar stringwidth pop -2 div WMSize -0.35 mul moveto
+                  WMChar false charpath fill
                   grestore
                 } forall
                 grestore true
               } { pop false } ifelse
             } bind >> setpagedevice
-            PS, implode("\n", $pages), $red, $green, $blue, $opacity, $blendMode);
+            <%s> (r) file runpdfbegin process_trailer_attrs
+            %s
+            runpdfend
+            PS, $red, $green, $blue, $opacity, $blendMode, bin2hex($input), implode("\n", $body));
     }
 
     /**
