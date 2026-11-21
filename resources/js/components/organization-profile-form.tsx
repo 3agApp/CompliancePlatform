@@ -1,16 +1,14 @@
-import { Form, router } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
 import {
     Building2,
     ExternalLink,
     Factory,
     Globe,
-    ImageUp,
     Mail,
     MapPin,
     Phone,
-    Trash2,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {
     CountryCombobox,
@@ -19,13 +17,11 @@ import {
 } from '@/components/country-combobox';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import LogoUploadField from '@/components/logo-upload-field';
 import SaveButton from '@/components/save-button';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 import {
     destroy as destroyLogo,
     store as storeLogo,
@@ -33,11 +29,6 @@ import {
 import { update as updateProfile } from '@/routes/organizations/profile';
 import type { Organization, OrganizationProfile } from '@/types';
 import type { CountryOption } from '@/types/products';
-
-/** The largest logo accepted, matching the server's limit. */
-const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-
-const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 /** The most countries a supplier may list, matching the server's limit. */
 const MAX_PRODUCTION_COUNTRIES = 30;
@@ -346,7 +337,7 @@ function FieldGroup({
 }
 
 /**
- * The logo, uploaded the moment it is chosen or dropped.
+ * The organization's logo, uploaded the moment it is chosen or dropped.
  */
 function LogoField({
     organization,
@@ -355,132 +346,14 @@ function LogoField({
     organization: Organization;
     logoUrl: string | null;
 }) {
-    const input = useRef<HTMLInputElement>(null);
-    const [error, setError] = useState<string | undefined>();
-    const [uploading, setUploading] = useState(false);
-    const [dragging, setDragging] = useState(false);
-
-    const upload = (file: File | undefined) => {
-        if (file === undefined) {
-            return;
-        }
-
-        if (!LOGO_TYPES.includes(file.type)) {
-            setError(t('The logo must be a PNG, JPG or WebP image.'));
-
-            return;
-        }
-
-        if (file.size > MAX_LOGO_BYTES) {
-            setError(t('The logo may not be larger than 2 MB.'));
-
-            return;
-        }
-
-        setError(undefined);
-
-        router.post(
-            storeLogo.url(organization.slug),
-            { logo: file },
-            {
-                forceFormData: true,
-                preserveScroll: true,
-                onStart: () => setUploading(true),
-                onFinish: () => {
-                    setUploading(false);
-
-                    if (input.current) {
-                        input.current.value = '';
-                    }
-                },
-                onError: (errors) => setError(errors.logo),
-            },
-        );
-    };
-
-    const remove = () => {
-        router.delete(destroyLogo.url(organization.slug), {
-            preserveScroll: true,
-            onStart: () => setUploading(true),
-            onFinish: () => setUploading(false),
-        });
-    };
-
     return (
-        <div className="flex flex-wrap items-center gap-5">
-            <label
-                className={cn(
-                    'bg-muted/40 relative flex size-24 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors',
-                    dragging && 'border-primary bg-primary/5',
-                    logoUrl && 'border-solid bg-white',
-                )}
-                onDragOver={(event) => {
-                    event.preventDefault();
-                    setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(event) => {
-                    event.preventDefault();
-                    setDragging(false);
-                    upload(event.dataTransfer.files[0]);
-                }}
-                data-test="profile-logo-dropzone"
-            >
-                {logoUrl ? (
-                    <img
-                        src={logoUrl}
-                        alt={t(':name logo', { name: organization.name })}
-                        className="size-full object-contain p-2"
-                        data-test="profile-logo-image"
-                    />
-                ) : (
-                    <ImageUp className="text-muted-foreground size-7" />
-                )}
-                {uploading && (
-                    <span className="bg-background/70 absolute inset-0 flex items-center justify-center">
-                        <Spinner />
-                    </span>
-                )}
-                <input
-                    ref={input}
-                    type="file"
-                    accept={LOGO_TYPES.join(',')}
-                    className="sr-only"
-                    onChange={(event) => upload(event.target.files?.[0])}
-                    data-test="profile-logo-input"
-                />
-            </label>
-            <div className="space-y-2">
-                <p className="text-sm font-medium">{t('Logo')}</p>
-
-                <div className="flex gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={uploading}
-                        onClick={() => input.current?.click()}
-                    >
-                        <ImageUp />
-                        {logoUrl ? t('Replace') : t('Upload logo')}
-                    </Button>
-                    {logoUrl && (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={uploading}
-                            onClick={remove}
-                            data-test="profile-logo-remove"
-                        >
-                            <Trash2 />
-                            {t('Remove')}
-                        </Button>
-                    )}
-                </div>
-                <InputError message={error} />
-            </div>
-        </div>
+        <LogoUploadField
+            logoUrl={logoUrl}
+            alt={t(':name logo', { name: organization.name })}
+            storeUrl={storeLogo.url(organization.slug)}
+            destroyUrl={destroyLogo.url(organization.slug)}
+            testIdPrefix="profile-logo"
+        />
     );
 }
 

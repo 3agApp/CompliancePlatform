@@ -151,34 +151,20 @@ class PublicProductController extends Controller
     }
 
     /**
-     * Show a document the distributor released to the public page, inside
-     * the page's own viewer.
+     * Show a PDF the distributor released to the public page, inside the
+     * page's own viewer.
      *
      * Only a PDF marked public, checked here rather than trusted from the
      * route, like the pictures. A Word or Excel file cannot carry the
      * watermark, so it is never handed out here even if it was released
      * before that rule.
+     *
+     * Always inline and never as an attachment: the page previews its
+     * papers and offers nothing to download. Served under the PDF type
+     * whatever the column says, and never the original: a file that could
+     * not be stamped is a missing page.
      */
     public function document(Product $product, ProductDocument $document): StreamedResponse
-    {
-        return $this->publicPdf($product, $document, 'inline');
-    }
-
-    /**
-     * Hand over a released document to keep, as an attachment.
-     */
-    public function downloadDocument(Product $product, ProductDocument $document): StreamedResponse
-    {
-        return $this->publicPdf($product, $document, 'attachment');
-    }
-
-    /**
-     * Stream the watermarked copy of a released PDF.
-     *
-     * Served under the PDF type whatever the column says, and never the
-     * original: a file that could not be stamped is a missing page.
-     */
-    protected function publicPdf(Product $product, ProductDocument $document, string $disposition): StreamedResponse
     {
         abort_unless($document->is_public && $document->previewKind() === DocumentPreviewKind::Pdf, 404);
 
@@ -186,37 +172,33 @@ class PublicProductController extends Controller
 
         abort_if($path === null, 404);
 
-        return Storage::disk(ProductDocument::DISK)->response($path, $document->name, [
+        return Storage::disk(ProductDocument::DISK)->response($path, $document->publicFileName(), [
             'Content-Type' => 'application/pdf',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'public, max-age=3600',
-        ], $disposition);
+        ]);
     }
 
     /**
-     * Show one of the product's pictures, or one of its warning images.
+     * Show one of the product's released pictures: of the article, of its
+     * warning, or a paper that was filed as a scan.
      *
-     * The only bytes on the private disk that are served without a login,
-     * and only ever the ones somebody filed as a picture of the article or
-     * of its warning. The kind is checked here rather than trusted from the
-     * route, so a test report filed under the wrong heading is still not
-     * reachable this way.
+     * The kind of file is checked here rather than trusted from the route,
+     * so a Word file released before the rule is still not reachable this
+     * way.
      */
     public function image(Product $product, ProductDocument $document): StreamedResponse
     {
-        abort_unless(
-            $this->isPublicImage($document) || $this->isPublicImage($document, ProductDocumentType::SafetyImage),
-            404,
-        );
+        abort_unless($document->is_public && $document->previewKind() === DocumentPreviewKind::Image, 404);
 
         /**
-         * A picture of the article goes out watermarked. A warning image
-         * does not: it is a small safety symbol, and a stamp across it
-         * would only make it harder to read.
+         * Everything goes out watermarked but a warning image: that is a
+         * small safety symbol, and a stamp across it would only make it
+         * harder to read.
          */
-        $path = $document->type === ProductDocumentType::ProductImage
-            ? Watermark::forPublic($product, $document)
-            : $document->path;
+        $path = $document->type === ProductDocumentType::SafetyImage
+            ? $document->path
+            : Watermark::forPublic($product, $document);
 
         abort_if($path === null, 404);
 
@@ -228,15 +210,31 @@ class PublicProductController extends Controller
         return PublicImage::response(
             ProductDocument::DISK,
             $path,
-            $document->name,
+            $document->publicFileName(),
             (string) $document->previewContentType(),
         );
     }
 
     /**
+     * Show the logo of the product's brand.
+     *
+     * Reached through the product rather than the brand, so the only logos
+     * anybody can fetch without a login are those of brands already named
+     * on a public page.
+     */
+    public function brandLogo(Product $product): StreamedResponse
+    {
+        $brand = $product->brand;
+
+        abort_if($brand === null || $brand->logo_path === null, 404);
+
+        return $brand->logoResponse();
+    }
+
+    /**
      * Get what the public page shows about the product itself.
      *
-     * @return array{product: array{uuid: string, name: string, brand: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, warningImages: array<array{id: int, url: string, name: string}>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, name: string, size: int, url: string, downloadUrl: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool, turnstileSiteKey: string|null}
+     * @return array{product: array{uuid: string, name: string, brand: string|null, brandLogoUrl: string|null, ean: string|null, internal_article_number: string|null}, safety: array<string, string|null>, warningImages: array<array{id: int, url: string, name: string}>, seal: ProductSeal, images: array<array{id: int, url: string, name: string}>, documents: array<array{id: int, type: string, title: string|null, kind: string, size: int, url: string}>, importer: array<string, string|null>, locale: string, checkUrl: string, checkable: bool, turnstileSiteKey: string|null}
      */
     protected function toPageArray(Product $product): array
     {
@@ -251,6 +249,10 @@ class PublicProductController extends Controller
                 'uuid' => $product->uuid,
                 'name' => $product->name,
                 'brand' => $product->brand?->name,
+                'brandLogoUrl' => $product->brand?->logo_path === null ? null : route('products.public.brand-logo', [
+                    'product' => $product->uuid,
+                    'v' => substr(md5($product->brand->logo_path), 0, 8),
+                ]),
                 'ean' => $product->ean,
                 'internal_article_number' => $product->internal_article_number,
             ],
@@ -309,32 +311,32 @@ class PublicProductController extends Controller
     /**
      * Get the documents the distributor released to the public page.
      *
-     * Only PDFs, the one kind of paper that can carry the watermark.
-     * Pictures of the article and of its warning are left out: they are
-     * already shown in the gallery and in the warning.
+     * PDFs, and papers filed as a scan. Pictures of the article and of its
+     * warning are left out: they are already shown in the gallery and in
+     * the warning.
      *
-     * @return array<array{id: int, type: string, name: string, size: int, url: string, downloadUrl: string}>
+     * The uploaded filename is never sent: a paper goes by the title it was
+     * given, or by its kind, which the page names in the reader's language.
+     *
+     * @return array<array{id: int, type: string, title: string|null, kind: string, size: int, url: string}>
      */
     protected function toDocumentArray(Product $product): array
     {
         return $product->documents
             ->filter(fn (ProductDocument $document) => $document->is_public
-                && $document->previewKind() === DocumentPreviewKind::Pdf
+                && $document->previewKind() !== null
                 && ! $this->isPublicImage($document)
                 && ! $this->isPublicImage($document, ProductDocumentType::SafetyImage))
             ->map(fn (ProductDocument $document) => [
                 'id' => $document->id,
                 'type' => $document->type->value,
-                'name' => $document->name,
+                'title' => filled($document->title) ? $document->title : null,
+                'kind' => $document->previewKind()->value,
                 'size' => $document->size,
-                'url' => route('products.public.document', [
-                    'product' => $product->uuid,
-                    'document' => $document->id,
-                ]),
-                'downloadUrl' => route('products.public.document.download', [
-                    'product' => $product->uuid,
-                    'document' => $document->id,
-                ]),
+                'url' => route(
+                    $document->previewKind() === DocumentPreviewKind::Pdf ? 'products.public.document' : 'products.public.image',
+                    ['product' => $product->uuid, 'document' => $document->id],
+                ),
             ])
             ->values()
             ->toArray();
@@ -359,7 +361,7 @@ class PublicProductController extends Controller
                     'product' => $product->uuid,
                     'document' => $document->id,
                 ]),
-                'name' => $document->name,
+                'name' => $document->publicName(),
             ])
             ->values()
             ->toArray();

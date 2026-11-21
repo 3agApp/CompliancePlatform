@@ -646,7 +646,6 @@
     "Only PDFs and images can be read": "Nur PDFs und Bilder können gelesen werden",
     "Only PDFs and images can be shown on the public page.": "Nur PDFs und Bilder können auf der öffentlichen Seite angezeigt werden.",
     "Only PDFs and images up to 14 MB can be analyzed.": "Nur PDFs und Bilder bis 14 MB können analysiert werden.",
-    "Only product images and warning images can be shown on the public page as pictures.": "Als Bilder können auf der öffentlichen Seite nur Produktbilder und Warnbilder angezeigt werden.",
     "Open": "Öffnen",
     "Open dashboard": "Übersicht öffnen",
     "Open in a new tab": "In neuem Tab öffnen",
@@ -1113,5 +1112,16 @@
     "{1}:name is still used by one product. Move it to another template first.|[2,*]:name is still used by :count products. Move them to another template first.": "{1}:name wird noch von einem Produkt verwendet. Ordnen Sie es zuerst einer anderen Vorlage zu.|[2,*]:name wird noch von :count Produkten verwendet. Ordnen Sie sie zuerst einer anderen Vorlage zu.",
     "© :year :name. All rights reserved.": "© :year :name. Alle Rechte vorbehalten.",
     "•••• :hint — leave blank to keep this key": "•••• :hint – leer lassen, um diesen Schlüssel zu behalten",
-    "We could not confirm you are a person. Wait for the security check to finish, then press Check again.": "Wir konnten nicht bestätigen, dass Sie ein Mensch sind. Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist, und drücken Sie dann erneut auf Prüfen."
+    "We could not confirm you are a person. Wait for the security check to finish, then press Check again.": "Wir konnten nicht bestätigen, dass Sie ein Mensch sind. Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist, und drücken Sie dann erneut auf Prüfen.",
+    "Document title changed": "Dokumenttitel geändert",
+    "Document title": "Dokumenttitel",
+    "Document title saved.": "Dokumenttitel gespeichert.",
+    "The title of file :position may not be longer than 255 characters.": "Der Titel von Datei :position darf höchstens 255 Zeichen lang sein.",
+    "Shown on the public page instead of the file name. Leave it empty to show the kind of document.": "Wird auf der öffentlichen Seite anstelle des Dateinamens angezeigt. Leer lassen, um die Dokumentart anzuzeigen.",
+    "Title": "Titel",
+    "File: :name": "Datei: :name",
+    "Change the title of :name": "Titel von :name ändern",
+    "Title (optional)": "Titel (optional)",
+    "Title for :name": "Titel für :name",
+    "Edit brand": "Marke bearbeiten"
 }

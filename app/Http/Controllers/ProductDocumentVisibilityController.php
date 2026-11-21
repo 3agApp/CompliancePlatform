@@ -35,16 +35,14 @@ class ProductDocumentVisibilityController extends Controller
         $isPublic = (bool) $validated['is_public'];
 
         /**
-         * The public page watermarks what it hands out, and only a PDF or
-         * a picture can carry a watermark -- and a picture only of a kind
-         * the page has a place for. Taking a file back is always allowed,
-         * so one released before these rules can still be hidden.
+         * The public page only previews what it shows, watermarked, and
+         * only a PDF or a picture can be previewed or carry a watermark.
+         * Taking a file back is always allowed, so one released before
+         * this rule can still be hidden.
          */
         if ($isPublic && ! $document->canBePublished()) {
             throw ValidationException::withMessages([
-                'is_public' => $document->previewKind() === null
-                    ? __('Only PDFs and images can be shown on the public page.')
-                    : __('Only product images and warning images can be shown on the public page as pictures.'),
+                'is_public' => __('Only PDFs and images can be shown on the public page.'),
             ]);
         }
 

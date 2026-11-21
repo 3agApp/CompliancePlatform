@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\CheckUnitController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
@@ -64,9 +65,7 @@ Route::middleware(['throttle:public-product', SetPublicLocale::class])->group(fu
         ->scopeBindings()
         ->name('products.public.document');
 
-    Route::get('p/{product:uuid}/documents/{document}/download', [PublicProductController::class, 'downloadDocument'])
-        ->scopeBindings()
-        ->name('products.public.document.download');
+    Route::get('p/{product:uuid}/brand-logo', [PublicProductController::class, 'brandLogo'])->name('products.public.brand-logo');
 
     Route::get('o/{organization}/logo', [OrganizationLogoController::class, 'show'])->name('organizations.logo');
 });
@@ -156,6 +155,7 @@ Route::prefix('{current_organization}')
              */
             Route::get('products/{product}/documents/{document}/preview', [ProductDocumentController::class, 'preview'])
                 ->name('products.documents.preview');
+            Route::patch('products/{product}/documents/{document}', [ProductDocumentController::class, 'update'])->name('products.documents.update');
             Route::delete('products/{product}/documents/{document}', [ProductDocumentController::class, 'destroy'])->name('products.documents.destroy');
 
             /**
@@ -187,6 +187,9 @@ Route::prefix('{current_organization}')
             Route::post('brands', [BrandController::class, 'store'])->name('brands.store');
             Route::patch('brands/{brand}', [BrandController::class, 'update'])->name('brands.update');
             Route::delete('brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
+            Route::get('brands/{brand}/logo', [BrandLogoController::class, 'show'])->name('brands.logo');
+            Route::post('brands/{brand}/logo', [BrandLogoController::class, 'store'])->name('brands.logo.store');
+            Route::delete('brands/{brand}/logo', [BrandLogoController::class, 'destroy'])->name('brands.logo.destroy');
 
             Route::middleware(EnsureOrganizationType::class.':distributor')->group(function () {
                 Route::get('categories', [ProductCategoryController::class, 'index'])->name('categories.index');

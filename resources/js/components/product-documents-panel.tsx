@@ -1,5 +1,12 @@
 import { router, usePoll } from '@inertiajs/react';
-import { Download, FileText, ImageOff, Trash2, Upload } from 'lucide-react';
+import {
+    Download,
+    FileText,
+    ImageOff,
+    Pencil,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DeleteProductDocumentModal from '@/components/delete-product-document-modal';
 import {
@@ -9,6 +16,7 @@ import {
 import Heading from '@/components/heading';
 import PreviewDocumentModal from '@/components/preview-document-modal';
 import { unavailableNotes } from '@/components/product-assessment-panel';
+import RenameProductDocumentModal from '@/components/rename-product-document-modal';
 import UploadDocumentsModal from '@/components/upload-documents-modal';
 import { Button } from '@/components/ui/button';
 import { formatDay, formatFileSize } from '@/lib/format';
@@ -96,6 +104,9 @@ export default function ProductDocumentsPanel({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [documentToDelete, setDocumentToDelete] =
         useState<ProductDocument | null>(null);
+    const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+    const [documentToRename, setDocumentToRename] =
+        useState<ProductDocument | null>(null);
     const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
     const [documentToPreview, setDocumentToPreview] =
         useState<ProductDocument | null>(null);
@@ -174,6 +185,10 @@ export default function ProductDocumentsPanel({
             setDocumentToDelete(document);
             setDeleteDialogOpen(true);
         },
+        onRename: (document) => {
+            setDocumentToRename(document);
+            setRenameDialogOpen(true);
+        },
     };
 
     /**
@@ -243,7 +258,7 @@ export default function ProductDocumentsPanel({
                         aria-label={t('Documents')}
                         className="workspace-panel overflow-hidden"
                     >
-                        <div className="text-muted-foreground hidden grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_7.5rem] gap-3 border-b px-5 py-2.5 text-xs md:grid">
+                        <div className="text-muted-foreground hidden grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_10rem] gap-3 border-b px-5 py-2.5 text-xs md:grid">
                             <span>{t('File')}</span>
                             <span>{t('Uploaded by')}</span>
                             <span>{t('Date')}</span>
@@ -356,6 +371,14 @@ export default function ProductDocumentsPanel({
                 onOpenChange={setDeleteDialogOpen}
             />
 
+            <RenameProductDocumentModal
+                organizationSlug={organizationSlug}
+                productId={productId}
+                document={documentToRename}
+                open={renameDialogOpen}
+                onOpenChange={setRenameDialogOpen}
+            />
+
             <PreviewDocumentModal
                 organizationSlug={organizationSlug}
                 productId={productId}
@@ -384,7 +407,16 @@ type DocumentActions = {
     ) => void;
     onPreview: (document: ProductDocument) => void;
     onDelete: (document: ProductDocument) => void;
+    onRename: (document: ProductDocument) => void;
 };
+
+/**
+ * What a document is called in the team's lists: its title when it has
+ * one, and otherwise the file as it was uploaded.
+ */
+function displayName(document: ProductDocument): string {
+    return document.title ?? document.name;
+}
 
 /**
  * One kind the template is waiting for, as a place to put it.
@@ -490,7 +522,7 @@ function DocumentName({
                     className,
                 )}
             >
-                {document.name}
+                {displayName(document)}
             </button>
         );
     }
@@ -512,7 +544,7 @@ function DocumentName({
                 className,
             )}
         >
-            {document.name}
+            {displayName(document)}
         </a>
     );
 }
@@ -531,9 +563,9 @@ function PublicSwitch({
     const label = document.is_public ? t('Public') : t('Hidden');
 
     /*
-     * The public page watermarks what it hands out, and only a PDF or a
-     * picture of a kind it has a place for can go there. A file released
-     * before that rule can still be taken back.
+     * The public page only previews what it shows, so only a PDF or a
+     * picture can go there. A file released before that rule can still be
+     * taken back.
      */
     const publishable = document.publishable || document.is_public;
 
@@ -558,10 +590,10 @@ function PublicSwitch({
             aria-label={
                 document.is_public
                     ? t('Hide :name from the public page', {
-                          name: document.name,
+                          name: displayName(document),
                       })
                     : t('Show :name on the public page', {
-                          name: document.name,
+                          name: displayName(document),
                       })
             }
             data-test="product-document-visibility-button"
@@ -569,13 +601,7 @@ function PublicSwitch({
             title={
                 publishable
                     ? undefined
-                    : document.preview_kind === null
-                      ? t(
-                            'Only PDFs and images can be shown on the public page.',
-                        )
-                      : t(
-                            'Only product images and warning images can be shown on the public page as pictures.',
-                        )
+                    : t('Only PDFs and images can be shown on the public page.')
             }
             onClick={() =>
                 router.patch(
@@ -667,13 +693,33 @@ function DocumentButtons({
                     variant="ghost"
                     size="icon"
                     className="size-8"
+                    data-test="product-document-rename-button"
+                    title={t('Change the title of :name', {
+                        name: displayName(document),
+                    })}
+                    onClick={() => actions.onRename(document)}
+                >
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">
+                        {t('Change the title of :name', {
+                            name: displayName(document),
+                        })}
+                    </span>
+                </Button>
+            ) : null}
+
+            {actions.canUpload ? (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
                     data-test="product-document-delete-button"
-                    title={t('Delete :name', { name: document.name })}
+                    title={t('Delete :name', { name: displayName(document) })}
                     onClick={() => actions.onDelete(document)}
                 >
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">
-                        {t('Delete :name', { name: document.name })}
+                        {t('Delete :name', { name: displayName(document) })}
                     </span>
                 </Button>
             ) : null}
@@ -693,7 +739,7 @@ function DocumentRow({
     return (
         <li
             data-test="product-document-row"
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-t px-5 py-2.5 first:border-t-0 md:grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_7.5rem]"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-t px-5 py-2.5 first:border-t-0 md:grid-cols-[minmax(0,1fr)_10rem_7.5rem_7rem_10rem]"
         >
             <div className="flex min-w-0 items-center gap-3">
                 <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-md border text-[10px] font-semibold">
@@ -714,8 +760,13 @@ function DocumentRow({
                             .filter(Boolean)
                             .join(' · ')}
                     </span>
-                    <span className="text-muted-foreground hidden text-xs md:inline">
-                        {formatFileSize(document.size)}
+                    <span className="text-muted-foreground hidden truncate text-xs md:inline">
+                        {[
+                            document.title === null ? null : document.name,
+                            formatFileSize(document.size),
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
                     </span>
                 </div>
             </div>

@@ -2,6 +2,7 @@
 
 use App\Enums\OrganizationRole;
 use App\Enums\ProductDocumentType;
+use App\Enums\ProductEventType;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Organization;
 use App\Models\Product;
@@ -693,4 +694,121 @@ test('the page is told how each document may be shown', function () {
         'packaging.png' => 'image',
         'manual.docx' => null,
     ]);
+});
+
+/**
+ * Titles: what readers see a paper called, apart from the file it came as.
+ */
+function documentTitleRoute(Organization $organization, Product $product, ProductDocument $document): string
+{
+    return route('products.documents.update', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'document' => $document->id,
+    ]);
+}
+
+test('a document can be filed under a title, and the uploaded filename is kept', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocuments($organization, $product, [
+        ['type' => 'test_report', 'title' => '  EN 71-1 report  ', 'file' => UploadedFile::fake()->create('scan_0042.pdf', 10, 'application/pdf')],
+        ['type' => 'certificate', 'title' => '', 'file' => UploadedFile::fake()->create('ce.pdf', 10, 'application/pdf')],
+    ])->assertSessionHasNoErrors();
+
+    $report = ProductDocument::query()->where('type', 'test_report')->sole();
+    $certificate = ProductDocument::query()->where('type', 'certificate')->sole();
+
+    expect($report->title)->toBe('EN 71-1 report')
+        ->and($report->name)->toBe('scan_0042.pdf')
+        ->and($report->publicName())->toBe('EN 71-1 report')
+        ->and($certificate->title)->toBeNull()
+        ->and($certificate->publicName())->toBe('Certificate');
+});
+
+test('a title longer than the column is refused, naming the row', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocuments($organization, $product, [
+        ['type' => 'test_report', 'title' => str_repeat('a', 256), 'file' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf')],
+    ])->assertSessionHasErrors(['documents.0.title' => 'The title of file 1 may not be longer than 255 characters.']);
+
+    expect(ProductDocument::count())->toBe(0);
+});
+
+test('a document is given a title afterwards, and the history says so', function () {
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $document = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create(['name' => 'scan_0042.pdf']);
+
+    $this->actingAs($user)
+        ->patch(documentTitleRoute($organization, $product, $document), ['title' => 'EN 71-1 report'])
+        ->assertRedirect(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]));
+
+    expect($document->fresh())
+        ->title->toBe('EN 71-1 report')
+        ->name->toBe('scan_0042.pdf');
+
+    $event = $product->events()->sole();
+
+    expect($event->type)->toBe(ProductEventType::DocumentRenamed)
+        ->and($event->changedFields())->toBe([
+            ['field' => 'document_title', 'label' => 'Document title', 'from' => null, 'to' => 'EN 71-1 report'],
+        ]);
+
+    /** Clearing it hands the name back to the kind. */
+    $this->patch(documentTitleRoute($organization, $product, $document), ['title' => ''])
+        ->assertSessionHasNoErrors();
+
+    expect($document->fresh()->title)->toBeNull();
+
+    /** Saving the same title again writes no second line. */
+    $this->patch(documentTitleRoute($organization, $product, $document), ['title' => '']);
+
+    expect($product->events()->count())->toBe(2);
+});
+
+test('a document title may not be longer than the column', function () {
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $document = ProductDocument::factory()->for($product)->create();
+
+    $this->actingAs($user)
+        ->patch(documentTitleRoute($organization, $product, $document), ['title' => str_repeat('a', 256)])
+        ->assertSessionHasErrors('title');
+
+    expect($document->fresh()->title)->toBeNull();
+});
+
+test('only those who may file documents may give them a title', function () {
+    [$member, $organization, $product] = distributorWithFiledProduct(OrganizationRole::Member);
+
+    $document = ProductDocument::factory()->for($product)->create();
+
+    $this->actingAs($member)
+        ->patch(documentTitleRoute($organization, $product, $document), ['title' => 'Mine'])
+        ->assertForbidden();
+
+    expect($document->fresh()->title)->toBeNull();
+});
+
+test('a document of another product cannot be given a title through this one', function () {
+    [$user, $organization, $product] = distributorWithFiledProduct();
+    $other = Product::factory()->for($organization)->create(['supplier_connection_id' => $product->supplier_connection_id]);
+
+    $document = ProductDocument::factory()->for($other)->create();
+
+    $this->actingAs($user)
+        ->patch(documentTitleRoute($organization, $product, $document), ['title' => 'Mine'])
+        ->assertNotFound();
+
+    expect($document->fresh()->title)->toBeNull();
 });

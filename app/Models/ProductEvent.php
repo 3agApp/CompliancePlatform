@@ -148,6 +148,7 @@ class ProductEvent extends Model
         return match ($field) {
             'name' => __('Name'),
             'document' => __('Document'),
+            'document_title' => __('Document title'),
             'seal_override' => __('Public seal'),
             'supplier_connection_id' => __('Supplier'),
             'product_category_id' => __('Category'),

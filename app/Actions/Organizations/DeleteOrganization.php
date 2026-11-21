@@ -3,6 +3,7 @@
 namespace App\Actions\Organizations;
 
 use App\Enums\SupplierConnectionStatus;
+use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
@@ -46,7 +47,21 @@ class DeleteOrganization
 
             Storage::disk(ProductDocument::DISK)->deleteDirectory($organization->logoDirectory());
 
+            /**
+             * The brands under the company's own trades go with the
+             * connections by cascade, which fires no model event, so their
+             * logos are taken off the disk here -- once the delete has
+             * committed, so a rollback leaves no row pointing at a file
+             * that is already gone.
+             */
+            $brandIds = Brand::query()
+                ->whereIn('supplier_connection_id', $organization->supplierConnections()->select('id'))
+                ->pluck('id');
+
             $organization->delete();
+
+            DB::afterCommit(fn () => $brandIds->each(fn (int $brandId) => Storage::disk(ProductDocument::DISK)
+                ->deleteDirectory(Brand::LOGO_DIRECTORY.'/'.$brandId)));
         });
     }
 

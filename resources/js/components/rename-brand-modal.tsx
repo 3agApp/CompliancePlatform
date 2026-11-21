@@ -1,6 +1,7 @@
 import { Form } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
 import InputError from '@/components/input-error';
+import LogoUploadField from '@/components/logo-upload-field';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -15,6 +16,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { t } from '@/lib/i18n';
 import { update } from '@/routes/brands';
+import {
+    destroy as destroyLogo,
+    store as storeLogo,
+} from '@/routes/brands/logo';
 import type { Brand } from '@/types';
 
 type Props = PropsWithChildren<{
@@ -25,9 +30,10 @@ type Props = PropsWithChildren<{
 }>;
 
 /**
- * Rename a maker.
+ * Rename a maker, and give it a logo.
  *
- * Renaming only: a brand is named under one trade and never moves to
+ * The logo is uploaded the moment it is chosen, apart from the name, which
+ * is saved with the button. Never a move: a brand is named under one trade and never moves to
  * another, because the products already carrying it belong to that
  * supplier and moving the row would quietly move them too. Adding one is
  * CreateBrandModal, which asks which trade it goes under.
@@ -61,8 +67,22 @@ export default function RenameBrandModal({
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>{t('Rename brand')}</DialogTitle>
+                                <DialogTitle>{t('Edit brand')}</DialogTitle>
                             </DialogHeader>
+
+                            <LogoUploadField
+                                logoUrl={brand.logoUrl}
+                                alt={t(':name logo', { name: brand.name })}
+                                storeUrl={storeLogo.url([
+                                    organizationSlug,
+                                    brand.id,
+                                ])}
+                                destroyUrl={destroyLogo.url([
+                                    organizationSlug,
+                                    brand.id,
+                                ])}
+                                testIdPrefix="brand-logo"
+                            />
 
                             <div className="grid gap-2">
                                 <Label htmlFor="brand-name">

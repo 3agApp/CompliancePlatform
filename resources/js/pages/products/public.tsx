@@ -5,7 +5,6 @@ import {
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
-    Download,
     Eye,
     FileText,
     Hash,
@@ -145,7 +144,16 @@ export default function PublicProduct({
                                 <div className="mb-4">
                                     {product.brand ? (
                                         <div className="mb-1.5 flex items-center gap-1.5">
-                                            <div className="size-1 rounded-full bg-emerald-600" />
+                                            {product.brandLogoUrl ? (
+                                                <img
+                                                    src={product.brandLogoUrl}
+                                                    alt=""
+                                                    data-test="product-brand-logo"
+                                                    className="h-6 max-w-24 object-contain"
+                                                />
+                                            ) : (
+                                                <div className="size-1 rounded-full bg-emerald-600" />
+                                            )}
                                             <p
                                                 className="text-xs font-semibold tracking-widest text-gray-400 uppercase"
                                                 data-test="product-brand"
@@ -615,9 +623,6 @@ function Safety({
 }
 
 /**
- * One document the reader may download.
- */
-/**
  * The order kinds of document are listed in: the papers that say the
  * product complies first, then what helps the reader use it.
  */
@@ -650,7 +655,7 @@ function groupByType(
 
 /**
  * One kind of document, and every file of that kind the reader may
- * download.
+ * preview.
  */
 function DocumentGroup({
     type,
@@ -681,54 +686,70 @@ function DocumentGroup({
                 </p>
             </div>
             <ul className="space-y-2">
-                {documents.map((document) => (
-                    <li
-                        key={document.id}
-                        className="flex items-center gap-3 rounded-lg border border-sky-100 bg-white px-3 py-2"
-                        data-test="product-public-document"
-                    >
-                        <div className="min-w-0 flex-1">
-                            <p
-                                className="truncate text-sm text-gray-800"
-                                title={document.name}
+                {documents.map((document) => {
+                    const name =
+                        document.title ??
+                        numberedTypeName(type, documents, document, t);
+
+                    return (
+                        <li
+                            key={document.id}
+                            className="flex items-center gap-3 rounded-lg border border-sky-100 bg-white px-3 py-2"
+                            data-test="product-public-document"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <p
+                                    className="truncate text-sm text-gray-800"
+                                    title={name}
+                                    data-test="product-public-document-name"
+                                >
+                                    {name}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                    {humanSize(document.size)}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    onPreview({
+                                        kind: document.kind,
+                                        name,
+                                        url: document.url,
+                                    })
+                                }
+                                data-test="product-public-document-preview"
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
+                                aria-label={`${t('preview')} ${name}`}
                             >
-                                {document.name}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                                {humanSize(document.size)}
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                onPreview({
-                                    kind: 'pdf',
-                                    name: document.name,
-                                    url: document.url,
-                                    downloadUrl: document.downloadUrl,
-                                })
-                            }
-                            data-test="product-public-document-preview"
-                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
-                            aria-label={`${t('preview')} ${document.name}`}
-                        >
-                            <Eye className="size-3.5" />
-                            {t('preview')}
-                        </button>
-                        <a
-                            href={document.downloadUrl}
-                            data-test="product-public-document-download"
-                            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-sky-200 bg-white p-1.5 text-sky-700 shadow-sm transition-colors hover:bg-sky-50"
-                            aria-label={`${t('download')} ${document.name}`}
-                            title={t('download')}
-                        >
-                            <Download className="size-4" />
-                        </a>
-                    </li>
-                ))}
+                                <Eye className="size-3.5" />
+                                {t('preview')}
+                            </button>
+                        </li>
+                    );
+                })}
             </ul>
         </li>
     );
+}
+
+/**
+ * The name of a document that was given no title: its kind, numbered when
+ * there are several untitled files of that kind, so two test reports do
+ * not read as the same paper twice.
+ */
+function numberedTypeName(
+    type: ProductDocumentType,
+    documents: PublicProductDocument[],
+    document: PublicProductDocument,
+    t: PublicTranslate,
+): string {
+    const untitled = documents.filter((candidate) => candidate.title === null);
+    const label = t(`docType_${type}`);
+
+    return untitled.length > 1
+        ? `${label} ${untitled.indexOf(document) + 1}`
+        : label;
 }
 
 function SectionHeader({

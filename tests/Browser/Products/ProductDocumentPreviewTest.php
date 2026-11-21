@@ -167,9 +167,8 @@ test('a close-up of the packaging is shown among the pictures, under its own kin
             ['box-back-label.png'],
         )
         ->assertSeeIn('@product-document-images', 'Packaging close-up')
-        /* The public page has no place for it, so it cannot be switched on. */
-        ->assertAttribute('@product-document-visibility-button', 'title', 'Only product images and warning images can be shown on the public page as pictures.')
-        ->assertScript("document.querySelector('[data-test=\"product-document-visibility-button\"]').disabled", true)
+        /* A picture of any kind may be released, to be listed among the papers. */
+        ->assertScript("document.querySelector('[data-test=\"product-document-visibility-button\"]').disabled", false)
         ->assertNoJavaScriptErrors();
 });
 
@@ -194,4 +193,25 @@ test('a file the browser cannot show is a download rather than a preview', funct
         ->assertPresent('@product-document-download')
         ->assertMissing('@preview-document-modal')
         ->assertNoJavaScriptErrors();
+});
+
+test('a document is given a title from its row, and keeps its filename beside it', function () {
+    [$user, $organization, $product, $document] = productWithFiledPaper('scan_0042.pdf', 'application/pdf', '%PDF-1.4 report');
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'tab' => 'documents',
+    ]))
+        ->click('@product-document-rename-button')
+        ->fill('@document-title', 'EN 71-1 report')
+        ->click('@save-document-title')
+        ->assertSee('Document title saved.')
+        ->assertSeeIn('@product-document-preview', 'EN 71-1 report')
+        ->assertSee('scan_0042.pdf ·')
+        ->assertNoJavaScriptErrors();
+
+    expect($document->fresh()->title)->toBe('EN 71-1 report');
 });

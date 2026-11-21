@@ -39,7 +39,7 @@ enum ProductDocumentType: string
      * buyers, so they are switched on as they arrive. Papers start hidden
      * until the distributor chooses to release them, and so do close-ups of
      * the packaging: they are evidence for the reviewer -- batch numbers,
-     * the label as printed -- and the public page has no place to show them.
+     * the label as printed -- rather than something filed for buyers.
      */
     public function isPublicByDefault(): bool
     {
@@ -56,11 +56,12 @@ enum ProductDocumentType: string
     }
 
     /**
-     * Determine if the public page has a place to show a picture of this
-     * kind: the gallery for the article, the warning for its safety image.
+     * Determine if a picture of this kind has a place of its own on the
+     * public page: the gallery for the article, the warning for its safety
+     * image.
      *
-     * Any other picture -- a packaging close-up, a scanned certificate --
-     * would be released to nowhere, so it cannot be released at all.
+     * Any other picture released -- a packaging close-up, a scanned
+     * certificate -- is listed among the papers instead.
      */
     public function showsPicturePublicly(): bool
     {

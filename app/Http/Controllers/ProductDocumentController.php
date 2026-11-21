@@ -63,6 +63,7 @@ class ProductDocumentController extends Controller
                 $rows[] = [
                     'type' => $document['type'],
                     'name' => $file->getClientOriginalName(),
+                    'title' => $document['title'],
                     'path' => $file->store(ProductDocument::directoryFor($product), ProductDocument::DISK),
                     'mime_type' => $file->getClientMimeType(),
                     'size' => $file->getSize(),
@@ -190,6 +191,42 @@ class ProductDocumentController extends Controller
             /** Private papers; no shared cache may keep a copy. */
             'Cache-Control' => 'private, max-age=0, must-revalidate',
         ]);
+    }
+
+    /**
+     * Give the document the title it is shown under.
+     *
+     * The uploaded filename is kept as it was: it is what the team filed,
+     * and the title is only what readers see. An empty title hands the
+     * name back to the kind of document.
+     */
+    public function update(Request $request, Organization $currentOrganization, Product $product, ProductDocument $document): RedirectResponse
+    {
+        Gate::authorize('update', $product);
+
+        $validated = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $title = filled($validated['title'] ?? null) ? trim((string) $validated['title']) : null;
+
+        if ($document->title !== $title) {
+            $previous = $document->title;
+
+            $document->update(['title' => $title]);
+
+            $product->recordEvent(
+                ProductEventType::DocumentRenamed,
+                $request->user(),
+                $currentOrganization,
+                note: $document->name,
+                changes: ['document_title' => ['from' => $previous, 'to' => $title]],
+            );
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Document title saved.')]);
+
+        return $this->backToProduct($currentOrganization, $product);
     }
 
     /**

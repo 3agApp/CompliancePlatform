@@ -121,7 +121,7 @@ class BrandController extends Controller
      * apart. A trade with no brands yet is still listed: it is where the
      * first one gets added.
      *
-     * @return array<array{id: int, label: string, status: string, statusLabel: string, isExpired: bool, canAddBrand: bool, brands: array<array{id: int, name: string, products_count: int}>}>
+     * @return array<array{id: int, label: string, status: string, statusLabel: string, isExpired: bool, canAddBrand: bool, brands: array<array{id: int, name: string, products_count: int, logoUrl: string|null}>}>
      */
     protected function connections(Request $request, Organization $organization): array
     {
@@ -142,6 +142,15 @@ class BrandController extends Controller
                         'id' => $brand->id,
                         'name' => $brand->name,
                         'products_count' => (int) $brand->products_count,
+                        /**
+                         * Versioned by the stored path, so a new logo is
+                         * not hidden behind a cached old one.
+                         */
+                        'logoUrl' => $brand->logo_path === null ? null : route('brands.logo', [
+                            'current_organization' => $organization->slug,
+                            'brand' => $brand->id,
+                            'v' => substr(md5($brand->logo_path), 0, 8),
+                        ]),
                     ])
                     ->values()
                     ->toArray(),

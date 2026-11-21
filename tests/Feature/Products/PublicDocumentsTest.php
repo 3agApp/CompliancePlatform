@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -73,18 +74,48 @@ test('a document stays off the public page until the distributor releases it', f
         ->assertInertia(fn (Assert $page) => $page
             ->has('documents', 1)
             ->where('documents.0.type', 'test_report')
-            ->where('documents.0.name', 'report.pdf')
-            ->where('documents.0.url', route('products.public.document', ['product' => $product->uuid, 'document' => $document->id]))
-            ->where('documents.0.downloadUrl', route('products.public.document.download', ['product' => $product->uuid, 'document' => $document->id])));
+            ->where('documents.0.title', null)
+            ->where('documents.0.kind', 'pdf')
+            ->missing('documents.0.name')
+            ->missing('documents.0.downloadUrl')
+            ->where('documents.0.url', route('products.public.document', ['product' => $product->uuid, 'document' => $document->id])));
 
+    /** Shown inline only, under its kind rather than the uploaded filename. */
     $this->get(route('products.public.document', ['product' => $product->uuid, 'document' => $document->id]))
         ->assertOk()
         ->assertHeader('Content-Type', 'application/pdf')
-        ->assertHeader('Content-Disposition', 'inline; filename=report.pdf');
+        ->assertHeader('Content-Disposition', 'inline; filename="Test report.pdf"');
+});
 
-    $this->get(route('products.public.document.download', ['product' => $product->uuid, 'document' => $document->id]))
+test('a released document goes by its title on the public page, and the filename stays behind the login', function () {
+    [, , $product, $document] = productWithReport();
+    $document->forceFill(['is_public' => true, 'title' => 'EN 71-1 report'])->save();
+
+    $this->get($product->publicUrl())
+        ->assertInertia(fn (Assert $page) => $page->where('documents.0.title', 'EN 71-1 report'));
+
+    $this->get(route('products.public.document', ['product' => $product->uuid, 'document' => $document->id]))
         ->assertOk()
-        ->assertDownload('report.pdf');
+        ->assertHeader('Content-Disposition', 'inline; filename="EN 71-1 report.pdf"');
+});
+
+test('a title with path separators still serves the document, under a safe filename', function () {
+    [, , $product, $document] = productWithReport();
+    $document->forceFill(['is_public' => true, 'title' => 'EN 71-1/2 \\ report'])->save();
+
+    $this->get(route('products.public.document', ['product' => $product->uuid, 'document' => $document->id]))
+        ->assertOk()
+        ->assertHeader('Content-Disposition', 'inline; filename="EN 71-1-2 - report.pdf"');
+
+    $this->get($product->publicUrl())
+        ->assertInertia(fn (Assert $page) => $page->where('documents.0.title', 'EN 71-1/2 \\ report'));
+});
+
+test('the public page offers no download of a released document', function () {
+    [, , $product, $document] = productWithReport();
+    $document->forceFill(['is_public' => true])->save();
+
+    $this->get("/p/{$product->uuid}/documents/{$document->id}/download")->assertNotFound();
 });
 
 test('a released PDF is handed out watermarked, stamped once and kept', function () {
@@ -191,8 +222,6 @@ test('a Word file is never handed out in public, even one released before the ru
     $this->get(route('products.public.document', ['product' => $product->uuid, 'document' => $manual->id]))
         ->assertNotFound();
 
-    $this->get(route('products.public.document.download', ['product' => $product->uuid, 'document' => $manual->id]))
-        ->assertNotFound();
 });
 
 test('a Word file cannot be released, but one released before can be taken back', function () {
@@ -219,36 +248,48 @@ test('a Word file cannot be released, but one released before can be taken back'
     expect($manual->fresh()->is_public)->toBeFalse();
 });
 
-test('a picture the public page has no place for cannot be released, while a PDF of the same kind can', function () {
+test('a picture of any kind can be released, and a scanned paper is listed among the documents', function () {
     [$user, $organization, $product] = productWithReport();
 
-    $closeUp = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::PackagingCloseUp)->create([
-        'name' => 'box-back.png',
+    $path = ProductDocument::directoryFor($product).'/certificate.png';
+    Storage::disk(ProductDocument::DISK)->put($path, UploadedFile::fake()->image('certificate.png', 400, 300)->getContent());
+
+    $certificate = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::Certificate)->create([
+        'name' => 'IMG_2041.png',
+        'path' => $path,
         'mime_type' => 'image/png',
-    ]);
-    $scannedBox = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::PackagingCloseUp)->create([
-        'name' => 'box-print.pdf',
-        'mime_type' => 'application/pdf',
     ]);
 
     $this->actingAs($user)
         ->get(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('product.documents.0.name', 'box-back.png')
-            ->where('product.documents.0.publishable', false)
-            ->where('product.documents.0.is_picture', true)
-            ->where('product.documents.1.name', 'box-print.pdf')
-            ->where('product.documents.1.publishable', true),
+            ->where('product.documents', fn ($documents) => collect($documents)->firstWhere('id', $certificate->id)['publishable'] === true),
         );
 
-    $this->patch(route('products.documents.visibility', ['current_organization' => $organization->slug, 'product' => $product->id, 'document' => $closeUp->id]), ['is_public' => true])
-        ->assertSessionHasErrors(['is_public' => 'Only product images and warning images can be shown on the public page as pictures.']);
-
-    $this->patch(route('products.documents.visibility', ['current_organization' => $organization->slug, 'product' => $product->id, 'document' => $scannedBox->id]), ['is_public' => true])
+    $this->patch(route('products.documents.visibility', ['current_organization' => $organization->slug, 'product' => $product->id, 'document' => $certificate->id]), ['is_public' => true])
         ->assertSessionHasNoErrors();
 
-    expect($closeUp->fresh()->is_public)->toBeFalse()
-        ->and($scannedBox->fresh()->is_public)->toBeTrue();
+    auth()->logout();
+
+    $imageUrl = route('products.public.image', ['product' => $product->uuid, 'document' => $certificate->id]);
+
+    $this->get($product->publicUrl())
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('documents', 1)
+            ->where('documents.0.id', $certificate->id)
+            ->where('documents.0.kind', 'image')
+            ->where('documents.0.url', $imageUrl)
+            ->has('images', 0),
+        );
+
+    /** A paper goes out stamped, like the pictures of the article. */
+    $served = $this->get($imageUrl)
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/png')
+        ->assertHeader('Content-Disposition', 'inline; filename=Certificate.png')
+        ->streamedContent();
+
+    expect($served)->not->toBe(Storage::disk(ProductDocument::DISK)->get($path));
 });
 
 test('a released document can be taken back', function () {
