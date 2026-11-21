@@ -100,8 +100,22 @@ class Turnstile
             return true;
         }
 
-        return $response->json('action') === $action
-            && in_array($response->json('hostname'), static::hostnames(), true);
+        if (! in_array($response->json('hostname'), static::hostnames(), true)) {
+            /**
+             * Named in the log because the usual cause is configuration, not
+             * an attack: the site answering on a host -- www, a second domain
+             * -- that TURNSTILE_HOSTNAMES does not list, which turns every
+             * real check away.
+             */
+            Log::warning('Turnstile token was solved on a hostname that is not allowed.', [
+                'hostname' => $response->json('hostname'),
+                'allowed' => static::hostnames(),
+            ]);
+
+            return false;
+        }
+
+        return $response->json('action') === $action;
     }
 
     /**

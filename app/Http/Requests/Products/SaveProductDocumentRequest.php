@@ -49,6 +49,7 @@ class SaveProductDocumentRequest extends FormRequest
         return [
             'documents' => ['required', 'array', 'min:1', 'max:'.self::MAX_FILES],
             'documents.*.type' => ['required', Rule::enum(ProductDocumentType::class)],
+            'documents.*.title' => ['nullable', 'string', 'max:255'],
             'documents.*.file' => [
                 'required',
                 'file',
@@ -64,17 +65,18 @@ class SaveProductDocumentRequest extends FormRequest
      * Validation has already refused the request without them, so the caller
      * is handed files rather than maybes.
      *
-     * @return array<int, array{type: string, file: UploadedFile}>
+     * @return array<int, array{type: string, title: string|null, file: UploadedFile}>
      */
     public function documents(): array
     {
-        /** @var array<int, array{type: string}> $rows */
+        /** @var array<int, array{type: string, title?: string|null}> $rows */
         $rows = $this->validated('documents');
 
         return collect($rows)
             ->values()
             ->map(fn (array $row, int $index): array => [
                 'type' => $row['type'],
+                'title' => filled($row['title'] ?? null) ? trim((string) $row['title']) : null,
                 'file' => $this->uploadedFileAt($index),
             ])
             ->all();
@@ -97,6 +99,7 @@ class SaveProductDocumentRequest extends FormRequest
             'documents.max' => __('Upload no more than :max files at a time.'),
             'documents.*.type.required' => __('Choose what kind of document file :position is.'),
             'documents.*.type.enum' => __('Choose one of the available kinds of document for file :position.'),
+            'documents.*.title.max' => __('The title of file :position may not be longer than 255 characters.'),
             'documents.*.file.required' => __('File :position is missing.'),
             'documents.*.file.file' => __('File :position is missing.'),
             'documents.*.file.mimes' => __('File :position must be a PDF, an image, or a Word or Excel file.'),

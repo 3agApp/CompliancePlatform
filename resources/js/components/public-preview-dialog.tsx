@@ -1,4 +1,4 @@
-import { Download, FileText, ImageIcon } from 'lucide-react';
+import { FileText, ImageIcon } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -15,8 +15,6 @@ export type PublicPreview = {
     kind: 'image' | 'pdf';
     name: string;
     url: string;
-    /** Where the file is collected from; absent for a picture. */
-    downloadUrl?: string;
 };
 
 type Props = {
@@ -29,8 +27,8 @@ type Props = {
  * Show a picture or a PDF from the public page without leaving it.
  *
  * A reader holding the packet wants a glance at the certificate or a closer
- * look at the article, not a file in the downloads folder. The download
- * stays one tap away for the times the file itself is wanted.
+ * look at the article, not a file in the downloads folder, so the viewer is
+ * all there is: the page offers nothing to download.
  */
 export default function PublicPreviewDialog({ preview, onClose, t }: Props) {
     return (
@@ -78,8 +76,13 @@ export default function PublicPreviewDialog({ preview, onClose, t }: Props) {
                              * PDF viewer -- a phone, often -- shows the
                              * fallback inside it instead of an empty box.
                              */
+                            /*
+                             * The fragment asks Chromium's viewer to leave out
+                             * its toolbar, and with it the save and print
+                             * buttons. Best effort: other viewers ignore it.
+                             */
                             <object
-                                data={preview.url}
+                                data={`${preview.url}#toolbar=0&navpanes=0`}
                                 type="application/pdf"
                                 aria-label={t('previewOf', {
                                     name: preview.name,
@@ -112,20 +115,6 @@ export default function PublicPreviewDialog({ preview, onClose, t }: Props) {
                         >
                             {t('close')}
                         </button>
-                        {preview.downloadUrl ? (
-                            /*
-                             * A plain anchor: the response is a file, and an
-                             * XHR visit would choke on it.
-                             */
-                            <a
-                                href={preview.downloadUrl}
-                                data-test="public-preview-download"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-sky-800"
-                            >
-                                <Download className="size-3.5" />
-                                {t('download')}
-                            </a>
-                        ) : null}
                     </div>
                 </DialogContent>
             ) : null}

@@ -74,8 +74,8 @@ export function AnalyzeDocumentButton({
             : t('Only PDFs and images up to 14 MB can be analyzed.'));
 
     const label = analysis
-        ? t('Analyze :name again', { name: document.name })
-        : t('Analyze :name with AI', { name: document.name });
+        ? t('Analyze :name again', { name: document.title ?? document.name })
+        : t('Analyze :name with AI', { name: document.title ?? document.name });
 
     return (
         <Button

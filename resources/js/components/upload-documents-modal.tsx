@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { formatFileSize } from '@/lib/format';
 import { t, tc, tn } from '@/lib/i18n';
@@ -66,6 +67,8 @@ type PendingFile = {
     id: string;
     file: File;
     type?: ProductDocumentType;
+    /** What readers see it called; empty to go by its kind. */
+    title: string;
     /** The kind came from the AI and nobody has touched it since. */
     guessed: boolean;
     /** The AI was asked and had no answer, or was not sure of the one it gave. */
@@ -189,6 +192,7 @@ export default function UploadDocumentsModal({
                 id: crypto.randomUUID(),
                 file,
                 type: presetType ?? undefined,
+                title: '',
                 guessed: false,
                 unsure: false,
             }));
@@ -312,6 +316,12 @@ export default function UploadDocumentsModal({
         );
     };
 
+    const setRowTitle = (id: string, title: string) => {
+        setPending((rows) =>
+            rows.map((row) => (row.id === id ? { ...row, title } : row)),
+        );
+    };
+
     const removeRow = (id: string) => {
         setPending((rows) => rows.filter((row) => row.id !== id));
     };
@@ -326,7 +336,13 @@ export default function UploadDocumentsModal({
 
         router.post(
             store.url([organizationSlug, productId]),
-            { documents: pending.map(({ file, type }) => ({ file, type })) },
+            {
+                documents: pending.map(({ file, type, title }) => ({
+                    file,
+                    type,
+                    title: title.trim(),
+                })),
+            },
             {
                 forceFormData: true,
                 /**
@@ -492,6 +508,34 @@ export default function UploadDocumentsModal({
                                                         row.file.size,
                                                     )}
                                                 </p>
+                                                <Input
+                                                    value={row.title}
+                                                    onChange={(event) =>
+                                                        setRowTitle(
+                                                            row.id,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    placeholder={t(
+                                                        'Title (optional)',
+                                                    )}
+                                                    aria-label={t(
+                                                        'Title for :name',
+                                                        {
+                                                            name: row.file.name,
+                                                        },
+                                                    )}
+                                                    maxLength={255}
+                                                    data-test={`pending-document-title-${index}`}
+                                                    className="mt-1.5 h-8 text-sm"
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `documents.${index}.title`
+                                                        ]
+                                                    }
+                                                />
                                             </div>
                                         </div>
 

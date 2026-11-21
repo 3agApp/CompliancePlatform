@@ -16,6 +16,7 @@ enum ProductEventType: string
     case Updated = 'updated';
     case DocumentUploaded = 'document_uploaded';
     case DocumentRemoved = 'document_removed';
+    case DocumentRenamed = 'document_renamed';
 
     case Submitted = 'submitted';
     case Approved = 'approved';
@@ -43,6 +44,7 @@ enum ProductEventType: string
             self::Updated => __('Details updated'),
             self::DocumentUploaded => __('Document uploaded'),
             self::DocumentRemoved => __('Document removed'),
+            self::DocumentRenamed => __('Document title changed'),
             self::Submitted => __('Submitted for review'),
             self::Approved => __('Approved'),
             self::ChangesRequested => __('Changes requested'),

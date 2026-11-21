@@ -116,7 +116,16 @@ export default function BrandsIndex({
     }, [connectionFilter, page.url]);
 
     const [renameOpen, setRenameOpen] = useState(false);
-    const [brandToRename, setBrandToRename] = useState<Brand | null>(null);
+    const [brandIdToRename, setBrandIdToRename] = useState<number | null>(null);
+
+    /*
+     * Read from the latest props rather than kept as a copy, so a logo
+     * uploaded from the open dialog shows up in it.
+     */
+    const brandToRename =
+        connections
+            .flatMap((connection) => connection.brands)
+            .find((brand) => brand.id === brandIdToRename) ?? null;
 
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
@@ -132,7 +141,7 @@ export default function BrandsIndex({
     };
 
     const renameBrand = (brand: Brand) => {
-        setBrandToRename(brand);
+        setBrandIdToRename(brand.id);
         setRenameOpen(true);
     };
 
@@ -426,7 +435,19 @@ function BrandRow({
 
     return (
         <tr className="border-t" data-test="brand-row">
-            <td className="px-6 font-medium break-words">{brand.name}</td>
+            <td className="px-6 font-medium break-words">
+                <span className="inline-flex items-center gap-3">
+                    {brand.logoUrl ? (
+                        <img
+                            src={brand.logoUrl}
+                            alt=""
+                            data-test="brand-logo"
+                            className="size-8 shrink-0 rounded border bg-white object-contain p-0.5"
+                        />
+                    ) : null}
+                    {brand.name}
+                </span>
+            </td>
             <td className="px-6" data-label={counterpartyLabel}>
                 <span className="inline-flex flex-wrap items-center justify-end gap-2 md:justify-start">
                     <span data-test="brand-connection-name">
@@ -494,7 +515,7 @@ function BrandRow({
                                         onSelect={() => onRename(brand)}
                                     >
                                         <Pencil className="h-4 w-4" />
-                                        {t('Rename brand')}
+                                        {t('Edit brand')}
                                     </DropdownMenuItem>
                                 ) : null}
                                 {permissions.canDeleteBrand ? (

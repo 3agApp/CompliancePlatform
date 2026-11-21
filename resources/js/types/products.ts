@@ -128,6 +128,7 @@ export type Brand = {
     id: number;
     name: string;
     products_count: number;
+    logoUrl: string | null;
 };
 
 export type BrandOption = {
@@ -197,6 +198,7 @@ export type ProductEventType =
     | 'labels_revoked'
     | 'document_published'
     | 'document_unpublished'
+    | 'document_renamed'
     | 'assessment_requested'
     | 'assessment_completed'
     | 'document_analysis_requested'
@@ -285,6 +287,8 @@ export type PublicProduct = {
     uuid: string;
     name: string;
     brand: string | null;
+    /** The brand's logo, when it has one. */
+    brandLogoUrl: string | null;
     ean: string | null;
     internal_article_number: string | null;
 };
@@ -317,12 +321,13 @@ export type UnitCheckResult = {
 export type PublicProductDocument = {
     id: number;
     type: ProductDocumentType;
-    name: string;
+    /** The title it was given, or null to be shown under its kind. */
+    title: string | null;
+    /** How the viewer shows it: a PDF, or a scanned paper as a picture. */
+    kind: DocumentPreviewKind;
     size: number;
-    /** Shows the watermarked PDF inline, for the page's viewer. */
+    /** Shows the watermarked file inline, for the page's viewer. */
     url: string;
-    /** Hands the watermarked PDF over as a file to keep. */
-    downloadUrl: string;
 };
 
 /**
@@ -485,6 +490,8 @@ export type ProductDocument = {
     type: ProductDocumentType;
     type_label: string;
     name: string;
+    /** The title readers see, or null when it goes by its kind. */
+    title: string | null;
     size: number;
     preview_kind: DocumentPreviewKind | null;
     /** Whether this kind is a picture, shown in the gallery rather than listed. */

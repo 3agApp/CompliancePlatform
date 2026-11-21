@@ -29,6 +29,14 @@ class BrandPolicy
     }
 
     /**
+     * Determine whether the user can view the brand.
+     */
+    public function view(User $user, Brand $brand): bool
+    {
+        return $this->reaches($user, $brand->supplierConnection, OrganizationPermission::ViewBrand);
+    }
+
+    /**
      * Determine whether the user can name a maker under the connection.
      */
     public function create(User $user, SupplierConnection $connection): bool

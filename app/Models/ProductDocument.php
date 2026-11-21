@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Storage;
  * @property int|null $uploaded_by
  * @property ProductDocumentType $type
  * @property string $name
+ * @property string|null $title
  * @property string $path
  * @property string|null $source_url
  * @property string $mime_type
@@ -41,7 +42,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read Collection<int, ProductDocumentAnalysis> $analyses
  * @property-read ProductDocumentAnalysis|null $latestAnalysis
  */
-#[Fillable(['type', 'name', 'path', 'source_url', 'mime_type', 'size', 'uploaded_by'])]
+#[Fillable(['type', 'name', 'title', 'path', 'source_url', 'mime_type', 'size', 'uploaded_by'])]
 class ProductDocument extends Model
 {
     /** @use HasFactory<ProductDocumentFactory> */
@@ -115,16 +116,44 @@ class ProductDocument extends Model
     /**
      * Determine if this file could be shown on the public page.
      *
-     * A PDF carries the watermark and is listed among the papers. A picture
-     * only goes out where the page has a place for its kind.
+     * Only what a browser can show unopened, because the public page offers
+     * a preview and never a download: a PDF or a picture. A Word or Excel
+     * file could only ever be handed over, so it is never released.
      */
     public function canBePublished(): bool
     {
-        return match ($this->previewKind()) {
-            DocumentPreviewKind::Pdf => true,
-            DocumentPreviewKind::Image => $this->type->showsPicturePublicly(),
-            null => false,
-        };
+        return $this->previewKind() !== null;
+    }
+
+    /**
+     * Get the name the document is shown under outside the team.
+     *
+     * The title somebody gave it, or else the kind of document. Never the
+     * uploaded filename, which is whatever the scanner or the test house
+     * happened to call it.
+     */
+    public function publicName(): string
+    {
+        return filled($this->title) ? (string) $this->title : $this->type->label();
+    }
+
+    /**
+     * Get the filename the public copy is served under.
+     *
+     * The public name with the original file's extension, so a reader
+     * saving what the browser shows gets something they can recognise.
+     *
+     * A title is free text and may say "EN 71-1/2", but a filename may not
+     * carry a path separator or a control character -- the response header
+     * refuses one outright -- so those are turned into dashes and spaces.
+     */
+    public function publicFileName(): string
+    {
+        $base = trim((string) preg_replace(['/[\/\\\\]+/', '/[\x00-\x1F\x7F]+/'], ['-', ' '], $this->publicName()));
+        $base = $base === '' ? $this->type->label() : $base;
+        $extension = strtolower(pathinfo($this->name, PATHINFO_EXTENSION));
+
+        return $extension === '' ? $base : $base.'.'.$extension;
     }
 
     /**

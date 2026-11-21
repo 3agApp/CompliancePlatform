@@ -31,6 +31,7 @@ const ICONS: Record<ProductEventType, LucideIcon> = {
     updated: Pencil,
     document_uploaded: FilePlus2,
     document_removed: FileX2,
+    document_renamed: Pencil,
     submitted: Send,
     approved: Check,
     changes_requested: Undo2,

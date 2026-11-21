@@ -3,6 +3,9 @@
 use App\Enums\OrganizationRole;
 use App\Enums\SupplierConnectionStatus;
 use App\Models\Product;
+use App\Models\ProductDocument;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('a brand is named under a supplier from the brands page', function () {
     [$user, $distributor] = newOrganizationMember();
@@ -75,7 +78,7 @@ test('a brand is renamed through the edit dialog', function () {
 
     $page->click('[data-test="brand-row"]:has-text("Magna Tiles") [data-test="brand-actions"]')
         ->click('@brand-edit-button')
-        ->assertSee('Rename brand')
+        ->assertSee('Edit brand')
         ->fill('@brand-name', 'Magna-Tiles')
         ->click('@save-brand-submit')
         ->assertSee('Brand updated.')
@@ -199,4 +202,34 @@ test('the brand list is narrowed to one supplier and a new brand asks which supp
         ->assertSee('Saarplast')
         ->assertQueryStringHas('supplier', (string) $other->id)
         ->assertNoJavaScriptErrors();
+});
+
+/**
+ * Uploading itself is covered by the feature tests: the browser test server
+ * does not pass files through to the application.
+ */
+test('the edit dialog shows the brand logo and takes it away again', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $distributor] = newOrganizationMember();
+
+    $brand = carriedBrand(newSupplierConnection($distributor), 'Magna-Tiles');
+    $brand->forceFill([
+        'logo_path' => UploadedFile::fake()->image('logo.png', 120, 120)->store($brand->logoDirectory(), ProductDocument::DISK),
+    ])->save();
+
+    $this->actingAs($user);
+
+    visit(route('brands.index', ['current_organization' => $distributor->slug]))
+        ->assertPresent('@brand-logo')
+        ->click('@brand-actions')
+        ->click('@brand-edit-button')
+        ->assertPresent('@brand-logo-image')
+        ->click('@brand-logo-remove')
+        ->assertSee('Logo removed.')
+        ->assertMissing('@brand-logo-image')
+        ->assertSee('Upload logo')
+        ->assertNoJavaScriptErrors();
+
+    expect($brand->fresh()->logo_path)->toBeNull();
 });

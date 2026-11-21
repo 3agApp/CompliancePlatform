@@ -161,7 +161,7 @@ test('a distributor sets the public seal by hand from the product page', functio
     expect($product->fresh()->seal_override)->toBe(ProductSealStatus::Verified);
 });
 
-test('a distributor releases a test report and the public page offers it for download', function () {
+test('a distributor releases a test report to the public page', function () {
     Storage::fake(ProductDocument::DISK);
 
     [$user, $organization] = newOrganizationMember();
@@ -198,7 +198,7 @@ test('the public page shows released documents grouped by kind, safety informati
 
     $product = publishableProduct(['warning_text' => 'Not suitable for children under 3 years.']);
 
-    foreach (['certificate-en71.pdf', 'certificate-reach.pdf'] as $name) {
+    foreach (['scan_0042.pdf', 'scan_0043.pdf'] as $name) {
         ProductDocument::factory()->for($product)->ofType(ProductDocumentType::Certificate)->create([
             'name' => $name,
             'mime_type' => 'application/pdf',
@@ -208,6 +208,7 @@ test('the public page shows released documents grouped by kind, safety informati
 
     ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
         'name' => 'test-report.pdf',
+        'title' => 'EN 71-1 report',
         'mime_type' => 'application/pdf',
         'is_public' => true,
     ]);
@@ -216,9 +217,12 @@ test('the public page shows released documents grouped by kind, safety informati
         ->assertSee('Safety information')
         ->assertSee('Not suitable for children under 3 years.')
         ->assertCount('@product-public-document-group', 2)
-        ->assertSeeIn('[data-type="certificate"]', 'certificate-en71.pdf')
-        ->assertSeeIn('[data-type="certificate"]', 'certificate-reach.pdf')
-        ->assertSeeIn('[data-type="test_report"]', 'test-report.pdf')
+        ->assertSeeIn('[data-type="certificate"]', 'Certificate 1')
+        ->assertSeeIn('[data-type="certificate"]', 'Certificate 2')
+        ->assertDontSee('scan_0042.pdf')
+        ->assertSeeIn('[data-type="test_report"]', 'EN 71-1 report')
+        ->assertDontSee('test-report.pdf')
+        ->assertMissing('@product-public-document-download')
         ->assertSee('Placed on the market by')
         ->assertSee($product->organization->name)
         ->assertNoJavaScriptErrors();
@@ -354,7 +358,7 @@ test('a reader enlarges the product photo on the public page', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('a reader previews a released PDF on the public page and can still download it', function () {
+test('a reader previews a released PDF on the public page, with nothing to download', function () {
     Storage::fake(ProductDocument::DISK);
 
     $product = publishableProduct();
@@ -363,6 +367,7 @@ test('a reader previews a released PDF on the public page and can still download
 
     $report = ProductDocument::factory()->for($product)->ofType(ProductDocumentType::TestReport)->create([
         'name' => 'test-report.pdf',
+        'title' => 'EN 71-1 report',
         'path' => $path,
         'mime_type' => 'application/pdf',
         'is_public' => true,
@@ -371,8 +376,40 @@ test('a reader previews a released PDF on the public page and can still download
     visit(route('products.public', ['product' => $product->uuid]))
         ->click('@product-public-document-preview')
         ->assertVisible('@public-preview-dialog')
-        ->assertSeeIn('[data-test="public-preview-dialog"] h2', 'test-report.pdf')
-        ->assertAttribute('@public-preview-pdf', 'data', route('products.public.document', ['product' => $product->uuid, 'document' => $report->id]))
-        ->assertAttribute('@public-preview-download', 'href', route('products.public.document.download', ['product' => $product->uuid, 'document' => $report->id]))
+        ->assertSeeIn('[data-test="public-preview-dialog"] h2', 'EN 71-1 report')
+        ->assertAttribute('@public-preview-pdf', 'data', route('products.public.document', ['product' => $product->uuid, 'document' => $report->id]).'#toolbar=0&navpanes=0')
+        ->assertMissing('@public-preview-download')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a scanned certificate released as a picture opens in the image viewer', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+    aStoredImage($product, 'IMG_2041.png', ProductDocumentType::Certificate);
+
+    visit(route('products.public', ['product' => $product->uuid]))
+        ->assertSeeIn('@product-public-document-name', 'Certificate')
+        ->assertDontSee('IMG_2041.png')
+        ->click('@product-public-document-preview')
+        ->assertVisible('@public-preview-dialog')
+        ->assertPresent('@public-preview-image')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the brand logo is shown beside the brand name', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    $product = publishableProduct();
+    $brand = Brand::query()->findOrFail($product->brand_id);
+    $path = $brand->logoDirectory().'/logo.png';
+    Storage::disk(ProductDocument::DISK)->put($path, base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $brand->forceFill(['logo_path' => $path])->save();
+
+    visit($product->publicUrl())
+        ->assertPresent('@product-brand-logo')
+        ->assertScript('document.querySelector(\'[data-test="product-brand-logo"]\').naturalWidth', 1)
         ->assertNoJavaScriptErrors();
 });

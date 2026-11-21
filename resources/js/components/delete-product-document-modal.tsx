@@ -53,7 +53,13 @@ export default function DeleteProductDocumentModal({
                     <DialogDescription>
                         {tn(
                             'This action cannot be undone. This will permanently delete :name and the file behind it.',
-                            { name: <strong>{document?.name}</strong> },
+                            {
+                                name: (
+                                    <strong>
+                                        {document?.title ?? document?.name}
+                                    </strong>
+                                ),
+                            },
                         )}
                     </DialogDescription>
                 </DialogHeader>
