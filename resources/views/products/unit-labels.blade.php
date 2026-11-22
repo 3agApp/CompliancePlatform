@@ -2,7 +2,8 @@
     A run of serialised labels on A4 sheets of die-cut stickers, one sticker
     per packet, after the Swiss Product Seal sample label: the code that
     leads to the packet's serial on the left, and beside it the seal's logo,
-    the product, the call to scan in red and the serial in its own box.
+    the brand and product, the call to scan in red and the serial in its
+    own box.
 
     Laid out on the grid from config('labels.sheet'), in millimetres. Each
     label is placed by its own coordinates rather than flowed, so a long name
@@ -53,50 +54,63 @@
             padding-left: 1.6mm;
         }
 
-        .logo { width: 15.5mm; display: block; margin-bottom: 0.6mm; }
+        /* The one-line logo: the stacked one wastes the width of a sticker this wide and short. */
+        .logo { width: 100%; display: block; margin-bottom: 0.7mm; }
 
-        .brand {
-            font-size: 4pt;
-            color: #59646B;
-            text-transform: uppercase;
-            letter-spacing: 0.3pt;
-            margin: 0;
+        /*
+         * Brand and product as one run of copy, the brand in capitals ahead
+         * of the name. Two lines are kept for it whatever its length, so the
+         * call to scan and the serial sit at the same height on every
+         * sticker. The name is shortened to what two lines hold before it
+         * gets here, so it ends on "..." rather than on half a line.
+         */
+        .product {
+            font-size: 5.3pt;
+            line-height: 1.1;
+            height: 5.2mm;
+            overflow: hidden;
+            margin: 0 0 0.8mm;
         }
 
-        /* Two lines at most; a longer name is cut short rather than crowding the serial. */
-        .name {
-            font-size: 4.8pt;
+        .brand {
             font-weight: bold;
             text-transform: uppercase;
-            line-height: 1.15;
-            margin: 0 0 0.6mm;
         }
 
         .scan {
             background: #DA291C;
             color: #FFFFFF;
-            font-size: 5.5pt;
+            font-size: 6pt;
             font-weight: bold;
             text-align: center;
             text-transform: uppercase;
-            padding: 0.4mm 0;
+            padding: 0.5mm 0;
             border-radius: 0.8mm;
-            margin: 0 0 0.5mm;
+            margin: 0 0 0.7mm;
         }
 
         .serial {
             border: 0.3mm solid #1F2933;
             border-radius: 0.8mm;
             font-family: DejaVu Sans Mono, monospace;
-            font-size: 5.5pt;
+            font-size: 6pt;
             font-weight: bold;
             text-align: center;
-            padding: 0.3mm 0;
+            padding: 0.4mm 0;
             margin: 0;
         }
     </style>
 </head>
 <body>
+    @php
+        /*
+         * About 30 characters fill the two lines once words wrap; the brand's
+         * bold capitals run nearly half as wide again as the name's lower
+         * case. The name is cut on a whole word.
+         */
+        $brand = $product->brand ? Str::limit($product->brand->name, 18) : null;
+        $name = Str::limit($product->name, max(12, 30 - (int) ceil(mb_strlen($brand ?? '') * 1.4)), preserveWords: true);
+    @endphp
     @foreach (collect($units)->chunk($grid['columns'] * $grid['rows']) as $sheet)
         <div class="sheet">
             @foreach ($sheet->values() as $index => $unit)
@@ -108,11 +122,13 @@
                         <tr>
                             <td class="qr"><img src="{{ $unit['qr'] }}" alt=""></td>
                             <td class="info">
-                                <img class="logo" src="{{ public_path('brand/hauptlogo_farbig_hell.png') }}" alt="Swiss Product Seal">
-                                @if ($product->brand)
-                                    <p class="brand">{{ Str::limit($product->brand->name, 24) }}</p>
-                                @endif
-                                <p class="name">{{ Str::limit($product->name, 30) }}</p>
+                                <img class="logo" src="{{ public_path('brand/headerlogo_farbig_hell.png') }}" alt="Swiss Product Seal">
+                                <div class="product">
+                                    @if ($brand)
+                                        <span class="brand">{{ $brand }}</span>
+                                    @endif
+                                    {{ $name }}
+                                </div>
                                 <p class="scan">{{ __('Scan to verify') }}</p>
                                 <p class="serial">{{ $unit['serial'] }}</p>
                             </td>
