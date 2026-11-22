@@ -695,7 +695,7 @@ class Watermark
      */
     protected static function drawLogo(GdImage $image, array $settings, array $rgb, float $opacity, bool $shadow = false): void
     {
-        $artwork = @imagecreatefrompng(resource_path('brand/headerlogo_weiss.png'));
+        $artwork = @imagecreatefrompng(resource_path('brand/hauptlogo_weiss.png'));
 
         if (! $artwork instanceof GdImage) {
             throw new RuntimeException('The logo could not be read for watermarking.');
@@ -790,7 +790,7 @@ class Watermark
 
         $document = new \DOMDocument;
 
-        if (! @$document->load(resource_path('brand/headerlogo.svg'))) {
+        if (! @$document->load(resource_path('brand/hauptlogo.svg'))) {
             throw new RuntimeException('The logo could not be read for watermarking.');
         }
 

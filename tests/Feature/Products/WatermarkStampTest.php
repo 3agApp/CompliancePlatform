@@ -67,14 +67,14 @@ test('two copies of the same file are stamped in different places', function () 
 test('the logo sits wholly on the page, a little tilted', function (int $seed) {
     $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
 
-    $logo = $stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937($seed)));
+    $logo = $stamp->logoPlacement(636 / 253, new Randomizer(new Mt19937($seed)));
 
     $radians = deg2rad($logo['angleDegrees']);
     $reachX = (($logo['width'] * abs(cos($radians))) + ($logo['height'] * abs(sin($radians)))) / 2;
     $reachY = (($logo['width'] * abs(sin($radians))) + ($logo['height'] * abs(cos($radians)))) / 2;
 
     expect($logo['width'])->toEqualWithDelta(595.0 * config('watermark.pdf.logo_width_ratio'), 0.001)
-        ->and($logo['width'] / $logo['height'])->toEqualWithDelta(1098 / 253, 0.001)
+        ->and($logo['width'] / $logo['height'])->toEqualWithDelta(636 / 253, 0.001)
         ->and(abs($logo['angleDegrees']))->toBeLessThanOrEqual(config('watermark.logo.max_angle_degrees'))
         ->and($logo['x'] - $reachX)->toBeGreaterThanOrEqual(-0.001)
         ->and($logo['x'] + $reachX)->toBeLessThanOrEqual(595.001)
@@ -85,7 +85,7 @@ test('the logo sits wholly on the page, a little tilted', function (int $seed) {
 test('on an area too narrow for it, the tilted logo is made smaller to fit', function () {
     $stamp = new WatermarkStamp(200.0, 1000.0, [...config('watermark.image'), 'logo_width_ratio' => 1.0]);
 
-    $logo = $stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937(3)));
+    $logo = $stamp->logoPlacement(636 / 253, new Randomizer(new Mt19937(3)));
 
     $radians = deg2rad($logo['angleDegrees']);
 
@@ -96,8 +96,8 @@ test('on an area too narrow for it, the tilted logo is made smaller to fit', fun
 test('two copies carry the logo in different places', function () {
     $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
 
-    expect($stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937(1))))
-        ->not->toBe($stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937(2))));
+    expect($stamp->logoPlacement(636 / 253, new Randomizer(new Mt19937(1))))
+        ->not->toBe($stamp->logoPlacement(636 / 253, new Randomizer(new Mt19937(2))));
 });
 
 test('there is no watermark text beside the logo unless one is configured', function () {
