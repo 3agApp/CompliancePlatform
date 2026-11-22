@@ -7,8 +7,9 @@ return [
     | Watermark text
     |--------------------------------------------------------------------------
     |
-    | What is stamped on every picture and PDF the public product page hands
-    | out. Left empty, it is the site's own domain, read from APP_URL.
+    | Every picture and PDF the public product page hands out carries the
+    | Swiss Product Seal logo (see "Logo" below). Set a text here to stamp it
+    | beside the logo as well, bent along a wave; left empty, there is none.
     |
     */
 
@@ -49,7 +50,7 @@ return [
         'scan_quality' => 60,
         'quality' => 'ebook',
         'lock' => (bool) env('WATERMARK_PDF_LOCK', true),
-        'mark_size_ratio' => 0.38,
+        'logo_width_ratio' => 0.6,
     ],
 
     /*
@@ -72,7 +73,7 @@ return [
         'max_font_size' => 90.0,
         'line_height_ratio' => 96 / 72,
         'max_edge' => 2000,
-        'mark_size_ratio' => 0.2,
+        'logo_width_ratio' => 0.4,
     ],
 
     /*
@@ -103,24 +104,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Logo mark
+    | Logo
     |--------------------------------------------------------------------------
     |
-    | Beside the text, every picture and PDF page carries the Swiss Product
-    | Seal mark (the fingerprint and tick), in the same colour and opacity
-    | as the text on it. It is the type's `mark_size_ratio` of the shorter
-    | side across -- large on a PDF page, small on a product picture, where
-    | the article should stay the thing to look at -- tilted up to
-    | `max_angle_degrees` either way and placed at random, so no one patch
-    | over a known spot hides it. Its artwork is in resources/brand:
-    | the SVG's paths for PDFs, which draw it as shapes, and the white PNG
-    | for pictures.
+    | The watermark is the Swiss Product Seal logo -- the fingerprint and tick
+    | with the name beside it -- in the colour and opacity set above for PDFs
+    | and pictures. It is the type's `logo_width_ratio` of the shorter side
+    | wide: across most of a PDF page, smaller on a product picture, where
+    | the article should stay the thing to look at. Each copy tilts it up to
+    | `max_angle_degrees` either way and places it at random, so no one patch
+    | over a known spot hides it. Its artwork is in resources/brand: the SVG
+    | for PDFs, which draw it as shapes, and the white PNG for pictures.
     |
     */
 
-    'mark' => [
-        'enabled' => (bool) env('WATERMARK_MARK', true),
-        'max_angle_degrees' => 20.0,
+    'logo' => [
+        'enabled' => (bool) env('WATERMARK_LOGO', true),
+        'max_angle_degrees' => 35.0,
     ],
 
 ];

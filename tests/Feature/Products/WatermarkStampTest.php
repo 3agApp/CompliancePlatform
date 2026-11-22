@@ -64,33 +64,46 @@ test('two copies of the same file are stamped in different places', function () 
     expect($first)->not->toBe($second);
 });
 
-test('the logo mark sits wholly on the page, a little tilted', function (int $seed) {
+test('the logo sits wholly on the page, a little tilted', function (int $seed) {
     $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
 
-    $mark = $stamp->markPlacement(new Randomizer(new Mt19937($seed)));
+    $logo = $stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937($seed)));
 
-    $radians = deg2rad($mark['angleDegrees']);
-    $reach = $mark['size'] * (abs(cos($radians)) + abs(sin($radians))) / 2;
+    $radians = deg2rad($logo['angleDegrees']);
+    $reachX = (($logo['width'] * abs(cos($radians))) + ($logo['height'] * abs(sin($radians)))) / 2;
+    $reachY = (($logo['width'] * abs(sin($radians))) + ($logo['height'] * abs(cos($radians)))) / 2;
 
-    expect($mark['size'])->toEqualWithDelta(595.0 * config('watermark.pdf.mark_size_ratio'), 0.001)
-        ->and(abs($mark['angleDegrees']))->toBeLessThanOrEqual(config('watermark.mark.max_angle_degrees'))
-        ->and($mark['x'] - $reach)->toBeGreaterThanOrEqual(-0.001)
-        ->and($mark['x'] + $reach)->toBeLessThanOrEqual(595.001)
-        ->and($mark['y'] - $reach)->toBeGreaterThanOrEqual(-0.001)
-        ->and($mark['y'] + $reach)->toBeLessThanOrEqual(842.001);
+    expect($logo['width'])->toEqualWithDelta(595.0 * config('watermark.pdf.logo_width_ratio'), 0.001)
+        ->and($logo['width'] / $logo['height'])->toEqualWithDelta(1098 / 253, 0.001)
+        ->and(abs($logo['angleDegrees']))->toBeLessThanOrEqual(config('watermark.logo.max_angle_degrees'))
+        ->and($logo['x'] - $reachX)->toBeGreaterThanOrEqual(-0.001)
+        ->and($logo['x'] + $reachX)->toBeLessThanOrEqual(595.001)
+        ->and($logo['y'] - $reachY)->toBeGreaterThanOrEqual(-0.001)
+        ->and($logo['y'] + $reachY)->toBeLessThanOrEqual(842.001);
 })->with([1, 2, 3, 4, 5]);
 
-test('two copies carry the logo mark in different places', function () {
-    $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
+test('on an area too narrow for it, the tilted logo is made smaller to fit', function () {
+    $stamp = new WatermarkStamp(200.0, 1000.0, [...config('watermark.image'), 'logo_width_ratio' => 1.0]);
 
-    expect($stamp->markPlacement(new Randomizer(new Mt19937(1))))
-        ->not->toBe($stamp->markPlacement(new Randomizer(new Mt19937(2))));
+    $logo = $stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937(3)));
+
+    $radians = deg2rad($logo['angleDegrees']);
+
+    expect(($logo['width'] * abs(cos($radians))) + ($logo['height'] * abs(sin($radians))))->toBeLessThanOrEqual(200.001)
+        ->and($logo['width'])->toBeLessThan(200.0);
 });
 
-test('the watermark is the site domain unless another text is configured', function () {
-    config(['app.url' => 'https://swiss-product-seal.ch', 'watermark.text' => null]);
+test('two copies carry the logo in different places', function () {
+    $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
 
-    expect(Watermark::text())->toBe('swiss-product-seal.ch');
+    expect($stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937(1))))
+        ->not->toBe($stamp->logoPlacement(1098 / 253, new Randomizer(new Mt19937(2))));
+});
+
+test('there is no watermark text beside the logo unless one is configured', function () {
+    config(['watermark.text' => null]);
+
+    expect(Watermark::text())->toBe('');
 
     config(['watermark.text' => 'Example AG']);
 

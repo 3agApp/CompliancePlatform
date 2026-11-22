@@ -22,7 +22,7 @@ use Random\Randomizer;
  * @phpstan-type Curve array{amplitude: float, cycles: float, phase: float}
  * @phpstan-type Placement array{text: string, fontSize: float, angleDegrees: float, x: float, y: float, curve: Curve}
  * @phpstan-type Glyph array{text: string, fontSize: float, x: float, y: float, angleDegrees: float}
- * @phpstan-type MarkPlacement array{x: float, y: float, size: float, angleDegrees: float}
+ * @phpstan-type LogoPlacement array{x: float, y: float, width: float, height: float, angleDegrees: float}
  */
 class WatermarkStamp
 {
@@ -31,7 +31,7 @@ class WatermarkStamp
     public readonly float $nominalFontSize;
 
     /**
-     * @param  array{stamps: int, font_size_ratio: float, min_font_size: float, max_font_size: float, line_height_ratio: float, mark_size_ratio?: float}  $settings
+     * @param  array{stamps: int, font_size_ratio: float, min_font_size: float, max_font_size: float, line_height_ratio: float, logo_width_ratio?: float}  $settings
      */
     public function __construct(
         public readonly float $areaWidth,
@@ -64,28 +64,37 @@ class WatermarkStamp
     }
 
     /**
-     * Place the logo mark: its centre, how wide its square is, and its tilt.
+     * Place the logo: its centre, its width and height, and its tilt.
      *
-     * A share of the shorter side across, tilted a little either way and
-     * dropped anywhere it wholly fits, so it moves from copy to copy like
-     * the text does.
+     * A share of the shorter side wide, tilted either way and dropped
+     * anywhere it wholly fits, so it moves from copy to copy. On an area too
+     * narrow for the tilted logo, it is made smaller until it fits.
      *
-     * @return MarkPlacement
+     * @param  float  $aspect  The logo's width over its height
+     * @return LogoPlacement
      */
-    public function markPlacement(Randomizer $randomizer): array
+    public function logoPlacement(float $aspect, Randomizer $randomizer): array
     {
-        $size = min($this->areaWidth, $this->areaHeight) * ($this->settings['mark_size_ratio'] ?? 0.0);
-        $maxAngle = (float) config('watermark.mark.max_angle_degrees');
+        $maxAngle = (float) config('watermark.logo.max_angle_degrees');
         $angle = $this->randomBetween($randomizer, -$maxAngle, $maxAngle);
-
-        /** Half the rotated square's bounding box, so the mark never runs off the edge. */
         $radians = deg2rad($angle);
-        $reach = $size * (abs(cos($radians)) + abs(sin($radians))) / 2;
+        [$cos, $sin] = [abs(cos($radians)), abs(sin($radians))];
+
+        $width = min($this->areaWidth, $this->areaHeight) * ($this->settings['logo_width_ratio'] ?? 0.0);
+        $height = $width / $aspect;
+
+        /** Half the tilted logo's bounding box, each way. */
+        $reachX = (($width * $cos) + ($height * $sin)) / 2;
+        $reachY = (($width * $sin) + ($height * $cos)) / 2;
+
+        $fit = min(1.0, $reachX > 0 ? $this->areaWidth / (2 * $reachX) : 1.0, $reachY > 0 ? $this->areaHeight / (2 * $reachY) : 1.0);
+        [$width, $height, $reachX, $reachY] = [$width * $fit, $height * $fit, $reachX * $fit, $reachY * $fit];
 
         return [
-            'x' => $this->randomBetween($randomizer, $reach, $this->areaWidth - $reach),
-            'y' => $this->randomBetween($randomizer, $reach, $this->areaHeight - $reach),
-            'size' => $size,
+            'x' => $this->randomBetween($randomizer, $reachX, $this->areaWidth - $reachX),
+            'y' => $this->randomBetween($randomizer, $reachY, $this->areaHeight - $reachY),
+            'width' => $width,
+            'height' => $height,
             'angleDegrees' => $angle,
         ];
     }
