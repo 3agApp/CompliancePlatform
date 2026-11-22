@@ -12,7 +12,7 @@ require 'recipe/laravel.php';
 
 // The repository is private. `github-complianceplatform` is an SSH alias in the
 // server's ~/.ssh/config that uses this repo's read-only deploy key.
-set('repository', 'git@github-complianceplatform:3agApp/CompliancePlatform.git');
+set('repository', 'git@github-complianceplatform:3agApp/swiss-product-seal.git');
 set('branch', getenv('DEPLOY_BRANCH') ?: 'main');
 set('keep_releases', 2);
 
