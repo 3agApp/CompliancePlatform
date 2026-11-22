@@ -41,17 +41,22 @@ export function countryFlag(code: string): string {
  * React only reports a change event that comes from a real select or
  * input. So the value travels in a hidden native select -- the way Radix
  * Select does it -- and after a change has rendered, the select raises one.
+ *
+ * Compared with the value last announced rather than skipping the first
+ * run: StrictMode runs a new component's effects twice, and a "first run"
+ * flag let the second run announce a change nobody made -- so a product
+ * opened from another page arrived already marked as having unsaved edits.
  */
 function useAnnounceChange<T>(value: T) {
     const select = useRef<HTMLSelectElement>(null);
-    const first = useRef(true);
+    const announced = useRef(value);
 
     useEffect(() => {
-        if (first.current) {
-            first.current = false;
-
+        if (Object.is(announced.current, value)) {
             return;
         }
+
+        announced.current = value;
 
         select.current?.dispatchEvent(new Event('change', { bubbles: true }));
     }, [value]);

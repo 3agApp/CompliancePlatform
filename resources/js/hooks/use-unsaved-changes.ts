@@ -37,6 +37,13 @@ export function useUnsavedChanges(enabled: boolean, message: string) {
                 return;
             }
 
+            // A visit to the page already open -- deferred props loading,
+            // a reload after a panel's own save, the open tab written into
+            // the address -- keeps the form where it is, edits included.
+            if (visit.url.pathname === window.location.pathname) {
+                return;
+            }
+
             if (!window.confirm(message)) {
                 event.preventDefault();
             }
