@@ -5,7 +5,8 @@
     the brand and product, the call to scan in red and the serial in its
     own box.
 
-    Laid out on the grid from config('labels.sheet'), in millimetres. Each
+    Expects $copy from App\Support\StickerCopy. Laid out on the grid from
+    config('labels.sheet'), in millimetres. Each
     label is placed by its own coordinates rather than flowed, so a long name
     is clipped on its own sticker instead of pushing every label after it off
     its die-cut square. Print at actual size: a driver's "fit to page"
@@ -61,8 +62,9 @@
          * Brand and product as one run of copy, the brand in capitals ahead
          * of the name. Two lines are kept for it whatever its length, so the
          * call to scan and the serial sit at the same height on every
-         * sticker. The name is shortened to what two lines hold before it
-         * gets here, so it ends on "..." rather than on half a line.
+         * sticker. App\Support\StickerCopy has already shortened the name to
+         * what these two lines hold, so it ends on "..." rather than on half
+         * a line; its size and width are kept in step with these.
          */
         .product {
             font-size: 5.3pt;
@@ -72,10 +74,7 @@
             margin: 0 0 0.8mm;
         }
 
-        .brand {
-            font-weight: bold;
-            text-transform: uppercase;
-        }
+        .brand { font-weight: bold; }
 
         .scan {
             background: #DA291C;
@@ -102,15 +101,6 @@
     </style>
 </head>
 <body>
-    @php
-        /*
-         * About 30 characters fill the two lines once words wrap; the brand's
-         * bold capitals run nearly half as wide again as the name's lower
-         * case. The name is cut on a whole word.
-         */
-        $brand = $product->brand ? Str::limit($product->brand->name, 18) : null;
-        $name = Str::limit($product->name, max(12, 30 - (int) ceil(mb_strlen($brand ?? '') * 1.4)), preserveWords: true);
-    @endphp
     @foreach (collect($units)->chunk($grid['columns'] * $grid['rows']) as $sheet)
         <div class="sheet">
             @foreach ($sheet->values() as $index => $unit)
@@ -124,10 +114,10 @@
                             <td class="info">
                                 <img class="logo" src="{{ public_path('brand/headerlogo_farbig_hell.png') }}" alt="Swiss Product Seal">
                                 <div class="product">
-                                    @if ($brand)
-                                        <span class="brand">{{ $brand }}</span>
+                                    @if ($copy['brand'])
+                                        <span class="brand">{{ $copy['brand'] }}</span>
                                     @endif
-                                    {{ $name }}
+                                    {{ $copy['name'] }}
                                 </div>
                                 <p class="scan">{{ __('Scan to verify') }}</p>
                                 <p class="serial">{{ $unit['serial'] }}</p>

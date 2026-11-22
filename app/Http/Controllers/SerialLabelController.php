@@ -7,7 +7,9 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Support\QrCode;
+use App\Support\StickerCopy;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Dompdf\Adapter\CPDF;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -32,6 +34,15 @@ class SerialLabelController extends Controller
      * two centimetres, so the full-size artwork would only slow a run down.
      */
     protected const int QR_SIZE = 240;
+
+    /**
+     * The line the brand and product name are set on, in points: the text
+     * column of a sticker in `products/unit-labels` (21.5 mm, a little held
+     * back for rounding) and the type size it sets them in.
+     */
+    protected const float COPY_WIDTH = 21 * 72 / 25.4;
+
+    protected const float COPY_SIZE = 5.3;
 
     /**
      * Issue a new run.
@@ -124,7 +135,8 @@ class SerialLabelController extends Controller
     }
 
     /**
-     * Hand over a run as a PDF of A4 sticker sheets, for the office printer.
+     * Hand over a run as a PDF of A4 sticker sheets, shown in the browser so
+     * the page that asked for it can send it straight to the printer.
      *
      * Can be fetched again as often as needed -- a misfed sheet is the usual
      * reason -- and prints the same serials every time.
@@ -139,20 +151,34 @@ class SerialLabelController extends Controller
 
         $units = $labelBatch->units()->get()->each(fn (ProductUnit $unit) => $unit->setRelation('product', $product));
 
-        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])
-            ->loadView('products.unit-labels', [
-                'product' => $product,
-                'grid' => config('labels.sheet'),
-                'units' => $units->map(fn (ProductUnit $unit) => [
-                    'serial' => $unit->formattedSerial(),
-                    'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
-                ]),
-            ])
-            ->setPaper('a4');
+        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true]);
+
+        $copy = new StickerCopy($pdf->getDomPDF()->getFontMetrics(), self::COPY_WIDTH, self::COPY_SIZE);
+
+        $pdf->loadView('products.unit-labels', [
+            'product' => $product,
+            'copy' => $copy->for($product),
+            'grid' => config('labels.sheet'),
+            'units' => $units->map(fn (ProductUnit $unit) => [
+                'serial' => $unit->formattedSerial(),
+                'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
+            ]),
+        ])->setPaper('a4')->render();
+
+        /**
+         * Ask the printer for actual size. Browsers otherwise tend to fit a
+         * PDF to the printable area, which shrinks the grid off the sheet's
+         * die-cut stickers.
+         */
+        $canvas = $pdf->getDomPDF()->getCanvas();
+
+        if ($canvas instanceof CPDF) {
+            $canvas->get_cpdf()->setPreferences(['PrintScaling' => 'None']);
+        }
 
         $name = Str::slug($product->name) ?: 'product';
 
-        return $pdf->download("{$name}-labels-{$labelBatch->uuid}.pdf");
+        return $pdf->stream("{$name}-labels-{$labelBatch->uuid}.pdf");
     }
 
     /**

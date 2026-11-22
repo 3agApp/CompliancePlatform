@@ -1,7 +1,8 @@
 import { Form, Link, router } from '@inertiajs/react';
-import { Ban, BarChart3, FileText, Printer, TriangleAlert } from 'lucide-react';
+import { Ban, BarChart3, Printer, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import PrintLabelsButton from '@/components/print-labels-button';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -17,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDay } from '@/lib/format';
 import { t, tc } from '@/lib/i18n';
-import { destroy, pdf, show, store } from '@/routes/products/label-batches';
+import { destroy, show, store } from '@/routes/products/label-batches';
 import type { LabelBatchSummary } from '@/types';
 
 type Props = {
@@ -194,30 +195,21 @@ export default function SerialLabelsPanel({
                                     </Button>
                                     {batch.revokedAt ? null : (
                                         <>
-                                            <Button
+                                            <PrintLabelsButton
+                                                organizationSlug={
+                                                    organizationSlug
+                                                }
+                                                productId={productId}
+                                                batchId={batch.id}
                                                 variant="ghost"
                                                 size="sm"
-                                                asChild
-                                            >
-                                                <a
-                                                    href={
-                                                        pdf([
-                                                            organizationSlug,
-                                                            productId,
-                                                            batch.id,
-                                                        ]).url
-                                                    }
-                                                    aria-label={t(
-                                                        'Download labels for :name',
-                                                        {
-                                                            name: batch.issuedFor,
-                                                        },
-                                                    )}
-                                                    data-test="label-batch-pdf"
-                                                >
-                                                    <FileText className="h-4 w-4" />
-                                                </a>
-                                            </Button>
+                                                aria-label={t(
+                                                    'Print labels for :name',
+                                                    {
+                                                        name: batch.issuedFor,
+                                                    },
+                                                )}
+                                            />
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

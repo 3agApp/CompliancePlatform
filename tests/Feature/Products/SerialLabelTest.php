@@ -92,7 +92,7 @@ test('a run prints on A4 sheets of HERMA 4357 stickers, forty to a sheet', funct
         ->get(route('products.label-batches.pdf', ['current_organization' => $organization->slug, 'product' => $product->id, 'label_batch' => $batch->id]))
         ->assertOk()
         ->assertHeader('Content-Type', 'application/pdf')
-        ->assertDownload("magnetic-building-set-labels-{$batch->uuid}.pdf");
+        ->assertHeader('Content-Disposition', "inline; filename=magnetic-building-set-labels-{$batch->uuid}.pdf");
 
     $pdf = $response->getContent();
 
@@ -102,7 +102,9 @@ test('a run prints on A4 sheets of HERMA 4357 stickers, forty to a sheet', funct
      */
     expect($pdf)->toStartWith('%PDF-')
         ->toMatch('/MediaBox\s*\[\s*0(\.\d+)?\s+0(\.\d+)?\s+595(\.\d+)?\s+841(\.\d+)?\s*\]/')
-        ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(2);
+        ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(2)
+        /** Printed at actual size, or the grid shrinks off the die-cut stickers. */
+        ->and($pdf)->toMatch('/\/PrintScaling\s*\/None/');
 });
 
 test('the sheet places each label on its die-cut square', function () {
@@ -112,6 +114,7 @@ test('the sheet places each label on its die-cut square', function () {
 
     $html = view('products.unit-labels', [
         'product' => $product->load('brand'),
+        'copy' => ['brand' => null, 'name' => $product->name],
         'grid' => config('labels.sheet'),
         'units' => $units,
     ])->render();
@@ -131,6 +134,7 @@ test('the labels carry each packet\'s serial and the code that leads to it', fun
 
     $html = view('products.unit-labels', [
         'product' => $product->load('brand'),
+        'copy' => ['brand' => null, 'name' => $product->name],
         'grid' => config('labels.sheet'),
         'units' => [['serial' => $unit->formattedSerial(), 'qr' => 'data:image/png;base64,AAAA']],
     ])->render();
