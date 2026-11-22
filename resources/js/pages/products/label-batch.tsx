@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, FileText, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
+import LabelDownloadMenu from '@/components/label-download-menu';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -13,7 +14,6 @@ import {
 import { formatLocale, t, tc } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { edit } from '@/routes/products';
-import { pdf } from '@/routes/products/label-batches';
 import type { LabelUnitOverview } from '@/types';
 
 type Props = {
@@ -122,20 +122,16 @@ export default function LabelBatchOverview({
                     </div>
 
                     {batch.revokedAt ? null : (
-                        <Button variant="outline" size="sm" asChild>
-                            <a
-                                href={
-                                    pdf([
-                                        organizationSlug,
-                                        product.id,
-                                        batch.id,
-                                    ]).url
-                                }
-                            >
+                        <LabelDownloadMenu
+                            organizationSlug={organizationSlug}
+                            productId={product.id}
+                            batchId={batch.id}
+                        >
+                            <Button variant="outline" size="sm">
                                 <FileText className="h-4 w-4" />{' '}
                                 {t('Labels (PDF)')}
-                            </a>
-                        </Button>
+                            </Button>
+                        </LabelDownloadMenu>
                     )}
                 </div>
 

@@ -2,6 +2,7 @@ import { Form, Link, router } from '@inertiajs/react';
 import { Ban, BarChart3, FileText, Printer, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import LabelDownloadMenu from '@/components/label-download-menu';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -17,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDay } from '@/lib/format';
 import { t, tc } from '@/lib/i18n';
-import { destroy, pdf, show, store } from '@/routes/products/label-batches';
+import { destroy, show, store } from '@/routes/products/label-batches';
 import type { LabelBatchSummary } from '@/types';
 
 type Props = {
@@ -194,19 +195,16 @@ export default function SerialLabelsPanel({
                                     </Button>
                                     {batch.revokedAt ? null : (
                                         <>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                asChild
+                                            <LabelDownloadMenu
+                                                organizationSlug={
+                                                    organizationSlug
+                                                }
+                                                productId={productId}
+                                                batchId={batch.id}
                                             >
-                                                <a
-                                                    href={
-                                                        pdf([
-                                                            organizationSlug,
-                                                            productId,
-                                                            batch.id,
-                                                        ]).url
-                                                    }
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
                                                     aria-label={t(
                                                         'Download labels for :name',
                                                         {
@@ -216,8 +214,8 @@ export default function SerialLabelsPanel({
                                                     data-test="label-batch-pdf"
                                                 >
                                                     <FileText className="h-4 w-4" />
-                                                </a>
-                                            </Button>
+                                                </Button>
+                                            </LabelDownloadMenu>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'CompliancePlatform'),
+    'name' => env('APP_NAME', 'Swiss Product Seal'),
 
     /*
     |--------------------------------------------------------------------------

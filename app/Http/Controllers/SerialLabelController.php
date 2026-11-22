@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\LabelSheet;
 use App\Models\LabelBatch;
 use App\Models\Organization;
 use App\Models\Product;
@@ -27,11 +28,6 @@ use Inertia\Response as InertiaResponse;
  */
 class SerialLabelController extends Controller
 {
-    /**
-     * Points in a millimetre, for laying the label out at its exact size.
-     */
-    protected const float POINTS_PER_MM = 72 / 25.4;
-
     /**
      * How wide each packet's QR code is drawn, in pixels. Printed at about
      * two centimetres, so the full-size artwork would only slow a run down.
@@ -129,37 +125,39 @@ class SerialLabelController extends Controller
     }
 
     /**
-     * Hand over a run as a PDF, one label per page at the roll's size.
+     * Hand over a run as a PDF: one label per page at the roll's size, or
+     * laid out on A4 sheets of die-cut labels for an office printer.
      *
-     * Can be fetched again as often as needed -- a jammed roll is the usual
-     * reason -- and prints the same serials every time.
+     * Can be fetched again as often as needed -- a jammed roll or a misfed
+     * sheet is the usual reason -- and prints the same serials every time.
      */
-    public function pdf(Organization $currentOrganization, Product $product, LabelBatch $labelBatch): Response
+    public function pdf(Request $request, Organization $currentOrganization, Product $product, LabelBatch $labelBatch): Response
     {
         Gate::authorize('manageSerialLabels', $product);
 
         abort_if($labelBatch->revoked_at !== null, 404);
 
+        $sheet = $request->enum('sheet', LabelSheet::class) ?? LabelSheet::Roll;
+
         $product->load('brand');
 
         $units = $labelBatch->units()->get()->each(fn (ProductUnit $unit) => $unit->setRelation('product', $product));
 
-        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])->loadView('products.unit-labels', [
-            'product' => $product,
-            'units' => $units->map(fn (ProductUnit $unit) => [
-                'serial' => $unit->formattedSerial(),
-                'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
-            ]),
-        ])->setPaper([
-            0,
-            0,
-            config('labels.width_mm') * self::POINTS_PER_MM,
-            config('labels.height_mm') * self::POINTS_PER_MM,
-        ]);
+        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])
+            ->loadView('products.unit-labels', [
+                'product' => $product,
+                'grid' => $sheet->grid(),
+                'units' => $units->map(fn (ProductUnit $unit) => [
+                    'serial' => $unit->formattedSerial(),
+                    'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
+                ]),
+            ])
+            ->setPaper($sheet->paper());
 
         $name = Str::slug($product->name) ?: 'product';
+        $suffix = $sheet === LabelSheet::Roll ? '' : "-{$sheet->value}";
 
-        return $pdf->download("{$name}-labels-{$labelBatch->uuid}.pdf");
+        return $pdf->download("{$name}-labels-{$labelBatch->uuid}{$suffix}.pdf");
     }
 
     /**

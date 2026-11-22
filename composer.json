@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "sourovcodes/compliance-platform",
+    "name": "sourovcodes/swiss-product-seal",
     "type": "project",
-    "description": "CompliancePlatform helps organizations manage compliance work across teams and members.",
+    "description": "Swiss Product Seal helps organizations manage compliance work across teams and members.",
     "keywords": [
         "laravel",
         "compliance",

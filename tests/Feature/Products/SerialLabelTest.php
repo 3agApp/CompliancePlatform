@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\LabelSheet;
 use App\Enums\OrganizationRole;
 use App\Enums\ProductEventType;
 use App\Models\LabelBatch;
@@ -87,6 +88,59 @@ test('a run prints as one label per packet at the roll size', function () {
         ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(3);
 });
 
+test('a long brand and product name stay on their own label of the roll', function () {
+    [$user, $organization, , , $product] = tradeWithSerialisedProduct();
+
+    $brand = $product->supplierConnection->brands()->create(['name' => 'Spielwaren Muster Grosshandel']);
+    $product->update(['name' => 'Magnetic Building Set Deluxe 120 Pieces', 'brand_id' => $brand->id]);
+
+    $batch = LabelBatch::issue($product, 3, 'Spielwaren Muster AG', null, $user, $organization);
+
+    $pdf = $this
+        ->actingAs($user)
+        ->get(route('products.label-batches.pdf', ['current_organization' => $organization->slug, 'product' => $product->id, 'label_batch' => $batch->id]))
+        ->assertOk()
+        ->getContent();
+
+    expect(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(3);
+});
+
+test('a run prints on A4 sheets of HERMA 4357 labels, forty to a sheet', function () {
+    [$user, $organization, , , $product] = tradeWithSerialisedProduct();
+
+    $batch = LabelBatch::issue($product, 43, 'Spielwaren Muster AG', null, $user, $organization);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('products.label-batches.pdf', ['current_organization' => $organization->slug, 'product' => $product->id, 'label_batch' => $batch->id, 'sheet' => 'herma-4357']))
+        ->assertOk()
+        ->assertDownload("magnetic-building-set-labels-{$batch->uuid}-herma-4357.pdf");
+
+    $pdf = $response->getContent();
+
+    /** A4 is 595.28 x 841.89 points. */
+    expect($pdf)->toMatch('/MediaBox\s*\[\s*0(\.\d+)?\s+0(\.\d+)?\s+595(\.\d+)?\s+841(\.\d+)?\s*\]/')
+        ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(2);
+});
+
+test('the sheet places each label on its die-cut square', function () {
+    [$user, $organization, , , $product] = tradeWithSerialisedProduct();
+
+    $units = collect(range(1, 6))->map(fn (int $i) => ['serial' => "SERIAL-{$i}", 'qr' => 'data:image/png;base64,AAAA']);
+
+    $html = view('products.unit-labels', [
+        'product' => $product->load('brand'),
+        'grid' => LabelSheet::Herma4357->grid(),
+        'units' => $units,
+    ])->render();
+
+    /** The first label sits in the sheet's margins; the fifth starts the second row. */
+    expect($html)
+        ->toContain('left: 8mm; top: 21.5mm;')
+        ->toContain('left: 56.5mm; top: 21.5mm;')
+        ->toContain('left: 8mm; top: 46.9mm;');
+});
+
 test('the labels carry each packet\'s serial and the code that leads to it', function () {
     [$user, $organization, , , $product] = tradeWithSerialisedProduct();
 
@@ -95,6 +149,7 @@ test('the labels carry each packet\'s serial and the code that leads to it', fun
 
     $html = view('products.unit-labels', [
         'product' => $product->load('brand'),
+        'grid' => LabelSheet::Roll->grid(),
         'units' => [['serial' => $unit->formattedSerial(), 'qr' => 'data:image/png;base64,AAAA']],
     ])->render();
 
