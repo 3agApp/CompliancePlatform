@@ -20,12 +20,12 @@ use Throwable;
 /**
  * The copy of a picture or a PDF that the public page hands out.
  *
- * Whatever leaves the public page carries the site's domain across it, so
- * a copy passed along still says where it came from. A picture and every
- * PDF page get one stamp each, tilted at random and bent along a random
- * wave (see WatermarkStamp). The
- * original on the private disk is never touched, and those signed in keep
- * getting it clean.
+ * Whatever leaves the public page carries the Swiss Product Seal logo
+ * across it, so a copy passed along still says where it came from. A
+ * picture and every PDF page get it once, tilted and placed at random (see
+ * WatermarkStamp), with an optional text beside it bent along a random
+ * wave. The original on the private disk is never touched, and those
+ * signed in keep getting it clean.
  *
  * A copy is made the first time somebody asks for it and kept beside the
  * product's other files, so every later reader is served bytes already on
@@ -38,7 +38,7 @@ class Watermark
      * Raised whenever the look of the stamp changes, so every copy made
      * under the old look is made again.
      */
-    public const int VERSION = 5;
+    public const int VERSION = 6;
 
     /**
      * How long a stamp on a PDF may take before it is given up on.
@@ -61,11 +61,12 @@ class Watermark
     protected static ?array $helveticaWidths = null;
 
     /**
-     * The logo mark as a PostScript path, read once from its SVG.
+     * The logo as a PostScript procedure, read once from its SVG, with the
+     * width and height of the box it is drawn in.
      *
-     * @var array{program: string, size: float}|null
+     * @var array{program: string, width: float, height: float}|null
      */
-    protected static ?array $markPath = null;
+    protected static ?array $logo = null;
 
     /**
      * Get the path of the stamped copy of a document, making it first if
@@ -118,20 +119,13 @@ class Watermark
     }
 
     /**
-     * Get what is stamped across the public files: the configured text, or
-     * the site's own domain.
+     * Get the text stamped beside the logo: the configured one, or none.
      */
     public static function text(): string
     {
         $configured = config('watermark.text');
 
-        if (is_string($configured) && $configured !== '') {
-            return $configured;
-        }
-
-        $host = parse_url((string) config('app.url'), PHP_URL_HOST);
-
-        return is_string($host) && $host !== '' ? $host : (string) config('app.name');
+        return is_string($configured) ? $configured : '';
     }
 
     /**
@@ -216,12 +210,12 @@ class Watermark
             throw new RuntimeException('The watermark colours could not be allocated.');
         }
 
-        static::drawStamp($image, $text, $settings, $fill, $edge);
+        if ($text !== '') {
+            static::drawStamp($image, $text, $settings, $fill, $edge);
+        }
 
-        if (config('watermark.mark.enabled')) {
-            $placement = (new WatermarkStamp(imagesx($image), imagesy($image), $settings))->markPlacement(new Randomizer);
-
-            static::drawMark($image, $placement, [255, 255, 255], $opacity, shadow: true);
+        if (config('watermark.logo.enabled')) {
+            static::drawLogo($image, $settings, [255, 255, 255], $opacity, shadow: true);
         }
 
         ob_start();
@@ -319,10 +313,10 @@ class Watermark
 
             $pages = [];
 
-            $marks = static::pageMarks($sizes);
+            $logos = static::pageLogos($sizes);
 
             foreach ($sizes as $index => $size) {
-                $pages[] = ['page' => $index + 1, 'stamp' => $stamps[$index], 'mark' => $marks[$index]];
+                $pages[] = ['page' => $index + 1, 'stamp' => $stamps[$index], 'logo' => $logos[$index]];
             }
 
             foreach (static::bakePages($input, $workspace, $scanned, $text) as $index => $picture) {
@@ -422,7 +416,7 @@ class Watermark
             'min_font_size' => (float) $settings['min_font_size'] * $pixelsPerPoint,
             'max_font_size' => (float) $settings['max_font_size'] * $pixelsPerPoint,
             'line_height_ratio' => (float) $settings['line_height_ratio'],
-            'mark_size_ratio' => (float) $settings['mark_size_ratio'],
+            'logo_width_ratio' => (float) $settings['logo_width_ratio'],
         ];
         $channel = fn (float $share): int => max(0, min(255, (int) round($share * 255)));
 
@@ -450,15 +444,13 @@ class Watermark
             }
 
             imagealphablending($image, true);
-            static::drawStamp($image, $text, $stampSettings, $colour);
 
-            if (config('watermark.mark.enabled')) {
-                static::drawMark(
-                    $image,
-                    (new WatermarkStamp(imagesx($image), imagesy($image), $stampSettings))->markPlacement(new Randomizer),
-                    [$channel($red), $channel($green), $channel($blue)],
-                    (float) $settings['opacity'],
-                );
+            if ($text !== '') {
+                static::drawStamp($image, $text, $stampSettings, $colour);
+            }
+
+            if (config('watermark.logo.enabled')) {
+                static::drawLogo($image, $stampSettings, [$channel($red), $channel($green), $channel($blue)], (float) $settings['opacity']);
             }
 
             $picture = "{$workspace}/scan-".($position + 1).'.jpg';
@@ -560,6 +552,10 @@ class Watermark
         return array_map(function (array $size) use ($settings, $text, $measure, $randomizer): string {
             [$width, $height] = $size;
 
+            if ($text === '') {
+                return '[]';
+            }
+
             $glyphs = (new WatermarkStamp($width, $height, $settings))->glyphsFor($text, $measure, $randomizer);
 
             return '['.implode(' ', array_map(fn (array $glyph): string => sprintf(
@@ -580,7 +576,7 @@ class Watermark
      *
      * Each stamp letter is filled as an outline of Helvetica Bold.
      *
-     * @param  array<int, array{page: int, stamp: string, mark: string}|array{picture: string, width: int, height: int, size: array{0: float, 1: float}}>  $pages
+     * @param  array<int, array{page: int, stamp: string, logo: string}|array{picture: string, width: int, height: int, size: array{0: float, 1: float}}>  $pages
      */
     protected static function pageProgram(string $input, array $pages): string
     {
@@ -594,7 +590,7 @@ class Watermark
                 [$width, $height] = $page['size'];
 
                 return sprintf(
-                    "userdict /WMStamp [] put userdict /WMMarkAt [] put\n"
+                    "userdict /WMStamp [] put userdict /WMLogoAt [] put\n"
                     ."<< /PageSize [%1\$.2F %2\$.2F] >> setpagedevice\n"
                     ."gsave %1\$.2F %2\$.2F scale /DeviceRGB setcolorspace\n"
                     ."<< /ImageType 1 /Width %3\$d /Height %4\$d /BitsPerComponent 8 /Decode [0 1 0 1 0 1]\n"
@@ -608,7 +604,7 @@ class Watermark
                 );
             }
 
-            return "userdict /WMStamp {$page['stamp']} put userdict /WMMarkAt {$page['mark']} put\n{$page['page']} pdfgetpage pdfshowpage";
+            return "userdict /WMStamp {$page['stamp']} put userdict /WMLogoAt {$page['logo']} put\n{$page['page']} pdfgetpage pdfshowpage";
         }, $pages);
 
         return sprintf(<<<'PS'
@@ -616,9 +612,9 @@ class Watermark
               { 1 index /FID ne { def } { pop pop } ifelse } forall
               /Encoding ISOLatin1Encoding def currentdict
             end definefont pop
-            /WMMark { %s } bind def
+            /WMLogo { %s } bind def
             userdict /WMStamp [] put
-            userdict /WMMarkAt [] put
+            userdict /WMLogoAt [] put
             << /EndPage {
               exch pop
               dup 2 lt {
@@ -633,11 +629,11 @@ class Watermark
                   WMChar false charpath fill
                   grestore
                 } forall
-                userdict /WMMarkAt get dup length 4 eq {
-                  aload pop /WMMarkAngle exch def /WMMarkSize exch def
-                  gsave translate WMMarkAngle rotate
-                  WMMarkSize %.4F div dup neg scale %.4F neg %.4F neg translate
-                  newpath WMMark fill
+                userdict /WMLogoAt get dup length 4 eq {
+                  aload pop /WMLogoAngle exch def /WMLogoWidth exch def
+                  gsave translate WMLogoAngle rotate
+                  WMLogoWidth %.4F div dup neg scale %.4F neg %.4F neg translate
+                  WMLogo
                   grestore
                 } { pop } ifelse
                 grestore true
@@ -647,92 +643,95 @@ class Watermark
             %s
             runpdfend
             PS,
-            static::markPath()['program'],
+            static::logo()['program'],
             $red,
             $green,
             $blue,
             $opacity,
             $blendMode,
-            static::markPath()['size'],
-            static::markPath()['size'] / 2,
-            static::markPath()['size'] / 2,
+            static::logo()['width'],
+            static::logo()['width'] / 2,
+            static::logo()['height'] / 2,
             bin2hex($input),
             implode("\n", $body),
         );
     }
 
     /**
-     * Place the logo mark on every page, as PostScript arrays of its centre
+     * Place the logo on every page, as PostScript arrays of its centre
      * (measured up from the bottom, as PostScript counts), width and tilt.
      * An empty array leaves a page without one.
      *
      * @param  array<int, array{0: float, 1: float}>  $pageSizes
      * @return array<int, string>
      */
-    protected static function pageMarks(array $pageSizes): array
+    protected static function pageLogos(array $pageSizes): array
     {
-        if (! config('watermark.mark.enabled')) {
+        if (! config('watermark.logo.enabled')) {
             return array_fill(0, count($pageSizes), '[]');
         }
 
         $settings = config('watermark.pdf');
+        $aspect = static::logo()['width'] / static::logo()['height'];
         $randomizer = new Randomizer;
 
-        return array_map(function (array $size) use ($settings, $randomizer): string {
+        return array_map(function (array $size) use ($settings, $aspect, $randomizer): string {
             [$width, $height] = $size;
 
-            $mark = (new WatermarkStamp($width, $height, $settings))->markPlacement($randomizer);
+            $logo = (new WatermarkStamp($width, $height, $settings))->logoPlacement($aspect, $randomizer);
 
-            return sprintf('[%.2F %.2F %.2F %.3F]', $mark['x'], $height - $mark['y'], $mark['size'], $mark['angleDegrees']);
+            return sprintf('[%.2F %.2F %.2F %.3F]', $logo['x'], $height - $logo['y'], $logo['width'], $logo['angleDegrees']);
         }, $pageSizes);
     }
 
     /**
-     * Draw the logo mark onto a picture: the white artwork, tinted to the
-     * colour, faded to the opacity and turned to the placement's tilt,
-     * with a faint dark copy just below it when it must read on light
-     * and dark photos alike.
+     * Draw the logo onto a picture, placed for it: the white artwork,
+     * tinted to the colour, faded to the opacity and turned to the tilt,
+     * with a faint dark copy just below it when it must read on light and
+     * dark photos alike.
      *
-     * @param  array{x: float, y: float, size: float, angleDegrees: float}  $placement
+     * @param  array{stamps: int, font_size_ratio: float, min_font_size: float, max_font_size: float, line_height_ratio: float, logo_width_ratio?: float}  $settings
      * @param  array{0: int, 1: int, 2: int}  $rgb
      */
-    protected static function drawMark(GdImage $image, array $placement, array $rgb, float $opacity, bool $shadow = false): void
+    protected static function drawLogo(GdImage $image, array $settings, array $rgb, float $opacity, bool $shadow = false): void
     {
-        $artwork = @imagecreatefrompng(resource_path('brand/bildmarke_weiss.png'));
+        $artwork = @imagecreatefrompng(resource_path('brand/hauptlogo_weiss.png'));
 
         if (! $artwork instanceof GdImage) {
-            throw new RuntimeException('The logo mark could not be read for watermarking.');
+            throw new RuntimeException('The logo could not be read for watermarking.');
         }
 
+        $placement = (new WatermarkStamp(imagesx($image), imagesy($image), $settings))
+            ->logoPlacement(imagesx($artwork) / imagesy($artwork), new Randomizer);
+
         /*
-         * Each step's picture is let go as soon as the next exists: a mark is
-         * drawn beside a photo that may already hold most of the memory a
+         * Each step's picture is let go as soon as the next exists: the logo
+         * is drawn beside a photo that may already hold most of the memory a
          * request has.
          */
-        $size = max(1, (int) round($placement['size']));
-        $scaled = imagescale($artwork, $size, $size, IMG_BICUBIC);
+        $scaled = imagescale($artwork, max(1, (int) round($placement['width'])), max(1, (int) round($placement['height'])), IMG_BICUBIC);
         unset($artwork);
 
         if (! $scaled instanceof GdImage) {
-            throw new RuntimeException('The logo mark could not be scaled.');
+            throw new RuntimeException('The logo could not be scaled.');
         }
 
         imagealphablending($scaled, false);
         imagesavealpha($scaled, true);
 
         $clear = imagecolorallocatealpha($scaled, 0, 0, 0, 127);
-        $mark = $clear === false ? false : imagerotate($scaled, $placement['angleDegrees'], $clear);
+        $logo = $clear === false ? false : imagerotate($scaled, $placement['angleDegrees'], $clear);
         unset($scaled);
 
-        if (! $mark instanceof GdImage) {
-            throw new RuntimeException('The logo mark could not be turned.');
+        if (! $logo instanceof GdImage) {
+            throw new RuntimeException('The logo could not be turned.');
         }
 
-        imagealphablending($mark, false);
-        imagesavealpha($mark, true);
+        imagealphablending($logo, false);
+        imagesavealpha($logo, true);
 
-        $width = imagesx($mark);
-        $height = imagesy($mark);
+        $width = imagesx($logo);
+        $height = imagesy($logo);
         $left = (int) round($placement['x'] - ($width / 2));
         $top = (int) round($placement['y'] - ($height / 2));
 
@@ -756,87 +755,194 @@ class Watermark
             $edge = imagecreatetruecolor($width, $height);
             imagealphablending($edge, false);
             imagesavealpha($edge, true);
-            imagecopy($edge, $mark, 0, 0, 0, 0, $width, $height);
+            imagecopy($edge, $logo, 0, 0, 0, 0, $width, $height);
 
-            $offset = max(1, (int) round($size / 300));
+            $offset = max(1, (int) round($placement['height'] / 80));
 
             $tint($edge, [0, 0, 0], $opacity * 0.6);
             imagecopy($image, $edge, $left + $offset, $top + $offset, 0, 0, $width, $height);
             unset($edge);
         }
 
-        $tint($mark, $rgb, $opacity);
-        imagecopy($image, $mark, $left, $top, 0, 0, $width, $height);
+        $tint($logo, $rgb, $opacity);
+        imagecopy($image, $logo, $left, $top, 0, 0, $width, $height);
     }
 
     /**
-     * Get the logo mark as a PostScript path, read from its SVG, with the
-     * side of the square it is drawn in.
+     * Get the logo as a PostScript procedure that fills it, read from its
+     * SVG, with the width and height of its view box.
      *
      * The SVG counts y down from the top; the page program flips it as it
-     * scales it, so the paths are carried over as they are. Only the path
-     * commands the artwork uses -- moves, lines and cubic curves, absolute
-     * or relative -- are read.
+     * scales it, and every group's own transform is carried over as the
+     * same PostScript operators, so the paths come across as they are.
+     * Only what the artwork uses is read: nested <svg> boxes, groups that
+     * translate and scale, rectangles, and paths of moves, lines and cubic
+     * curves. Anything else stops the watermark rather than drawing a
+     * different logo.
      *
-     * @return array{program: string, size: float}
+     * @return array{program: string, width: float, height: float}
      */
-    protected static function markPath(): array
+    protected static function logo(): array
     {
-        if (static::$markPath !== null) {
-            return static::$markPath;
+        if (static::$logo !== null) {
+            return static::$logo;
         }
 
-        $svg = (string) file_get_contents(resource_path('brand/bildmarke.svg'));
+        $document = new \DOMDocument;
 
-        preg_match('/viewBox="\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)\s*"/', $svg, $viewBox);
-        preg_match_all('/\sd="([^"]+)"/', $svg, $paths);
+        if (! @$document->load(resource_path('brand/hauptlogo.svg'))) {
+            throw new RuntimeException('The logo could not be read for watermarking.');
+        }
 
-        $operators = ['M' => [2, 'moveto'], 'm' => [2, 'rmoveto'], 'L' => [2, 'lineto'], 'l' => [2, 'rlineto'], 'C' => [6, 'curveto'], 'c' => [6, 'rcurveto']];
+        $root = $document->documentElement;
+        [, , $width, $height] = static::viewBox($root);
+
+        return static::$logo = [
+            'program' => static::logoChildren($root),
+            'width' => $width,
+            'height' => $height,
+        ];
+    }
+
+    /**
+     * Turn an SVG element's children into PostScript.
+     */
+    protected static function logoChildren(\DOMElement $element): string
+    {
         $program = [];
 
-        foreach ($paths[1] as $path) {
-            preg_match_all('/[MmLlCcZz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/i', $path, $tokens);
-
-            $command = null;
-            $numbers = [];
-
-            foreach ([...$tokens[0], 'Z'] as $token) {
-                if (! is_numeric($token)) {
-                    $command = $token;
-                    $numbers = [];
-
-                    if (strtoupper($token) === 'Z') {
-                        $program[] = 'closepath';
-                    }
-
-                    continue;
-                }
-
-                if ($command === null || ! isset($operators[$command])) {
-                    continue;
-                }
-
-                $numbers[] = (float) $token;
-                [$count, $operator] = $operators[$command];
-
-                if (count($numbers) === $count) {
-                    $program[] = implode(' ', array_map(fn (float $number): string => sprintf('%.3F', $number), $numbers)).' '.$operator;
-                    $numbers = [];
-
-                    /** Further pairs after a move are lines, as SVG reads them. */
-                    $command = match ($command) {
-                        'M' => 'L',
-                        'm' => 'l',
-                        default => $command,
-                    };
-                }
+        foreach ($element->childNodes as $child) {
+            if ($child instanceof \DOMElement) {
+                $program[] = static::logoElement($child);
             }
         }
 
-        return static::$markPath = [
-            'program' => implode(' ', $program),
-            'size' => (float) ($viewBox[1] ?? 253),
-        ];
+        return implode(' ', array_filter($program));
+    }
+
+    /**
+     * Turn one SVG element into PostScript.
+     */
+    protected static function logoElement(\DOMElement $element): string
+    {
+        $number = fn (string $attribute): float => (float) $element->getAttribute($attribute);
+
+        return match ($element->localName) {
+            'title', 'desc', 'defs', 'metadata' => '',
+            'svg' => (function () use ($element, $number): string {
+                [$boxX, $boxY, $boxWidth, $boxHeight] = static::viewBox($element);
+
+                return sprintf(
+                    'gsave %.4F %.4F translate %.6F %.6F scale %.4F %.4F translate %s grestore',
+                    $number('x'),
+                    $number('y'),
+                    $number('width') / $boxWidth,
+                    $number('height') / $boxHeight,
+                    -$boxX,
+                    -$boxY,
+                    static::logoChildren($element),
+                );
+            })(),
+            'g' => 'gsave '.static::logoTransform($element->getAttribute('transform')).' '.static::logoChildren($element).' grestore',
+            'rect' => sprintf(
+                'newpath %.4F %.4F moveto %.4F 0 rlineto 0 %.4F rlineto %.4F 0 rlineto closepath fill',
+                $number('x'),
+                $number('y'),
+                $number('width'),
+                $number('height'),
+                -$number('width'),
+            ),
+            'path' => 'newpath '.static::logoPath($element->getAttribute('d')).' fill',
+            default => throw new RuntimeException("The logo's SVG has a <{$element->localName}>, which the watermark cannot draw."),
+        };
+    }
+
+    /**
+     * Read an SVG element's view box as x, y, width and height.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    protected static function viewBox(\DOMElement $element): array
+    {
+        $values = array_map('floatval', preg_split('/[\s,]+/', trim($element->getAttribute('viewBox'))) ?: []);
+
+        if (count($values) !== 4 || $values[2] <= 0 || $values[3] <= 0) {
+            throw new RuntimeException("The logo's SVG has a box without a usable viewBox.");
+        }
+
+        return [$values[0], $values[1], $values[2], $values[3]];
+    }
+
+    /**
+     * Turn a group's transform -- translates and scales, in order -- into
+     * PostScript.
+     */
+    protected static function logoTransform(string $transform): string
+    {
+        preg_match_all('/(\w+)\s*\(([^)]*)\)/', $transform, $operations, PREG_SET_ORDER);
+
+        return implode(' ', array_map(function (array $operation): string {
+            $values = array_map('floatval', preg_split('/[\s,]+/', trim($operation[2])) ?: []);
+
+            return match ($operation[1]) {
+                'translate' => sprintf('%.6F %.6F translate', $values[0] ?? 0.0, $values[1] ?? 0.0),
+                'scale' => sprintf('%.6F %.6F scale', $values[0] ?? 1.0, $values[1] ?? ($values[0] ?? 1.0)),
+                default => throw new RuntimeException("The logo's SVG has a {$operation[1]}() transform, which the watermark cannot draw."),
+            };
+        }, $operations));
+    }
+
+    /**
+     * Turn an SVG path into PostScript path operators.
+     *
+     * Moves, lines and cubic curves, absolute or relative, are what the
+     * artwork uses; PostScript has the same operators for each.
+     */
+    protected static function logoPath(string $path): string
+    {
+        $operators = ['M' => [2, 'moveto'], 'm' => [2, 'rmoveto'], 'L' => [2, 'lineto'], 'l' => [2, 'rlineto'], 'C' => [6, 'curveto'], 'c' => [6, 'rcurveto']];
+
+        preg_match_all('/[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/i', $path, $tokens);
+
+        $program = [];
+        $command = null;
+        $numbers = [];
+
+        foreach ($tokens[0] as $token) {
+            if (! is_numeric($token)) {
+                if (strtoupper($token) === 'Z') {
+                    $program[] = 'closepath';
+                } elseif (! isset($operators[$token])) {
+                    throw new RuntimeException("The logo's SVG has a path command {$token}, which the watermark cannot draw.");
+                }
+
+                $command = $token;
+                $numbers = [];
+
+                continue;
+            }
+
+            if ($command === null || ! isset($operators[$command])) {
+                continue;
+            }
+
+            $numbers[] = (float) $token;
+            [$count, $operator] = $operators[$command];
+
+            if (count($numbers) === $count) {
+                $program[] = implode(' ', array_map(fn (float $value): string => sprintf('%.3F', $value), $numbers)).' '.$operator;
+                $numbers = [];
+
+                /** Further pairs after a move are lines, as SVG reads them. */
+                $command = match ($command) {
+                    'M' => 'L',
+                    'm' => 'l',
+                    default => $command,
+                };
+            }
+        }
+
+        return implode(' ', $program);
     }
 
     /**

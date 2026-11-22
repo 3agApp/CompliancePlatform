@@ -439,7 +439,6 @@ test('a large picture is handed out scaled down, the full size kept behind the l
 
 test('a picture is stamped small and faint, so the article stays the thing to look at', function () {
     Storage::fake('local');
-    config(['watermark.text' => 'swiss-product-seal.ch']);
 
     [, , $product] = productWithTemplate();
 
@@ -470,13 +469,9 @@ test('a picture is stamped small and faint, so the article stays the thing to lo
         }
     }
 
-    /**
-     * On black, the white text and logo mark show only as bright as they
-     * are opaque -- a little brighter where the two cross -- and only as
-     * wide as their strokes.
-     */
-    expect($brightest)->toBeGreaterThan(0)->toBeLessThanOrEqual(160)
-        ->and($stamped / (1000 * 600))->toBeLessThan(0.02);
+    /** On black, the white logo shows only as bright as it is opaque, and only as wide as its strokes. */
+    expect($brightest)->toBeGreaterThan(0)->toBeLessThanOrEqual(130)
+        ->and($stamped / (1000 * 600))->toBeLessThan(0.011);
 });
 
 test('a picture whose file is gone is a missing page rather than a crash', function () {
