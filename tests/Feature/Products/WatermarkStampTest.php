@@ -64,6 +64,29 @@ test('two copies of the same file are stamped in different places', function () 
     expect($first)->not->toBe($second);
 });
 
+test('the logo mark sits wholly on the page, a little tilted', function (int $seed) {
+    $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
+
+    $mark = $stamp->markPlacement(new Randomizer(new Mt19937($seed)));
+
+    $radians = deg2rad($mark['angleDegrees']);
+    $reach = $mark['size'] * (abs(cos($radians)) + abs(sin($radians))) / 2;
+
+    expect($mark['size'])->toEqualWithDelta(595.0 * config('watermark.pdf.mark_size_ratio'), 0.001)
+        ->and(abs($mark['angleDegrees']))->toBeLessThanOrEqual(config('watermark.mark.max_angle_degrees'))
+        ->and($mark['x'] - $reach)->toBeGreaterThanOrEqual(-0.001)
+        ->and($mark['x'] + $reach)->toBeLessThanOrEqual(595.001)
+        ->and($mark['y'] - $reach)->toBeGreaterThanOrEqual(-0.001)
+        ->and($mark['y'] + $reach)->toBeLessThanOrEqual(842.001);
+})->with([1, 2, 3, 4, 5]);
+
+test('two copies carry the logo mark in different places', function () {
+    $stamp = new WatermarkStamp(595.0, 842.0, config('watermark.pdf'));
+
+    expect($stamp->markPlacement(new Randomizer(new Mt19937(1))))
+        ->not->toBe($stamp->markPlacement(new Randomizer(new Mt19937(2))));
+});
+
 test('the watermark is the site domain unless another text is configured', function () {
     config(['app.url' => 'https://swiss-product-seal.ch', 'watermark.text' => null]);
 
