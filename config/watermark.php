@@ -49,6 +49,7 @@ return [
         'scan_quality' => 60,
         'quality' => 'ebook',
         'lock' => (bool) env('WATERMARK_PDF_LOCK', true),
+        'mark_size_ratio' => 0.38,
     ],
 
     /*
@@ -71,6 +72,7 @@ return [
         'max_font_size' => 90.0,
         'line_height_ratio' => 96 / 72,
         'max_edge' => 2000,
+        'mark_size_ratio' => 0.2,
     ],
 
     /*
@@ -97,6 +99,28 @@ return [
             'min_cycles' => 0.5,
             'max_cycles' => 1.25,
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Logo mark
+    |--------------------------------------------------------------------------
+    |
+    | Beside the text, every picture and PDF page carries the Swiss Product
+    | Seal mark (the fingerprint and tick), in the same colour and opacity
+    | as the text on it. It is the type's `mark_size_ratio` of the shorter
+    | side across -- large on a PDF page, small on a product picture, where
+    | the article should stay the thing to look at -- tilted up to
+    | `max_angle_degrees` either way and placed at random, so no one patch
+    | over a known spot hides it. Its artwork is in resources/brand:
+    | the SVG's paths for PDFs, which draw it as shapes, and the white PNG
+    | for pictures.
+    |
+    */
+
+    'mark' => [
+        'enabled' => (bool) env('WATERMARK_MARK', true),
+        'max_angle_degrees' => 20.0,
     ],
 
 ];

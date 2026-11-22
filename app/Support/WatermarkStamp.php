@@ -22,6 +22,7 @@ use Random\Randomizer;
  * @phpstan-type Curve array{amplitude: float, cycles: float, phase: float}
  * @phpstan-type Placement array{text: string, fontSize: float, angleDegrees: float, x: float, y: float, curve: Curve}
  * @phpstan-type Glyph array{text: string, fontSize: float, x: float, y: float, angleDegrees: float}
+ * @phpstan-type MarkPlacement array{x: float, y: float, size: float, angleDegrees: float}
  */
 class WatermarkStamp
 {
@@ -30,7 +31,7 @@ class WatermarkStamp
     public readonly float $nominalFontSize;
 
     /**
-     * @param  array{stamps: int, font_size_ratio: float, min_font_size: float, max_font_size: float, line_height_ratio: float}  $settings
+     * @param  array{stamps: int, font_size_ratio: float, min_font_size: float, max_font_size: float, line_height_ratio: float, mark_size_ratio?: float}  $settings
      */
     public function __construct(
         public readonly float $areaWidth,
@@ -60,6 +61,33 @@ class WatermarkStamp
         }
 
         return $glyphs;
+    }
+
+    /**
+     * Place the logo mark: its centre, how wide its square is, and its tilt.
+     *
+     * A share of the shorter side across, tilted a little either way and
+     * dropped anywhere it wholly fits, so it moves from copy to copy like
+     * the text does.
+     *
+     * @return MarkPlacement
+     */
+    public function markPlacement(Randomizer $randomizer): array
+    {
+        $size = min($this->areaWidth, $this->areaHeight) * ($this->settings['mark_size_ratio'] ?? 0.0);
+        $maxAngle = (float) config('watermark.mark.max_angle_degrees');
+        $angle = $this->randomBetween($randomizer, -$maxAngle, $maxAngle);
+
+        /** Half the rotated square's bounding box, so the mark never runs off the edge. */
+        $radians = deg2rad($angle);
+        $reach = $size * (abs(cos($radians)) + abs(sin($radians))) / 2;
+
+        return [
+            'x' => $this->randomBetween($randomizer, $reach, $this->areaWidth - $reach),
+            'y' => $this->randomBetween($randomizer, $reach, $this->areaHeight - $reach),
+            'size' => $size,
+            'angleDegrees' => $angle,
+        ];
     }
 
     /**
