@@ -357,7 +357,7 @@
     "Done": "Erledigt",
     "Download": "Herunterladen",
     "Download :name": ":name herunterladen",
-    "Download labels for :name": "Etiketten für :name herunterladen",
+    "Print labels for :name": "Etiketten für :name drucken",
     "Download report": "Bericht herunterladen",
     "Draft": "Entwurf",
     "Draft request to the factory": "Entwurf der Anfrage an den Hersteller",
@@ -386,7 +386,7 @@
     "Enter the API key again so document kinds are guessed on upload.": "Geben Sie den API-Schlüssel erneut ein, damit beim Hochladen Dokumentarten vorgeschlagen werden.",
     "Enter the serial printed beside the QR code.": "Bitte geben Sie die Seriennummer neben dem QR-Code ein.",
     "EU toy safety": "EU-Spielzeugsicherheit",
-    "Every one of the :quantity serials issued for :name will read as withdrawn to anyone who checks it, including boxes already sold. Use this for a roll that went missing or was printed by mistake. It cannot be undone.": "Alle :quantity Seriennummern für :name werden bei jeder Prüfung als zurückgezogen angezeigt – auch bei bereits verkauften Packungen. Nutzen Sie dies für eine verlorene oder irrtümlich gedruckte Rolle. Das kann nicht rückgängig gemacht werden.",
+    "Every one of the :quantity serials issued for :name will read as withdrawn to anyone who checks it, including boxes already sold. Use this for sheets that went missing or were printed by mistake. It cannot be undone.": "Alle :quantity Seriennummern für :name werden bei jeder Prüfung als zurückgezogen angezeigt – auch bei bereits verkauften Packungen. Nutzen Sie dies für verlorene oder irrtümlich gedruckte Etikettenbögen. Das kann nicht rückgängig gemacht werden.",
     "Every organization, one workspace": "Jede Organisation, ein Arbeitsbereich",
     "Everything in the organization goes with it. This cannot be undone.": "Alles in der Organisation wird mitgelöscht. Das kann nicht rückgängig gemacht werden.",
     "Everything the template asks for is in.": "Alles, was die Vorlage verlangt, liegt vor.",
@@ -514,7 +514,7 @@
     "Kontor could not be reached: :reason": "Kontor war nicht erreichbar: :reason",
     "Kontor refused the request (HTTP :status).": "Kontor hat die Anfrage abgelehnt (HTTP :status).",
     "Labels": "Etiketten",
-    "Labels (PDF)": "Etiketten (PDF)",
+    "Print labels": "Etiketten drucken",
     "Labels for :name": "Etiketten für :name",
     "Labels issued. Download them below.": "Etiketten ausgestellt. Sie können sie unten herunterladen.",
     "Labels withdrawn.": "Etiketten zurückgezogen.",
@@ -798,7 +798,7 @@
     "Say who or what these labels are for, such as a customer, shipment or order.": "Geben Sie an, für wen oder was diese Etiketten sind, etwa einen Kunden, eine Lieferung oder eine Bestellung.",
     "Say why the approval is being taken back, so the history explains it.": "Geben Sie an, warum die Freigabe zurückgezogen wird, damit der Verlauf es erklärt.",
     "Say why this seal is being set by hand. It is kept with the product.": "Geben Sie an, warum dieses Siegel manuell gesetzt wird. Die Begründung wird beim Produkt gespeichert.",
-    "Scan to check this product is genuine": "Scannen, um die Echtheit zu prüfen",
+    "Scan to verify": "Scannen & prüfen",
     "Search": "Suchen",
     "Search (⌘K)": "Suchen (⌘K)",
     "Search brands": "Marken suchen",
@@ -1123,5 +1123,6 @@
     "Change the title of :name": "Titel von :name ändern",
     "Title (optional)": "Titel (optional)",
     "Title for :name": "Titel für :name",
-    "Edit brand": "Marke bearbeiten"
+    "Edit brand": "Marke bearbeiten",
+    "The labels could not be prepared for printing. Please try again.": "Die Etiketten konnten nicht zum Drucken vorbereitet werden. Bitte versuchen Sie es erneut."
 }

@@ -20,9 +20,7 @@ export default function PublicHeader({ locale, onLocaleChange, t }: Props) {
         <header className="sticky top-0 z-20 border-b border-gray-200/80 bg-white/95 shadow-sm backdrop-blur-md">
             <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-600 shadow-sm">
-                        <AppLogoIcon className="size-5 text-white" />
-                    </div>
+                    <AppLogoIcon className="size-8 shrink-0 text-[#1F2933]" />
                     <div>
                         <span className="block text-sm leading-none font-bold tracking-tight text-gray-900">
                             {name}

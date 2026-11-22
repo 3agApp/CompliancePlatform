@@ -1,13 +1,19 @@
 {{--
-    A run of serialised labels, one label per page at the roll's exact size,
-    so a label printer's ordinary driver prints them without scaling.
+    A run of serialised labels on A4 sheets of die-cut stickers, one sticker
+    per packet, after the Swiss Product Seal sample label: the code that
+    leads to the packet's serial on the left, and beside it the seal's logo,
+    the brand and product, the call to scan in red and the serial in its
+    own box.
 
-    One label per packet, for the box: the serial, and the code that leads
-    to it.
+    Expects $copy from App\Support\StickerCopy. Laid out on the grid from
+    config('labels.sheet'), in millimetres. Each
+    label is placed by its own coordinates rather than flowed, so a long name
+    is clipped on its own sticker instead of pushing every label after it off
+    its die-cut square. Print at actual size: a driver's "fit to page"
+    shrinks the grid off the sheet.
 
-    Written for dompdf, like the A6 sheet: tables, inline styles, points and
-    the DejaVu fonts, because nothing else survives the renderer. Sizes are
-    for a 50 x 30 mm label and hold up a few millimetres either side.
+    Written for dompdf: tables, inline styles, points and the DejaVu fonts,
+    because nothing else survives the renderer.
 --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -20,72 +26,106 @@
         body {
             margin: 0;
             font-family: DejaVu Sans, sans-serif;
-            color: #000;
+            color: #1F2933;
         }
 
-        /*
-         * A fixed height that never overruns the page: anything taller would
-         * spill onto a page of its own, and every label after it on the roll
-         * would be one off.
-         */
-        .label {
-            padding: 2mm 3mm 0;
-            height: 26mm;
-            overflow: hidden;
+        .sheet {
+            position: relative;
             page-break-after: always;
         }
 
-        .label:last-child { page-break-after: auto; }
+        .sheet:last-child { page-break-after: auto; }
+
+        .label {
+            position: absolute;
+            width: {{ $grid['width'] - 3.6 }}mm;
+            height: {{ $grid['height'] - 2.4 }}mm;
+            padding: 1.2mm 1.8mm;
+            overflow: hidden;
+        }
 
         table { width: 100%; border-collapse: collapse; }
-        td { vertical-align: top; padding: 0; }
+        td { vertical-align: middle; padding: 0; }
 
-        .qr { width: 23mm; }
-        .qr img { width: 22mm; height: 22mm; }
+        .qr { width: 21.5mm; }
+        .qr img { width: 20mm; height: 20mm; display: block; }
 
-        .brand {
-            font-size: 5.5pt;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin: 0;
+        .info {
+            border-left: 0.3mm solid #1F2933;
+            padding-left: 1.6mm;
         }
 
-        /* Two lines at most: a third pushes the row off the label and onto a page of its own. */
-        .name {
-            font-size: 7pt;
+        /* The one-line logo: the stacked one wastes the width of a sticker this wide and short. */
+        .logo { width: 100%; display: block; margin-bottom: 0.7mm; }
+
+        /*
+         * Brand and product as one run of copy, the brand in capitals ahead
+         * of the name. Two lines are kept for it whatever its length, so the
+         * call to scan and the serial sit at the same height on every
+         * sticker. App\Support\StickerCopy has already shortened the name to
+         * what these two lines hold, so it ends on "..." rather than on half
+         * a line; its size and width are kept in step with these.
+         */
+        .product {
+            font-size: 5.3pt;
+            line-height: 1.1;
+            height: 5.2mm;
+            overflow: hidden;
+            margin: 0 0 0.8mm;
+        }
+
+        .brand { font-weight: bold; }
+
+        .scan {
+            background: #DA291C;
+            color: #FFFFFF;
+            font-size: 6pt;
             font-weight: bold;
-            line-height: 1.2;
-            margin: 0.5mm 0 1.5mm;
+            text-align: center;
+            text-transform: uppercase;
+            padding: 0.5mm 0;
+            border-radius: 0.8mm;
+            margin: 0 0 0.7mm;
         }
-
-        .caption { font-size: 5pt; margin: 0; }
 
         .serial {
+            border: 0.3mm solid #1F2933;
+            border-radius: 0.8mm;
             font-family: DejaVu Sans Mono, monospace;
-            font-size: 6.5pt;
+            font-size: 6pt;
             font-weight: bold;
-            margin: 0.5mm 0 0;
+            text-align: center;
+            padding: 0.4mm 0;
+            margin: 0;
         }
-
-
     </style>
 </head>
 <body>
-    @foreach ($units as $unit)
-        <div class="label">
-            <table>
-                <tr>
-                    <td class="qr"><img src="{{ $unit['qr'] }}" alt=""></td>
-                    <td>
-                        @if ($product->brand)
-                            <p class="brand">{{ $product->brand->name }}</p>
-                        @endif
-                        <p class="name">{{ Str::limit($product->name, 24) }}</p>
-                        <p class="caption">{{ __('Scan to check this product is genuine') }}</p>
-                        <p class="serial">{{ $unit['serial'] }}</p>
-                    </td>
-                </tr>
-            </table>
+    @foreach (collect($units)->chunk($grid['columns'] * $grid['rows']) as $sheet)
+        <div class="sheet">
+            @foreach ($sheet->values() as $index => $unit)
+                <div
+                    class="label"
+                    style="left: {{ $grid['left'] + ($index % $grid['columns']) * $grid['width'] }}mm; top: {{ $grid['top'] + intdiv($index, $grid['columns']) * $grid['height'] }}mm;"
+                >
+                    <table>
+                        <tr>
+                            <td class="qr"><img src="{{ $unit['qr'] }}" alt=""></td>
+                            <td class="info">
+                                <img class="logo" src="{{ public_path('brand/headerlogo_farbig_hell.png') }}" alt="Swiss Product Seal">
+                                <div class="product">
+                                    @if ($copy['brand'])
+                                        <span class="brand">{{ $copy['brand'] }}</span>
+                                    @endif
+                                    {{ $copy['name'] }}
+                                </div>
+                                <p class="scan">{{ __('Scan to verify') }}</p>
+                                <p class="serial">{{ $unit['serial'] }}</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            @endforeach
         </div>
     @endforeach
 </body>

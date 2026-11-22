@@ -18,7 +18,7 @@ enum ProductUnitStatus: string
     case Unknown = 'unknown';
 
     /**
-     * Withdrawn by the distributor: a roll that went missing, a misprint.
+     * Withdrawn by the distributor: sheets that went missing, a misprint.
      */
     case Revoked = 'revoked';
 

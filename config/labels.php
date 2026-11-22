@@ -4,18 +4,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Label Size
+    | Label Sheet
     |--------------------------------------------------------------------------
     |
-    | The size of one label on the roll, in millimetres. Serialised labels
-    | are laid out one per page at exactly this size, so they print through
-    | any label printer's ordinary driver without being scaled.
+    | The die-cut sticker paper serialised labels are printed on, in
+    | millimetres: HERMA No. 4357, A4 with 4 x 10 labels of 48.5 x 25.4 mm
+    | and no gaps between them. The margins are HERMA's own, from the
+    | packaging: 8 mm either side and 21.5 mm top and bottom.
     |
     */
 
-    'width_mm' => (float) env('LABEL_WIDTH_MM', 50),
-
-    'height_mm' => (float) env('LABEL_HEIGHT_MM', 30),
+    'sheet' => [
+        'columns' => 4,
+        'rows' => 10,
+        'width' => 48.5,
+        'height' => 25.4,
+        'left' => 8.0,
+        'top' => 21.5,
+    ],
 
     /*
     |--------------------------------------------------------------------------

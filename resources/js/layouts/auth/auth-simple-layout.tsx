@@ -23,9 +23,7 @@ export default function AuthSimpleLayout({ children, title }: AuthLayoutProps) {
                     <LanguageToggle />
                 </div>
                 <div className="workspace-panel p-6 sm:p-8">
-                    <div className="bg-primary text-primary-foreground mb-6 flex size-10 items-center justify-center rounded-xl">
-                        <AppLogoIcon className="size-6" />
-                    </div>
+                    <AppLogoIcon className="text-foreground mb-6 size-10" />
                     <h1 className="mb-8 text-2xl font-semibold tracking-tight">
                         {title ? t(title) : null}
                     </h1>

@@ -23,6 +23,8 @@
             color: #111;
         }
 
+        .brand-logo { height: 9mm; margin-bottom: 8mm; }
+
         h1 { font-size: 16pt; margin: 0 0 2pt; }
         h2 { font-size: 11pt; margin: 16pt 0 6pt; page-break-after: avoid; }
         p { margin: 0 0 6pt; }
@@ -92,6 +94,8 @@
             </tr>
         </table>
     </div>
+
+    <img class="brand-logo" src="{{ public_path('brand/headerlogo_farbig_hell.png') }}" alt="Swiss Product Seal">
 
     <h1>{{ __('AI document check') }}</h1>
     <p class="muted">{{ $product['name'] }}</p>

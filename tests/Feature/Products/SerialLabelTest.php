@@ -65,26 +65,65 @@ test('a run is between one label and the largest batch', function (int $quantity
     expect(LabelBatch::count())->toBe(0);
 })->with([0, 401]);
 
-test('a run prints as one label per packet at the roll size', function () {
+test('a long brand and product name stay on their own sticker', function () {
     [$user, $organization, , , $product] = tradeWithSerialisedProduct();
 
-    $batch = LabelBatch::issue($product, 3, 'Spielwaren Muster AG', null, $user, $organization);
+    $brand = $product->supplierConnection->brands()->create(['name' => 'Spielwaren Muster Grosshandel']);
+    $product->update(['name' => 'Magnetic Building Set Deluxe 120 Pieces', 'brand_id' => $brand->id]);
+
+    $batch = LabelBatch::issue($product, 40, 'Spielwaren Muster AG', null, $user, $organization);
+
+    $pdf = $this
+        ->actingAs($user)
+        ->get(route('products.label-batches.pdf', ['current_organization' => $organization->slug, 'product' => $product->id, 'label_batch' => $batch->id]))
+        ->assertOk()
+        ->getContent();
+
+    expect(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(1);
+});
+
+test('a run prints on A4 sheets of HERMA 4357 stickers, forty to a sheet', function () {
+    [$user, $organization, , , $product] = tradeWithSerialisedProduct();
+
+    $batch = LabelBatch::issue($product, 43, 'Spielwaren Muster AG', null, $user, $organization);
 
     $response = $this
         ->actingAs($user)
         ->get(route('products.label-batches.pdf', ['current_organization' => $organization->slug, 'product' => $product->id, 'label_batch' => $batch->id]))
         ->assertOk()
-        ->assertHeader('Content-Type', 'application/pdf');
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('Content-Disposition', "inline; filename=magnetic-building-set-labels-{$batch->uuid}.pdf");
 
     $pdf = $response->getContent();
 
     /**
-     * 50 x 30 mm is 141.73 x 85.04 points. Counted on the page objects,
+     * A4 is 595.28 x 841.89 points. Pages are counted on the page objects,
      * because the text is compressed inside the stream.
      */
     expect($pdf)->toStartWith('%PDF-')
-        ->toMatch('/MediaBox\s*\[\s*0(\.\d+)?\s+0(\.\d+)?\s+141(\.\d+)?\s+85(\.\d+)?\s*\]/')
-        ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(3);
+        ->toMatch('/MediaBox\s*\[\s*0(\.\d+)?\s+0(\.\d+)?\s+595(\.\d+)?\s+841(\.\d+)?\s*\]/')
+        ->and(preg_match_all('/\/Type\s*\/Page[^s]/', $pdf))->toBe(2)
+        /** Printed at actual size, or the grid shrinks off the die-cut stickers. */
+        ->and($pdf)->toMatch('/\/PrintScaling\s*\/None/');
+});
+
+test('the sheet places each label on its die-cut square', function () {
+    [$user, $organization, , , $product] = tradeWithSerialisedProduct();
+
+    $units = collect(range(1, 6))->map(fn (int $i) => ['serial' => "SERIAL-{$i}", 'qr' => 'data:image/png;base64,AAAA']);
+
+    $html = view('products.unit-labels', [
+        'product' => $product->load('brand'),
+        'copy' => ['brand' => null, 'name' => $product->name],
+        'grid' => config('labels.sheet'),
+        'units' => $units,
+    ])->render();
+
+    /** The first label sits in the sheet's margins; the fifth starts the second row. */
+    expect($html)
+        ->toContain('left: 8mm; top: 21.5mm;')
+        ->toContain('left: 56.5mm; top: 21.5mm;')
+        ->toContain('left: 8mm; top: 46.9mm;');
 });
 
 test('the labels carry each packet\'s serial and the code that leads to it', function () {
@@ -95,6 +134,8 @@ test('the labels carry each packet\'s serial and the code that leads to it', fun
 
     $html = view('products.unit-labels', [
         'product' => $product->load('brand'),
+        'copy' => ['brand' => null, 'name' => $product->name],
+        'grid' => config('labels.sheet'),
         'units' => [['serial' => $unit->formattedSerial(), 'qr' => 'data:image/png;base64,AAAA']],
     ])->render();
 

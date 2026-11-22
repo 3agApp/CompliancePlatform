@@ -7,7 +7,9 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Support\QrCode;
+use App\Support\StickerCopy;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Dompdf\Adapter\CPDF;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -28,15 +30,19 @@ use Inertia\Response as InertiaResponse;
 class SerialLabelController extends Controller
 {
     /**
-     * Points in a millimetre, for laying the label out at its exact size.
-     */
-    protected const float POINTS_PER_MM = 72 / 25.4;
-
-    /**
      * How wide each packet's QR code is drawn, in pixels. Printed at about
      * two centimetres, so the full-size artwork would only slow a run down.
      */
     protected const int QR_SIZE = 240;
+
+    /**
+     * The line the brand and product name are set on, in points: the text
+     * column of a sticker in `products/unit-labels` (21.5 mm, a little held
+     * back for rounding) and the type size it sets them in.
+     */
+    protected const float COPY_WIDTH = 21 * 72 / 25.4;
+
+    protected const float COPY_SIZE = 5.3;
 
     /**
      * Issue a new run.
@@ -129,9 +135,10 @@ class SerialLabelController extends Controller
     }
 
     /**
-     * Hand over a run as a PDF, one label per page at the roll's size.
+     * Hand over a run as a PDF of A4 sticker sheets, shown in the browser so
+     * the page that asked for it can send it straight to the printer.
      *
-     * Can be fetched again as often as needed -- a jammed roll is the usual
+     * Can be fetched again as often as needed -- a misfed sheet is the usual
      * reason -- and prints the same serials every time.
      */
     public function pdf(Organization $currentOrganization, Product $product, LabelBatch $labelBatch): Response
@@ -144,26 +151,38 @@ class SerialLabelController extends Controller
 
         $units = $labelBatch->units()->get()->each(fn (ProductUnit $unit) => $unit->setRelation('product', $product));
 
-        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])->loadView('products.unit-labels', [
+        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true]);
+
+        $copy = new StickerCopy($pdf->getDomPDF()->getFontMetrics(), self::COPY_WIDTH, self::COPY_SIZE);
+
+        $pdf->loadView('products.unit-labels', [
             'product' => $product,
+            'copy' => $copy->for($product),
+            'grid' => config('labels.sheet'),
             'units' => $units->map(fn (ProductUnit $unit) => [
                 'serial' => $unit->formattedSerial(),
                 'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
             ]),
-        ])->setPaper([
-            0,
-            0,
-            config('labels.width_mm') * self::POINTS_PER_MM,
-            config('labels.height_mm') * self::POINTS_PER_MM,
-        ]);
+        ])->setPaper('a4')->render();
+
+        /**
+         * Ask the printer for actual size. Browsers otherwise tend to fit a
+         * PDF to the printable area, which shrinks the grid off the sheet's
+         * die-cut stickers.
+         */
+        $canvas = $pdf->getDomPDF()->getCanvas();
+
+        if ($canvas instanceof CPDF) {
+            $canvas->get_cpdf()->setPreferences(['PrintScaling' => 'None']);
+        }
 
         $name = Str::slug($product->name) ?: 'product';
 
-        return $pdf->download("{$name}-labels-{$labelBatch->uuid}.pdf");
+        return $pdf->stream("{$name}-labels-{$labelBatch->uuid}.pdf");
     }
 
     /**
-     * Withdraw every label in a run, for a roll that went missing or a run
+     * Withdraw every label in a run, for sheets that went missing or a run
      * printed by mistake.
      */
     public function destroy(Request $request, Organization $currentOrganization, Product $product, LabelBatch $labelBatch): RedirectResponse

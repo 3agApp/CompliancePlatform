@@ -53,9 +53,7 @@ export default function Welcome() {
                         href={home()}
                         className="flex items-center gap-2 font-semibold tracking-tight"
                     >
-                        <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md">
-                            <AppLogoIcon className="size-5" />
-                        </div>
+                        <AppLogoIcon className="size-8" />
                         {name}
                     </Link>
 

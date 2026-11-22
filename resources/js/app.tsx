@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'CompliancePlatform';
+const appName = import.meta.env.VITE_APP_NAME || 'Swiss Product Seal';
 
 // Before the app renders: a translated first page must not crash it.
 installForeignDomTolerance();
