@@ -2,7 +2,6 @@ import { Form, Link, router } from '@inertiajs/react';
 import { Ban, BarChart3, FileText, Printer, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
-import LabelDownloadMenu from '@/components/label-download-menu';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDay } from '@/lib/format';
 import { t, tc } from '@/lib/i18n';
-import { destroy, show, store } from '@/routes/products/label-batches';
+import { destroy, pdf, show, store } from '@/routes/products/label-batches';
 import type { LabelBatchSummary } from '@/types';
 
 type Props = {
@@ -32,7 +31,7 @@ type Props = {
  *
  * Each run says who or what it was printed for, so a serial that turns up
  * checked far more often than one buyer would check it can be traced back
- * to where its roll went.
+ * to where its labels went.
  */
 export default function SerialLabelsPanel({
     organizationSlug,
@@ -195,16 +194,19 @@ export default function SerialLabelsPanel({
                                     </Button>
                                     {batch.revokedAt ? null : (
                                         <>
-                                            <LabelDownloadMenu
-                                                organizationSlug={
-                                                    organizationSlug
-                                                }
-                                                productId={productId}
-                                                batchId={batch.id}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                asChild
                                             >
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                <a
+                                                    href={
+                                                        pdf([
+                                                            organizationSlug,
+                                                            productId,
+                                                            batch.id,
+                                                        ]).url
+                                                    }
                                                     aria-label={t(
                                                         'Download labels for :name',
                                                         {
@@ -214,8 +216,8 @@ export default function SerialLabelsPanel({
                                                     data-test="label-batch-pdf"
                                                 >
                                                     <FileText className="h-4 w-4" />
-                                                </Button>
-                                            </LabelDownloadMenu>
+                                                </a>
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -271,7 +273,7 @@ export default function SerialLabelsPanel({
                         <DialogTitle>{t('Withdraw labels')}</DialogTitle>
                         <DialogDescription>
                             {t(
-                                'Every one of the :quantity serials issued for :name will read as withdrawn to anyone who checks it, including boxes already sold. Use this for a roll that went missing or was printed by mistake. It cannot be undone.',
+                                'Every one of the :quantity serials issued for :name will read as withdrawn to anyone who checks it, including boxes already sold. Use this for sheets that went missing or were printed by mistake. It cannot be undone.',
                                 {
                                     quantity: withdrawing?.quantity,
                                     name: withdrawing?.issuedFor,

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\LabelSheet;
 use App\Models\LabelBatch;
 use App\Models\Organization;
 use App\Models\Product;
@@ -125,19 +124,16 @@ class SerialLabelController extends Controller
     }
 
     /**
-     * Hand over a run as a PDF: one label per page at the roll's size, or
-     * laid out on A4 sheets of die-cut labels for an office printer.
+     * Hand over a run as a PDF of A4 sticker sheets, for the office printer.
      *
-     * Can be fetched again as often as needed -- a jammed roll or a misfed
-     * sheet is the usual reason -- and prints the same serials every time.
+     * Can be fetched again as often as needed -- a misfed sheet is the usual
+     * reason -- and prints the same serials every time.
      */
-    public function pdf(Request $request, Organization $currentOrganization, Product $product, LabelBatch $labelBatch): Response
+    public function pdf(Organization $currentOrganization, Product $product, LabelBatch $labelBatch): Response
     {
         Gate::authorize('manageSerialLabels', $product);
 
         abort_if($labelBatch->revoked_at !== null, 404);
-
-        $sheet = $request->enum('sheet', LabelSheet::class) ?? LabelSheet::Roll;
 
         $product->load('brand');
 
@@ -146,22 +142,21 @@ class SerialLabelController extends Controller
         $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])
             ->loadView('products.unit-labels', [
                 'product' => $product,
-                'grid' => $sheet->grid(),
+                'grid' => config('labels.sheet'),
                 'units' => $units->map(fn (ProductUnit $unit) => [
                     'serial' => $unit->formattedSerial(),
                     'qr' => QrCode::dataUri($unit->url(), self::QR_SIZE),
                 ]),
             ])
-            ->setPaper($sheet->paper());
+            ->setPaper('a4');
 
         $name = Str::slug($product->name) ?: 'product';
-        $suffix = $sheet === LabelSheet::Roll ? '' : "-{$sheet->value}";
 
-        return $pdf->download("{$name}-labels-{$labelBatch->uuid}{$suffix}.pdf");
+        return $pdf->download("{$name}-labels-{$labelBatch->uuid}.pdf");
     }
 
     /**
-     * Withdraw every label in a run, for a roll that went missing or a run
+     * Withdraw every label in a run, for sheets that went missing or a run
      * printed by mistake.
      */
     public function destroy(Request $request, Organization $currentOrganization, Product $product, LabelBatch $labelBatch): RedirectResponse

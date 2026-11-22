@@ -72,7 +72,7 @@ class LabelBatch extends Model
      * Issue a print run: one new serial for every packet.
      *
      * Written in one transaction, so a run is either all there or not there
-     * at all -- half a roll of serials the platform does not know would
+     * at all -- half a sheet of serials the platform does not know would
      * read as counterfeits to whoever bought those packets.
      */
     public static function issue(Product $product, int $quantity, string $issuedFor, ?string $note, User $actor, Organization $organization): self
