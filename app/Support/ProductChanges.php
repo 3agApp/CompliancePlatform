@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\Locale;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -110,6 +111,7 @@ class ProductChanges
             'product_template_id' => ProductTemplate::query()->whereKey($value)->value('name'),
             'supplier_connection_id' => self::supplierName($value),
             'is_active' => (bool) $value ? __('Active') : __('Inactive'),
+            'text_locale' => Locale::tryFrom((string) $value)?->label(),
             default => null,
         };
     }

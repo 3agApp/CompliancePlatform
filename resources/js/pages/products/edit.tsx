@@ -35,6 +35,7 @@ import { t, tc, tn } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { edit, index, update } from '@/routes/products';
+import { suggest as suggestTranslations } from '@/routes/products/translations';
 import type {
     BrandOption,
     CountryOption,
@@ -710,6 +711,20 @@ export default function ProductEdit({
                                             hasWarningImages={
                                                 warningImages.length > 0
                                             }
+                                            translation={{
+                                                textLocale: product.text_locale,
+                                                translations:
+                                                    product.translations,
+                                                suggestUrl:
+                                                    canGuessDocumentKinds
+                                                        ? suggestTranslations.url(
+                                                              [
+                                                                  organizationSlug,
+                                                                  product.id,
+                                                              ],
+                                                          )
+                                                        : undefined,
+                                            }}
                                             warningImages={
                                                 <WarningImagesField
                                                     organizationSlug={

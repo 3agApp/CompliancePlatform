@@ -10,8 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { ProductComplianceDetails, ProductRequirementKey } from '@/types';
+import SafetyTextTranslations, {
+    TRANSLATABLE_FIELDS,
+} from '@/components/safety-text-translations';
+import type {
+    ProductComplianceDetails,
+    ProductRequirementKey,
+    ProductTranslation,
+    TranslatableField,
+} from '@/types';
 import { t } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n';
 
 type FieldName = keyof ProductComplianceDetails;
 
@@ -31,6 +40,17 @@ type Props = {
     warningImages?: ReactNode;
     /** Whether the product has warning images, which keeps the warning on screen. */
     hasWarningImages?: boolean;
+    /**
+     * The safety texts in other languages. Only a saved product has any, so
+     * only the edit page passes this; without it the form is the original
+     * texts alone.
+     */
+    translation?: {
+        textLocale: Locale;
+        translations: Partial<Record<Locale, ProductTranslation>>;
+        /** Where to ask for AI translations, when the organization can. */
+        suggestUrl?: string;
+    };
 };
 
 type TextField = {
@@ -64,6 +84,7 @@ export default function ProductComplianceFields({
     idPrefix = 'product',
     warningImages,
     hasWarningImages = false,
+    translation,
 }: Props) {
     const needs = (requirement: ProductRequirementKey) =>
         requirements.includes(requirement);
@@ -168,7 +189,7 @@ export default function ProductComplianceFields({
         setJustRevealed(name);
     };
 
-    return (
+    const originalFields = (
         <div className="grid gap-4">
             <div className="grid gap-2 sm:max-w-3xs">
                 <Label htmlFor={`${idPrefix}-age-grading`}>
@@ -245,5 +266,53 @@ export default function ProductComplianceFields({
                 </div>
             ) : null}
         </div>
+    );
+
+    if (translation === undefined) {
+        return originalFields;
+    }
+
+    const isTranslatable = (
+        field: TextField,
+    ): field is TextField & {
+        name: TranslatableField;
+    } => (TRANSLATABLE_FIELDS as string[]).includes(field.name);
+
+    /**
+     * A field is translated once the original shows it, or once a
+     * translation of it was saved, so no saved translation is ever left
+     * off the form -- and so dropped on the next save.
+     */
+    const translatedFields = fields
+        .filter(isTranslatable)
+        .filter(
+            (field) =>
+                isShown(field) ||
+                Object.values(translation.translations).some((saved) =>
+                    Boolean(saved?.[field.name]),
+                ),
+        );
+
+    const readOriginals = () =>
+        Object.fromEntries(
+            TRANSLATABLE_FIELDS.map((name) => [
+                name,
+                fieldRefs.current[name]?.value ?? product?.[name] ?? '',
+            ]),
+        ) as Partial<Record<TranslatableField, string>>;
+
+    return (
+        <SafetyTextTranslations
+            textLocale={translation.textLocale}
+            translations={translation.translations}
+            suggestUrl={translation.suggestUrl}
+            disabled={disabled}
+            idPrefix={idPrefix}
+            errors={errors as Record<string, string | undefined>}
+            fields={translatedFields}
+            readOriginals={readOriginals}
+        >
+            {originalFields}
+        </SafetyTextTranslations>
     );
 }

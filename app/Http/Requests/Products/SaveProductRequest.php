@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Products;
 
 use App\Enums\Country;
+use App\Enums\Locale;
 use App\Enums\SupplierConnectionStatus;
+use App\Enums\TranslationSource;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\SupplierConnection;
@@ -94,7 +96,22 @@ class SaveProductRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'short_description' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'long_description' => ['sometimes', 'nullable', 'string', 'max:65000'],
+
+            /**
+             * The language the safety texts above are written in, and the
+             * same texts in the other languages. Only the edit page sends
+             * them; a language left out is left as it is.
+             */
+            'text_locale' => ['sometimes', Rule::enum(Locale::class)],
+            'translations' => ['sometimes', 'array:'.implode(',', Locale::values())],
+            'translations.*' => ['array'],
+            'translations.*.source' => ['nullable', Rule::enum(TranslationSource::class)],
+            'translations.*.confirmed' => ['sometimes', 'boolean'],
         ];
+
+        foreach (Product::TRANSLATABLE_FIELDS as $field) {
+            $rules["translations.*.{$field}"] = ['nullable', 'string', 'max:5000'];
+        }
 
         /**
          * The supplier is only ever chosen by the distributor that owns the

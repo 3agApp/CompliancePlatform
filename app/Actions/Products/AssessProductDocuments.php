@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\ProductAssessment;
 use App\Models\ProductAssessmentFinding;
 use App\Models\ProductDocument;
+use App\Models\ProductTranslation;
 use App\Models\User;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\DB;
@@ -502,7 +503,34 @@ class AssessProductDocuments
             'Safety instructions' => $product->safety_instructions,
         ])
             ->map(fn (?string $value, string $label): string => "- {$label}: ".(filled($value) ? $value : '(not given)'))
-            ->implode("\n");
+            ->implode("\n").self::translationsFor($product);
+    }
+
+    /**
+     * Describe the product's safety texts in its other languages, so a
+     * warning printed in French on the packaging can be matched against the
+     * French the product data gives.
+     */
+    private static function translationsFor(Product $product): string
+    {
+        $labels = [
+            'safety_notice' => 'Safety notice',
+            'warning_text' => 'Warning text',
+            'material_information' => 'Materials',
+            'usage_restrictions' => 'Usage restrictions',
+            'safety_instructions' => 'Safety instructions',
+        ];
+
+        return $product->translations
+            ->map(function (ProductTranslation $translation) use ($labels): string {
+                $lines = collect($translation->texts())
+                    ->filter(fn (?string $text): bool => filled($text))
+                    ->map(fn (string $text, string $field): string => "- {$labels[$field]}: {$text}")
+                    ->implode("\n");
+
+                return $lines === '' ? '' : "\n\nThe same texts in {$translation->locale->label()} ({$translation->locale->value}):\n{$lines}";
+            })
+            ->implode('');
     }
 
     /**

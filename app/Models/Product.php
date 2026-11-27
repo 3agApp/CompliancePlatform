@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Data\ProductCompleteness;
 use App\Data\ProductSeal;
 use App\Enums\Country;
+use App\Enums\Locale;
 use App\Enums\ProductEventType;
 use App\Enums\ProductRequirement;
 use App\Enums\ProductReviewStatus;
@@ -48,6 +49,7 @@ use LogicException;
  * @property string|null $usage_restrictions
  * @property string|null $safety_instructions
  * @property string|null $additional_notes
+ * @property Locale $text_locale
  * @property ProductReviewStatus $review_status
  * @property CarbonImmutable|null $submitted_at
  * @property CarbonImmutable|null $reviewed_at
@@ -63,6 +65,7 @@ use LogicException;
  * @property-read ProductTemplate $template
  * @property-read SupplierConnection|null $supplierConnection
  * @property-read Collection<int, ProductDocument> $documents
+ * @property-read Collection<int, ProductTranslation> $translations
  * @property-read Collection<int, ProductEvent> $events
  * @property-read User|null $sealOverriddenBy
  * @property-read Collection<int, LabelBatch> $labelBatches
@@ -90,9 +93,27 @@ use LogicException;
     'usage_restrictions',
     'safety_instructions',
     'additional_notes',
+    'text_locale',
 ])]
 class Product extends Model
 {
+    /**
+     * The safety texts read by buyers, which are kept in every language.
+     *
+     * The age grading is a marking ("3+") rather than prose, and the
+     * additional notes are between the two sides of the trade, so neither
+     * is translated.
+     *
+     * @var list<string>
+     */
+    public const array TRANSLATABLE_FIELDS = [
+        'safety_notice',
+        'warning_text',
+        'material_information',
+        'usage_restrictions',
+        'safety_instructions',
+    ];
+
     /** @use HasFactory<ProductFactory> */
     use HasFactory;
 
@@ -111,6 +132,14 @@ class Product extends Model
             if (empty($product->uuid)) {
                 $product->uuid = (string) Str::uuid();
             }
+
+            /**
+             * The texts are written by the organization that keeps the
+             * product, so they start out in its language.
+             */
+            if (empty($product->text_locale)) {
+                $product->text_locale = Organization::query()->whereKey($product->organization_id)->value('locale') ?? Locale::default();
+            }
         });
     }
 
@@ -124,6 +153,7 @@ class Product extends Model
         return [
             'is_active' => 'boolean',
             'country_of_origin' => Country::class,
+            'text_locale' => Locale::class,
             'review_status' => ProductReviewStatus::class,
             'seal_override' => ProductSealStatus::class,
             'seal_overridden_at' => 'datetime',
@@ -212,6 +242,58 @@ class Product extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ProductDocument::class)->oldest();
+    }
+
+    /**
+     * Get the product's safety texts in the languages other than the one
+     * they were written in.
+     *
+     * @return HasMany<ProductTranslation, $this>
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(ProductTranslation::class);
+    }
+
+    /**
+     * Get a fingerprint of the original safety texts.
+     *
+     * A translation keeps the fingerprint of the texts it was made from, so
+     * comparing the two tells whether the original has changed since.
+     */
+    public function translationSourceHash(): string
+    {
+        return hash('sha256', (string) json_encode($this->only(self::TRANSLATABLE_FIELDS)));
+    }
+
+    /**
+     * Get the safety texts as a reader of the given language should see them.
+     *
+     * Field by field: a translated field replaces the original, and one the
+     * translation leaves empty falls back to the original rather than
+     * leaving a warning off the page.
+     *
+     * @return array<string, string|null>
+     */
+    public function safetyTextsFor(string $locale): array
+    {
+        $original = $this->only(self::TRANSLATABLE_FIELDS);
+
+        if ($locale === $this->text_locale->value) {
+            return $original;
+        }
+
+        $translation = $this->translations->first(
+            fn (ProductTranslation $translation): bool => $translation->locale->value === $locale,
+        );
+
+        if ($translation === null) {
+            return $original;
+        }
+
+        return collect($original)
+            ->map(fn (?string $text, string $field): ?string => filled($translation->{$field}) ? $translation->{$field} : $text)
+            ->all();
     }
 
     /**

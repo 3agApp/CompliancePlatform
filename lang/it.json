@@ -1128,5 +1128,15 @@
     "Title (optional)": "Titolo (facoltativo)",
     "Title for :name": "Titolo per :name",
     "Edit brand": "Modifica marchio",
-    "The labels could not be prepared for printing. Please try again.": "Non è stato possibile preparare le etichette per la stampa. Riprovi."
+    "The labels could not be prepared for printing. Please try again.": "Non è stato possibile preparare le etichette per la stampa. Riprovi.",
+    "Original": "Originale",
+    "Outdated": "Obsoleto",
+    "Written in": "Scritto in",
+    "Translate all with AI": "Traduci tutto con l'IA",
+    "Translate into :language with AI": "Traduci con l'IA (:language)",
+    "The original has changed since this was translated": "L'originale è cambiato da quando è stato tradotto",
+    "Translated by AI — check it": "Tradotto dall'IA — da controllare",
+    "Fill in the safety texts in the original language first.": "Compili prima i testi di sicurezza nella lingua originale.",
+    "Still correct": "Ancora corretto",
+    "Saving removes the :language translation, as the original is now in that language.": "Il salvataggio rimuove la traduzione (:language), perché l'originale è ora in questa lingua."
 }
