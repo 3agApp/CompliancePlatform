@@ -23,6 +23,7 @@ use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
 use App\Http\Controllers\ProductTranslationController;
 use App\Http\Controllers\PublicProductController;
+use App\Http\Controllers\SealStickerController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SerialLabelController;
 use App\Http\Controllers\Suppliers\DistributorConnectionController;
@@ -113,6 +114,12 @@ Route::prefix('{current_organization}')
             Route::post('products/{product}/approve', [ProductReviewController::class, 'approve'])->name('products.approve');
             Route::post('products/{product}/request-changes', [ProductReviewController::class, 'requestChanges'])->name('products.request-changes');
             Route::post('products/{product}/reopen', [ProductReviewController::class, 'reopen'])->name('products.reopen');
+
+            /**
+             * Sheets of the round seal sticker, the same for every product.
+             */
+            Route::get('seal-stickers', [SealStickerController::class, 'index'])->name('seal-stickers.index');
+            Route::get('seal-stickers/pdf', [SealStickerController::class, 'pdf'])->name('seal-stickers.pdf');
 
             /**
              * Runs of serialised labels, one serial per packet.

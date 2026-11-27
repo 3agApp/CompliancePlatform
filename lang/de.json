@@ -1138,5 +1138,12 @@
     "Translated by AI — check it": "Von KI übersetzt — bitte prüfen",
     "Fill in the safety texts in the original language first.": "Füllen Sie zuerst die Sicherheitstexte in der Originalsprache aus.",
     "Still correct": "Noch korrekt",
-    "Saving removes the :language translation, as the original is now in that language.": "Beim Speichern wird die Übersetzung (:language) entfernt, da das Original jetzt in dieser Sprache ist."
+    "Saving removes the :language translation, as the original is now in that language.": "Beim Speichern wird die Übersetzung (:language) entfernt, da das Original jetzt in dieser Sprache ist.",
+    "Seal stickers": "Siegel-Sticker",
+    "Sheets": "Bogen",
+    "Print seals": "Siegel drucken",
+    "1 seal|:count seals": "1 Siegel|:count Siegel",
+    "Between 1 and :max sheets.": "Zwischen 1 und :max Bogen.",
+    "Swiss Product Seal": "Swiss Product Seal",
+    "The round seal on HERMA round 40 mm labels, :count to a sheet. Print at actual size.": "Das runde Siegel auf HERMA-Rundetiketten 40 mm, :count pro Bogen. In Originalgrösse drucken."
 }

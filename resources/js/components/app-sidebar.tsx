@@ -9,6 +9,7 @@ import {
     Settings2,
     Tags,
     Truck,
+    Stamp,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import CommandSearch from '@/components/command-search';
@@ -33,6 +34,7 @@ import { index as categoriesIndex } from '@/routes/categories';
 import { index as distributorsIndex } from '@/routes/distributors';
 import { show as productImportShow } from '@/routes/product-import';
 import { index as productsIndex } from '@/routes/products';
+import { index as sealStickersIndex } from '@/routes/seal-stickers';
 import { index as suppliersIndex } from '@/routes/suppliers';
 import type { NavItem } from '@/types';
 
@@ -112,6 +114,23 @@ export function AppSidebar() {
                 href: productImportShow(currentOrganization.slug),
                 icon: DatabaseZap,
                 testId: 'nav-product-import',
+            });
+        }
+
+        /**
+         * The seal's own stickers, for whoever prints a distributor's
+         * labels: the same people who may work on its products.
+         */
+        if (
+            !isSupplier &&
+            (currentOrganization.role === 'owner' ||
+                currentOrganization.role === 'admin')
+        ) {
+            mainNavItems.push({
+                title: t('Seal stickers'),
+                href: sealStickersIndex(currentOrganization.slug),
+                icon: Stamp,
+                testId: 'nav-seal-stickers',
             });
         }
 

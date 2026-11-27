@@ -5,15 +5,17 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
-import { pdf } from '@/routes/products/label-batches';
 
 type Props = {
-    organizationSlug: string;
-    productId: number;
-    batchId: number;
+    /** Where the PDF is fetched from. */
+    url: string;
     /** Text beside the icon; leave it out for an icon-only button. */
     children?: ReactNode;
-} & Pick<ComponentProps<typeof Button>, 'variant' | 'size' | 'aria-label'>;
+    'data-test'?: string;
+} & Pick<
+    ComponentProps<typeof Button>,
+    'variant' | 'size' | 'aria-label' | 'disabled'
+>;
 
 const FRAME_ID = 'label-print-frame';
 
@@ -46,9 +48,7 @@ async function printSheet(url: string): Promise<void> {
         !response.ok ||
         !response.headers.get('Content-Type')?.includes('application/pdf')
     ) {
-        throw new Error(
-            `The label sheet could not be loaded (${response.status}).`,
-        );
+        throw new Error(`The sheet could not be loaded (${response.status}).`);
     }
 
     const blobUrl = URL.createObjectURL(await response.blob());
@@ -81,19 +81,17 @@ async function printSheet(url: string): Promise<void> {
 }
 
 /**
- * Send a run's labels to the printer: the A4 sticker sheets, at actual size,
- * straight into the browser's print dialog.
+ * Send a PDF of A4 sticker sheets to the printer, at actual size, straight
+ * into the browser's print dialog.
  */
-export default function PrintLabelsButton({
-    organizationSlug,
-    productId,
-    batchId,
+export default function PrintPdfButton({
+    url,
     children,
+    disabled,
+    'data-test': dataTest,
     ...buttonProps
 }: Props) {
     const [preparing, setPreparing] = useState(false);
-
-    const url = pdf([organizationSlug, productId, batchId]).url;
 
     const print = () => {
         if (!printsFromFrame()) {
@@ -119,8 +117,8 @@ export default function PrintLabelsButton({
         <Button
             {...buttonProps}
             onClick={print}
-            disabled={preparing}
-            data-test="label-batch-pdf"
+            disabled={disabled || preparing}
+            data-test={dataTest}
         >
             {preparing ? (
                 <Spinner className="h-4 w-4" />

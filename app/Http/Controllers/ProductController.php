@@ -224,6 +224,10 @@ class ProductController extends Controller
             'labelBatches' => $request->user()->can('manageSerialLabels', $product)
                 ? $this->toLabelBatchArray($product)
                 : [],
+            'sealStickers' => [
+                'perSheet' => SealStickerController::perSheet(),
+                'maxSheets' => (int) config('labels.max_seal_sheets'),
+            ],
 
             /**
              * Everything that has ever happened to the product, newest

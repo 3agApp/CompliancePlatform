@@ -25,6 +25,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Seal Sheet
+    |--------------------------------------------------------------------------
+    |
+    | The round stickers the seal itself is printed on, in millimetres:
+    | HERMA's round 40 mm labels, A4 with 4 x 6 of them. Margins and gaps
+    | are HERMA's own, from the template: 16 mm either side, 13.5 mm top and
+    | bottom, and 6 mm between the stickers both ways.
+    |
+    | The bleed is how far the artwork runs past the die-cut, all round, so
+    | a sheet fed a fraction off still shows no white rim.
+    |
+    */
+
+    'seal_sheet' => [
+        'columns' => 4,
+        'rows' => 6,
+        'diameter' => 40.0,
+        'left' => 16.0,
+        'top' => 13.5,
+        'gap' => 6.0,
+        'bleed' => 0.4,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Most Seal Sheets
+    |--------------------------------------------------------------------------
+    |
+    | The most sheets of seals one print may ask for: 480 seals.
+    |
+    */
+
+    'max_seal_sheets' => 20,
+
+    /*
+    |--------------------------------------------------------------------------
     | Largest Batch
     |--------------------------------------------------------------------------
     |
