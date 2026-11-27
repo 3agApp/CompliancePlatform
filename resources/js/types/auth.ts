@@ -1,9 +1,11 @@
+import type { Locale } from '@/lib/i18n';
+
 export type User = {
     id: number;
     name: string;
     email: string;
     /** Their own language, or null to follow the organization's. */
-    locale: 'en' | 'de' | null;
+    locale: Locale | null;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;

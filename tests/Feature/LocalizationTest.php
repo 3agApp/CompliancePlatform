@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\Suppliers\SupplierConnectionInvitation;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -44,6 +45,17 @@ test('a guest reads the login page in the language their browser asks for', func
         ->get(route('login'))
         ->assertSee('<html lang="de"', escape: false)
         ->assertInertia(fn (Assert $page) => $page->where('locale', 'de'));
+});
+
+test('a guest whose browser asks for French reads the login page in French', function () {
+    $this
+        ->withHeader('Accept-Language', 'fr-CH,fr;q=0.9,en;q=0.5')
+        ->get(route('login'))
+        ->assertSee('<html lang="fr"', escape: false)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('locale', 'fr')
+            ->where('translations.Log in to your account', 'Connectez-vous à votre compte'),
+        );
 });
 
 test('a language a guest picked on this browser wins over what the browser asks for', function () {
@@ -90,7 +102,7 @@ test('only the languages the app speaks can be chosen', function () {
 
     $this
         ->actingAs($user)
-        ->patch(route('language.update'), ['locale' => 'fr'])
+        ->patch(route('language.update'), ['locale' => 'es'])
         ->assertSessionHasErrors('locale');
 
     expect($user->fresh()->locale)->toBeNull();
@@ -184,11 +196,12 @@ test('product history names its fields in the reader language', function () {
 });
 
 /**
- * A string added to the app without a German line falls back to English,
- * quietly, in the middle of a German page. This is what notices.
+ * A string added to the app without a translation falls back to English,
+ * quietly, in the middle of a German, French or Italian page. This is what
+ * notices.
  */
-test('every string the application shows has a German translation', function () {
-    $german = json_decode(File::get(lang_path('de.json')), true, flags: JSON_THROW_ON_ERROR);
+test('every string the application shows has a translation', function (string $locale) {
+    $translations = json_decode(File::get(lang_path("{$locale}.json")), true, flags: JSON_THROW_ON_ERROR);
 
     $unquote = fn (string $literal): string => stripcslashes(substr($literal, 1, -1));
     $keys = [];
@@ -216,8 +229,44 @@ test('every string the application shows has a German translation', function () 
         array_push($keys, ...array_map($unquote, $matches[1]));
     }
 
-    $missing = array_values(array_diff(array_unique($keys), array_keys($german)));
+    $missing = array_values(array_diff(array_unique($keys), array_keys($translations)));
 
     expect($keys)->not->toBeEmpty()
         ->and($missing)->toBe([]);
-});
+})->with(['de', 'fr', 'it']);
+
+/**
+ * French and Italian were written after German, from its keys. Neither may
+ * drift from it, and a line that loses a placeholder would show the reader
+ * a sentence with a hole in it.
+ */
+test('every translation has the same lines and placeholders as German', function (string $locale) {
+    $placeholders = function (string $line): array {
+        preg_match_all('/:[A-Za-z_]+/', $line, $matches);
+        sort($matches[0]);
+
+        return $matches[0];
+    };
+
+    $files = [
+        "{$locale}.json" => [
+            json_decode(File::get(lang_path('de.json')), true, flags: JSON_THROW_ON_ERROR),
+            json_decode(File::get(lang_path("{$locale}.json")), true, flags: JSON_THROW_ON_ERROR),
+        ],
+    ];
+
+    foreach (File::files(lang_path('de')) as $file) {
+        $files["{$locale}/{$file->getFilename()}"] = [
+            Arr::dot(require $file->getPathname()),
+            Arr::dot(require lang_path("{$locale}/{$file->getFilename()}")),
+        ];
+    }
+
+    foreach ($files as $name => [$german, $translated]) {
+        expect(array_keys($translated))->toEqualCanonicalizing(array_keys($german), "{$name} has different lines from German");
+
+        foreach ($german as $key => $line) {
+            expect($placeholders((string) $translated[$key]))->toBe($placeholders((string) $line), "{$name}: {$key}");
+        }
+    }
+})->with(['fr', 'it']);

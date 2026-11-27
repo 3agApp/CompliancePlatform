@@ -512,7 +512,9 @@ class AssessProductDocuments
     {
         return match ($organization->locale) {
             Locale::German => 'German',
-            default => 'English',
+            Locale::French => 'French',
+            Locale::Italian => 'Italian',
+            Locale::English => 'English',
         };
     }
 

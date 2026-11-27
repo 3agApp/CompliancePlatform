@@ -2,10 +2,13 @@ import { router, usePage } from '@inertiajs/react';
 import { Check, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
+    DropdownMenu,
+    DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSub,
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { currentLocale, t } from '@/lib/i18n';
 import type { Locale } from '@/lib/i18n';
@@ -29,8 +32,8 @@ export function switchLanguage(locale: Locale | null): void {
 /**
  * The language choice in the user menu.
  *
- * Three answers rather than two: following the organization is a choice
- * of its own, and the one that keeps a person in step if the organization
+ * One answer more than there are languages: following the organization is
+ * a choice of its own, and the one that keeps a person in step if the organization
  * changes its default later.
  */
 export function LanguageSubmenu() {
@@ -80,17 +83,20 @@ function LanguageItem({
     selected,
     onSelect,
     testId,
+    lang,
     children,
 }: {
     selected: boolean;
     onSelect: () => void;
     testId: string;
+    lang?: string;
     children: React.ReactNode;
 }) {
     return (
         <DropdownMenuItem
             onSelect={onSelect}
             data-test={testId}
+            lang={lang}
             aria-checked={selected}
             role="menuitemradio"
         >
@@ -103,31 +109,43 @@ function LanguageItem({
 }
 
 /**
- * The switch on pages read before signing in: one button that names the
- * other language in that language, so it can be found by somebody who
- * cannot read the current one.
+ * The switch on pages read before signing in: the current language, which
+ * opens onto every language, each under its own name, so it can be found
+ * by somebody who cannot read the current one.
  */
 export function LanguageToggle() {
     const { availableLocales } = usePage().props;
-    const other = availableLocales.find(
-        (option) => option.value !== currentLocale(),
+    const current = availableLocales.find(
+        (option) => option.value === currentLocale(),
     );
 
-    if (!other) {
-        return null;
-    }
-
     return (
-        <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => switchLanguage(other.value)}
-            data-test="language-toggle"
-            lang={other.value}
-        >
-            <Languages className="size-4" />
-            {other.label}
-        </Button>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    data-test="language-toggle"
+                    aria-label={t('Language')}
+                >
+                    <Languages className="size-4" />
+                    {current?.label}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                {availableLocales.map((option) => (
+                    <LanguageItem
+                        key={option.value}
+                        selected={option.value === currentLocale()}
+                        onSelect={() => switchLanguage(option.value)}
+                        testId={`language-toggle-${option.value}`}
+                        lang={option.value}
+                    >
+                        {option.label}
+                    </LanguageItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -167,7 +185,7 @@ export function LanguageTabs() {
 
     return (
         <div
-            className="bg-muted/50 grid w-full gap-2 rounded-xl p-2 sm:grid-cols-3"
+            className="bg-muted/50 grid w-full grid-cols-2 gap-2 rounded-xl p-2 sm:grid-cols-5"
             role="radiogroup"
             aria-label={t('Language')}
         >

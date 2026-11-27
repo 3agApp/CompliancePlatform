@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Locale;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -22,13 +23,6 @@ class SetPublicLocale
     public const string COOKIE = 'public_lang';
 
     /**
-     * The languages the public pages speak, the first being the default.
-     *
-     * @var list<string>
-     */
-    public const array LOCALES = ['en', 'de'];
-
-    /**
      * Handle an incoming request.
      *
      * @param  Closure(Request): (Response)  $next
@@ -37,7 +31,9 @@ class SetPublicLocale
     {
         $locale = $request->cookie(self::COOKIE);
 
-        App::setLocale(in_array($locale, self::LOCALES, true) ? $locale : self::LOCALES[0]);
+        $chosen = is_string($locale) ? Locale::tryFrom($locale) : null;
+
+        App::setLocale(($chosen ?? Locale::default())->value);
 
         return $next($request);
     }

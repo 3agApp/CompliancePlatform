@@ -392,7 +392,11 @@ test('the reader\'s language is read off the switch\'s cookie, and the server an
         ->post(route('products.public.check', ['product' => $unit->product->uuid]), ['serial' => $unit->formattedSerial()])
         ->assertSessionHasErrors(['turnstile' => 'Wir konnten nicht bestätigen, dass Sie ein Mensch sind. Warten Sie, bis die Sicherheitsprüfung abgeschlossen ist, und drücken Sie dann erneut auf Prüfen.']);
 
-    $this->withUnencryptedCookie('public_lang', 'fr')
+    $this->withUnencryptedCookie('public_lang', 'it')
+        ->get($unit->url())
+        ->assertInertia(fn (Assert $page) => $page->where('locale', 'it'));
+
+    $this->withUnencryptedCookie('public_lang', 'xx')
         ->get($unit->url())
         ->assertInertia(fn (Assert $page) => $page->where('locale', 'en'));
 });
