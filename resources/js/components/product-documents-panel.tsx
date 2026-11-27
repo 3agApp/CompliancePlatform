@@ -8,6 +8,7 @@ import {
     Upload,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import DeleteProductDocumentModal from '@/components/delete-product-document-modal';
 import {
     AnalyzeDocumentButton,
@@ -82,7 +83,9 @@ function extension(name: string): string {
  * file can be dropped on. Papers follow, gathered under their kinds in a
  * compact table -- a product collects several of the same kind, so the
  * list groups rather than replaces. Pictures are shown as pictures: a
- * photo is recognised at a glance and not at all by its file name.
+ * photo is recognised at a glance and not at all by its file name. Photos
+ * of the product get a gallery of their own, apart from the compliance
+ * pictures such as packaging close-ups.
  */
 export default function ProductDocumentsPanel({
     organizationSlug,
@@ -200,14 +203,24 @@ export default function ProductDocumentsPanel({
     const isPicture = (document: ProductDocument) =>
         document.preview_kind === 'image' && document.is_picture;
 
-    const images = documents.filter(isPicture);
-
     /** Only product photos are switched together; a safety image is evidence. */
     const productImages = documents.filter(
         (document) => document.type === 'product_image',
     );
     const allImagesPublic = productImages.every(
         (document) => document.is_public,
+    );
+
+    /**
+     * Photos of the article are kept apart from the pictures filed as
+     * evidence -- packaging close-ups and the like -- so a buyer-facing
+     * gallery is not mistaken for the compliance record.
+     */
+    const productPictures = documents.filter(
+        (document) => isPicture(document) && document.type === 'product_image',
+    );
+    const compliancePictures = documents.filter(
+        (document) => isPicture(document) && document.type !== 'product_image',
     );
 
     const groups = availableDocumentTypes
@@ -291,54 +304,43 @@ export default function ProductDocumentsPanel({
                     </section>
                 ) : null}
 
-                {images.length > 0 ? (
-                    <section
-                        className="workspace-panel grid gap-4 p-5"
-                        data-test="product-document-images"
-                    >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="flex items-center gap-2 text-sm font-semibold">
-                                {t('Images')}
-                                <span className="bg-muted-foreground/15 text-muted-foreground rounded-full px-1.5 text-xs font-normal tabular-nums">
-                                    {images.length}
-                                </span>
-                            </h3>
+                <ImageGallery
+                    title={t('Product images')}
+                    images={productPictures}
+                    actions={actions}
+                    dataTest="product-document-images"
+                    headerAction={
+                        canPublish && productImages.length > 1 ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                data-test="product-images-visibility-all"
+                                onClick={() =>
+                                    router.patch(
+                                        imagesVisibility.url([
+                                            organizationSlug,
+                                            productId,
+                                        ]),
+                                        { is_public: !allImagesPublic },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                {allImagesPublic
+                                    ? t('Hide all from public page')
+                                    : t('Show all on public page')}
+                            </Button>
+                        ) : null
+                    }
+                />
 
-                            {canPublish && productImages.length > 1 ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    data-test="product-images-visibility-all"
-                                    onClick={() =>
-                                        router.patch(
-                                            imagesVisibility.url([
-                                                organizationSlug,
-                                                productId,
-                                            ]),
-                                            { is_public: !allImagesPublic },
-                                            { preserveScroll: true },
-                                        )
-                                    }
-                                >
-                                    {allImagesPublic
-                                        ? t('Hide all from public page')
-                                        : t('Show all on public page')}
-                                </Button>
-                            ) : null}
-                        </div>
-
-                        <ul className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4">
-                            {images.map((document) => (
-                                <ImageCard
-                                    key={document.id}
-                                    document={document}
-                                    actions={actions}
-                                />
-                            ))}
-                        </ul>
-                    </section>
-                ) : null}
+                <ImageGallery
+                    title={t('Compliance images')}
+                    images={compliancePictures}
+                    actions={actions}
+                    dataTest="compliance-document-images"
+                />
 
                 {documents.length === 0 ? (
                     <p
@@ -788,6 +790,56 @@ function DocumentRow({
 
             <AnalysisLine document={document} actions={actions} />
         </li>
+    );
+}
+
+/**
+ * A titled gallery of pictures, left out altogether when it has none.
+ */
+function ImageGallery({
+    title,
+    images,
+    actions,
+    dataTest,
+    headerAction = null,
+}: {
+    title: string;
+    images: ProductDocument[];
+    actions: DocumentActions;
+    dataTest: string;
+    headerAction?: ReactNode;
+}) {
+    if (images.length === 0) {
+        return null;
+    }
+
+    return (
+        <section
+            aria-label={title}
+            className="workspace-panel grid gap-4 p-5"
+            data-test={dataTest}
+        >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    {title}
+                    <span className="bg-muted-foreground/15 text-muted-foreground rounded-full px-1.5 text-xs font-normal tabular-nums">
+                        {images.length}
+                    </span>
+                </h3>
+
+                {headerAction}
+            </div>
+
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4">
+                {images.map((document) => (
+                    <ImageCard
+                        key={document.id}
+                        document={document}
+                        actions={actions}
+                    />
+                ))}
+            </ul>
+        </section>
     );
 }
 
