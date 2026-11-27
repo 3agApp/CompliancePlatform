@@ -123,6 +123,31 @@ function unavailableNotes(): Record<string, string> {
  * Every kind is confirmed by a person either way. The upload is held shut
  * until each row has one.
  */
+/**
+ * The extensions a product image may have, matching the server's rule: a
+ * product photo goes in the public gallery, so it has to be a picture. A
+ * HEIC photo from an iPhone counts; the server files it as a JPEG.
+ */
+const PRODUCT_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
+
+/**
+ * Whether a file may be filed as a product image, judged by its name as
+ * the picker's accept list is. The server checks the contents.
+ */
+function isProductImageFile(file: File): boolean {
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+
+    return PRODUCT_IMAGE_EXTENSIONS.includes(extension);
+}
+
+/**
+ * Whether a file may be filed under a kind. Every kind takes every accepted
+ * file except a product image, which takes pictures only.
+ */
+function fitsKind(file: File, type: ProductDocumentType | undefined): boolean {
+    return type !== 'product_image' || isProductImageFile(file);
+}
+
 export default function UploadDocumentsModal({
     organizationSlug,
     productId,
@@ -191,7 +216,10 @@ export default function UploadDocumentsModal({
             .map((file) => ({
                 id: crypto.randomUUID(),
                 file,
-                type: presetType ?? undefined,
+                type:
+                    presetType !== null && fitsKind(file, presetType)
+                        ? presetType
+                        : undefined,
                 title: '',
                 guessed: false,
                 unsure: false,
@@ -203,11 +231,27 @@ export default function UploadDocumentsModal({
             setPending((rows) => [...rows, ...added]);
         }
 
+        const notPictures =
+            presetType === 'product_image'
+                ? added.filter((row) => row.type === undefined)
+                : [];
+
         if (tooBig.length > 0) {
             setNotice(
                 t(':files — each file must be no larger than 10 MB.', {
                     files: tooBig.map((file) => file.name).join(', '),
                 }),
+            );
+        } else if (notPictures.length > 0) {
+            setNotice(
+                t(
+                    ':files — only PNG, JPEG, WebP or HEIC images can be product images. Pick another kind.',
+                    {
+                        files: notPictures
+                            .map((row) => row.file.name)
+                            .join(', '),
+                    },
+                ),
             );
         } else if (accepted.length < chosen.length) {
             setNotice(
@@ -287,13 +331,22 @@ export default function UploadDocumentsModal({
                             return row;
                         }
 
+                        /*
+                         * A guess of product image for a file that is not
+                         * a picture could never be filed, so it is treated
+                         * as no guess at all.
+                         */
+                        const type =
+                            guess.type !== null &&
+                            fitsKind(row.file, guess.type)
+                                ? guess.type
+                                : null;
+
                         return {
                             ...row,
-                            type: guess.type ?? undefined,
-                            guessed: guess.type !== null,
-                            unsure:
-                                guess.type === null ||
-                                guess.confidence === 'low',
+                            type: type ?? undefined,
+                            guessed: type !== null,
+                            unsure: type === null || guess.confidence === 'low',
                         };
                     }),
                 );
@@ -408,7 +461,13 @@ export default function UploadDocumentsModal({
                             type="file"
                             multiple
                             data-test="document-file"
-                            accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
+                            accept={
+                                presetType === 'product_image'
+                                    ? PRODUCT_IMAGE_EXTENSIONS.map(
+                                          (extension) => `.${extension}`,
+                                      ).join(',')
+                                    : '.pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.doc,.docx,.xls,.xlsx'
+                            }
                             className="sr-only"
                             onChange={(event) => takeFiles(event.target.files)}
                         />
@@ -568,6 +627,12 @@ export default function UploadDocumentsModal({
                                                                 }
                                                                 value={
                                                                     option.value
+                                                                }
+                                                                disabled={
+                                                                    !fitsKind(
+                                                                        row.file,
+                                                                        option.value,
+                                                                    )
                                                                 }
                                                             >
                                                                 {option.label}

@@ -3,10 +3,12 @@
 namespace App\Http\Requests\Products;
 
 use App\Enums\ProductDocumentType;
+use App\Support\HeicImage;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SaveProductDocumentRequest extends FormRequest
 {
@@ -20,8 +22,19 @@ class SaveProductDocumentRequest extends FormRequest
      * @var array<int, string>
      */
     protected const array ACCEPTED_KINDS = [
-        'pdf', 'png', 'jpg', 'jpeg', 'webp', 'doc', 'docx', 'xls', 'xlsx',
+        'pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif', 'doc', 'docx', 'xls', 'xlsx',
     ];
+
+    /**
+     * The kinds of file a product image may be.
+     *
+     * A product photo is shown in the public gallery, so it has to be a
+     * picture the browser draws -- not a PDF or a Word file filed under the
+     * wrong kind. A HEIC photo counts: it is filed as a JPEG.
+     *
+     * @var array<int, string>
+     */
+    public const array PRODUCT_IMAGE_KINDS = ['png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
 
     /**
      * The largest file that may be filed, in kilobytes.
@@ -56,6 +69,53 @@ class SaveProductDocumentRequest extends FormRequest
                 'mimes:'.implode(',', self::ACCEPTED_KINDS),
                 'max:'.self::MAX_KILOBYTES,
             ],
+        ];
+    }
+
+    /**
+     * Get the "after" validation callables for the request.
+     *
+     * A file filed as a product image must be a picture. Judged by its
+     * contents, as the `mimes:` rule is, so a PDF renamed to `.png` is
+     * still refused.
+     *
+     * A HEIC photo is only taken where the server can convert it: filed as
+     * it is, it could be neither previewed nor watermarked.
+     *
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $heic = app(HeicImage::class);
+
+                foreach ((array) $this->input('documents', []) as $index => $row) {
+                    $attribute = "documents.{$index}.file";
+                    $file = $this->file($attribute);
+
+                    if (! is_array($row) || ! $file instanceof UploadedFile || $validator->errors()->has($attribute)) {
+                        continue;
+                    }
+
+                    $position = (int) $index + 1;
+
+                    if (($row['type'] ?? null) === ProductDocumentType::ProductImage->value
+                        && ! in_array($file->guessExtension(), self::PRODUCT_IMAGE_KINDS, true)) {
+                        $validator->errors()->add($attribute, __('File :position must be a PNG, JPEG, WebP or HEIC image to be filed as a product image.', [
+                            'position' => $position,
+                        ]));
+
+                        continue;
+                    }
+
+                    if ($heic->isHeic($file) && ! $heic->canConvert()) {
+                        $validator->errors()->add($attribute, __('File :position is a HEIC photo, which cannot be converted here. Save it as a JPEG and upload it again.', [
+                            'position' => $position,
+                        ]));
+                    }
+                }
+            },
         ];
     }
 
