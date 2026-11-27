@@ -176,6 +176,32 @@ test('the language the product is written in keeps no translation of itself', fu
 
     expect($product->fresh()->text_locale)->toBe(Locale::French)
         ->and($product->translations()->count())->toBe(0);
+
+    $changes = collect($product->events()->where('type', ProductEventType::Updated)->sole()->getAttribute('changes'));
+
+    expect($changes->get('warning_text.fr'))->toBe(['from' => 'Ne convient pas aux enfants de moins de 3 ans. Petites pièces.', 'to' => null]);
+});
+
+test('an outdated translation read again and found still right is up to date again', function () {
+    [$user, $organization, $product] = productWithGermanWarning();
+    $translation = ProductTranslation::factory()->for($product)->create(['locale' => Locale::French]);
+    $product->update(['safety_notice' => 'Verpackung für spätere Rückfragen aufbewahren.']);
+
+    expect($translation->fresh()->isOutdated())->toBeTrue();
+
+    $this->actingAs($user);
+
+    saveTranslatedProduct($organization, $product->fresh(), [
+        'translations' => ['fr' => ['warning_text' => $translation->warning_text, 'source' => 'manual', 'confirmed' => '0']],
+    ])->assertSessionHasNoErrors();
+
+    expect($translation->fresh()->isOutdated())->toBeTrue();
+
+    saveTranslatedProduct($organization, $product->fresh(), [
+        'translations' => ['fr' => ['warning_text' => $translation->warning_text, 'source' => 'manual', 'confirmed' => '1']],
+    ])->assertSessionHasNoErrors();
+
+    expect($translation->fresh()->isOutdated())->toBeFalse();
 });
 
 test('only the languages the app speaks can hold a translation', function () {

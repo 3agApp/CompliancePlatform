@@ -1,6 +1,7 @@
 import { useHttp, usePage } from '@inertiajs/react';
 import { Languages, Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,47 @@ export default function SafetyTextTranslations({
             ),
     );
     const [notice, setNotice] = useState<string | null>(null);
+    /** Outdated translations somebody read again and found still right. */
+    const [confirmed, setConfirmed] = useState<Partial<Record<Locale, true>>>(
+        {},
+    );
+    /*
+     * A confirmation answers the translations as they were saved; once
+     * the page brings back newer ones, it is spent.
+     */
+    const [confirmedFor, setConfirmedFor] = useState(translations);
+
+    if (confirmedFor !== translations) {
+        setConfirmedFor(translations);
+        setConfirmed({});
+    }
+
+    const confirmations = useRef<
+        Partial<Record<Locale, HTMLInputElement | null>>
+    >({});
+
+    const confirm = (locale: Locale) => {
+        flushSync(() =>
+            setConfirmed((current) => ({ ...current, [locale]: true })),
+        );
+        /* Bubbles to the form, which then knows there is something to save. */
+        confirmations.current[locale]?.dispatchEvent(
+            new Event('input', { bubbles: true }),
+        );
+    };
+
+    const isOutdated = (locale: Locale) =>
+        Boolean(translations[locale]?.outdated) && !confirmed[locale];
+
+    /**
+     * Writing the original in a language it has a translation into puts
+     * the original in that translation's place, and saving removes it.
+     */
+    const replaced =
+        textLocale !== savedTextLocale &&
+        TRANSLATABLE_FIELDS.some((field) =>
+            Boolean(translations[textLocale]?.[field]),
+        );
 
     const refs = useRef<
         Partial<
@@ -212,8 +254,6 @@ export default function SafetyTextTranslations({
                     </button>
 
                     {others.map((option) => {
-                        const saved = translations[option.value];
-
                         return (
                             <button
                                 key={option.value}
@@ -226,7 +266,7 @@ export default function SafetyTextTranslations({
                                 onClick={() => open(option.value)}
                             >
                                 {option.label}
-                                {saved?.outdated ? (
+                                {isOutdated(option.value) ? (
                                     <span
                                         className="size-1.5 rounded-full bg-amber-500"
                                         aria-label={t('Outdated')}
@@ -293,6 +333,17 @@ export default function SafetyTextTranslations({
                             </option>
                         ))}
                     </select>
+                    {replaced ? (
+                        <p
+                            className="text-sm text-amber-700 dark:text-amber-400"
+                            data-test="product-text-locale-replaces"
+                        >
+                            {t(
+                                'Saving removes the :language translation, as the original is now in that language.',
+                                { language: labelFor(textLocale) },
+                            )}
+                        </p>
+                    ) : null}
                 </div>
 
                 {children}
@@ -312,16 +363,29 @@ export default function SafetyTextTranslations({
                         className={shown ? 'grid gap-4' : 'hidden'}
                     >
                         <div className="flex flex-wrap items-center gap-2">
-                            {saved?.outdated ? (
-                                <Badge
-                                    variant="outline"
-                                    className="border-amber-300 text-amber-700 dark:text-amber-400"
-                                    data-test={`safety-translation-${locale}-outdated`}
-                                >
-                                    {t(
-                                        'The original has changed since this was translated',
-                                    )}
-                                </Badge>
+                            {isOutdated(locale) ? (
+                                <>
+                                    <Badge
+                                        variant="outline"
+                                        className="border-amber-300 text-amber-700 dark:text-amber-400"
+                                        data-test={`safety-translation-${locale}-outdated`}
+                                    >
+                                        {t(
+                                            'The original has changed since this was translated',
+                                        )}
+                                    </Badge>
+                                    {!disabled ? (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test={`safety-translation-${locale}-confirm`}
+                                            onClick={() => confirm(locale)}
+                                        >
+                                            {t('Still correct')}
+                                        </Button>
+                                    ) : null}
+                                </>
                             ) : null}
                             {sources[locale] === 'ai' ? (
                                 <Badge variant="secondary">
@@ -355,6 +419,14 @@ export default function SafetyTextTranslations({
                             type="hidden"
                             name={`translations[${locale}][source]`}
                             value={sources[locale] ?? 'manual'}
+                        />
+                        <input
+                            ref={(element) => {
+                                confirmations.current[locale] = element;
+                            }}
+                            type="hidden"
+                            name={`translations[${locale}][confirmed]`}
+                            value={confirmed[locale] ? '1' : '0'}
                         />
 
                         {fields.length === 0 ? (

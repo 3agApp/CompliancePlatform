@@ -1136,5 +1136,7 @@
     "Translate into :language with AI": "Mit KI übersetzen (:language)",
     "The original has changed since this was translated": "Das Original wurde seit dieser Übersetzung geändert",
     "Translated by AI — check it": "Von KI übersetzt — bitte prüfen",
-    "Fill in the safety texts in the original language first.": "Füllen Sie zuerst die Sicherheitstexte in der Originalsprache aus."
+    "Fill in the safety texts in the original language first.": "Füllen Sie zuerst die Sicherheitstexte in der Originalsprache aus.",
+    "Still correct": "Noch korrekt",
+    "Saving removes the :language translation, as the original is now in that language.": "Beim Speichern wird die Übersetzung (:language) entfernt, da das Original jetzt in dieser Sprache ist."
 }

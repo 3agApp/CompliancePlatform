@@ -106,6 +106,7 @@ class SaveProductRequest extends FormRequest
             'translations' => ['sometimes', 'array:'.implode(',', Locale::values())],
             'translations.*' => ['array'],
             'translations.*.source' => ['nullable', Rule::enum(TranslationSource::class)],
+            'translations.*.confirmed' => ['sometimes', 'boolean'],
         ];
 
         foreach (Product::TRANSLATABLE_FIELDS as $field) {

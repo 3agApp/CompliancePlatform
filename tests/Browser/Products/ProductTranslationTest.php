@@ -65,3 +65,31 @@ test('a buyer who switches the public page to Italian reads the Italian warning'
         ->assertSeeIn('@product-safety', 'Non adatto a bambini di età inferiore a 3 anni.')
         ->assertNoJavaScriptErrors();
 });
+
+test('an outdated translation is confirmed as still right, and a translation the original replaces is warned about', function () {
+    [$user, $organization] = newOrganizationMember();
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => newSupplierConnection($organization)->id,
+        'warning_text' => 'Not suitable for children under 3 years.',
+    ]);
+    $translation = ProductTranslation::factory()->for($product)->create(['locale' => Locale::French]);
+    $product->update(['warning_text' => 'Not suitable for children under 3 years. Small parts.']);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', ['current_organization' => $organization->slug, 'product' => $product->id]))
+        ->assertMissing('@product-text-locale-replaces')
+        ->select('@product-text-locale', 'fr')
+        ->assertSee('Saving removes the Français translation, as the original is now in that language.')
+        ->select('@product-text-locale', 'en')
+        ->assertMissing('@product-text-locale-replaces')
+        ->click('@safety-language-fr')
+        ->assertVisible('@safety-translation-fr-outdated')
+        ->click('@safety-translation-fr-confirm')
+        ->assertMissing('@safety-translation-fr-outdated')
+        ->click('@update-product-submit')
+        ->assertSee('Product updated.')
+        ->assertNoJavaScriptErrors();
+
+    expect($translation->fresh()->isOutdated())->toBeFalse();
+});

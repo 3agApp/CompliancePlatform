@@ -14,7 +14,8 @@ use App\Models\ProductTranslation;
  * Runs after the product itself is saved, so a translation that changes is
  * stamped with the fingerprint of the original as it now stands. One that
  * comes back unchanged keeps its old fingerprint: an edited original then
- * still shows its translations as out of date until somebody looks at them.
+ * still shows its translations as out of date until somebody corrects them
+ * or confirms they still hold.
  */
 class SaveProductTranslations
 {
@@ -45,6 +46,14 @@ class SaveProductTranslations
             $before = $existing?->texts() ?? array_fill_keys(Product::TRANSLATABLE_FIELDS, null);
 
             if ($texts === $before) {
+                /**
+                 * Unchanged, but read again and found still right: it now
+                 * answers to the original as it stands.
+                 */
+                if ($existing !== null && filter_var($fields['confirmed'] ?? false, FILTER_VALIDATE_BOOL)) {
+                    $existing->update(['source_hash' => $product->translationSourceHash()]);
+                }
+
                 continue;
             }
 
@@ -68,7 +77,21 @@ class SaveProductTranslations
             }
         }
 
-        $product->translations()->where('locale', $product->text_locale->value)->delete();
+        /**
+         * The product is now written in a language it had a translation
+         * into, which the original replaces. Gone from the product, so it
+         * goes into the history like any other text that was cleared.
+         */
+        $replaced = $product->translations->first(fn (ProductTranslation $translation): bool => $translation->locale === $product->text_locale);
+
+        if ($replaced !== null) {
+            foreach (array_filter($replaced->texts()) as $field => $text) {
+                $changes["{$field}.{$replaced->locale->value}"] = ['from' => $this->readable($text), 'to' => null];
+            }
+
+            $replaced->delete();
+        }
+
         $product->unsetRelation('translations');
 
         return $changes;
