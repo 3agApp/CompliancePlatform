@@ -21,6 +21,7 @@ use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\ProductSealController;
 use App\Http\Controllers\ProductTemplateController;
+use App\Http\Controllers\ProductTranslationController;
 use App\Http\Controllers\PublicProductController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SerialLabelController;
@@ -136,6 +137,14 @@ Route::prefix('{current_organization}')
              * the product's history keeps a line about either way.
              */
             Route::patch('products/{product}/seal', [ProductSealController::class, 'update'])->name('products.seal.update');
+
+            /**
+             * Translations of the safety texts on the form, for a person to
+             * read before saving. Saved with the product itself.
+             */
+            Route::post('products/{product}/translations/suggestions', [ProductTranslationController::class, 'suggest'])
+                ->middleware('throttle:ai-suggestions')
+                ->name('products.translations.suggest');
 
             Route::post('products/{product}/documents', [ProductDocumentController::class, 'store'])->name('products.documents.store');
 

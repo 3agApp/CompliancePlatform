@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Products\AnalyzeProductDocument;
 use App\Actions\Products\AssessProductDocuments;
 use App\Actions\Products\ReviewProduct;
+use App\Actions\Products\SaveProductTranslations;
 use App\Data\ProductAssessmentView;
 use App\Data\ProductDocumentAnalysisView;
 use App\Data\ProductFilters;
@@ -24,6 +25,7 @@ use App\Models\ProductCategory;
 use App\Models\ProductDocument;
 use App\Models\ProductEvent;
 use App\Models\ProductTemplate;
+use App\Models\ProductTranslation;
 use App\Models\SupplierConnection;
 use App\Support\ProductChanges;
 use App\Support\ProductQueue;
@@ -185,7 +187,7 @@ class ProductController extends Controller
 
         $isSupplier = $currentOrganization->isSupplier();
 
-        $product->load(['organization', 'brand', 'category', 'template', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader', 'sealOverriddenBy']);
+        $product->load(['organization', 'brand', 'category', 'template', 'supplierConnection.distributorOrganization', 'supplierConnection.supplierOrganization', 'documents.uploader', 'sealOverriddenBy', 'translations']);
 
         return Inertia::render('products/edit', [
             'product' => [
@@ -198,6 +200,8 @@ class ProductController extends Controller
                 'short_description' => $product->short_description,
                 'long_description' => $product->long_description,
                 'documents' => $this->toDocumentArray($product),
+                'text_locale' => $product->text_locale->value,
+                'translations' => $this->toTranslationArray($product),
             ],
             'permissions' => $request->user()->toProductPermissions($currentOrganization),
             'availableCountries' => Country::options(),
@@ -272,11 +276,11 @@ class ProductController extends Controller
     /**
      * Update the specified product.
      */
-    public function update(SaveProductRequest $request, Organization $currentOrganization, Product $product): RedirectResponse
+    public function update(SaveProductRequest $request, Organization $currentOrganization, Product $product, SaveProductTranslations $saveTranslations): RedirectResponse
     {
         Gate::authorize('update', $product);
 
-        $product->update($request->validated());
+        $product->update($request->safe()->except('translations'));
 
         /**
          * Read after the save, so what is recorded is what was written
@@ -284,7 +288,10 @@ class ProductController extends Controller
          * a change and does not belong in the history -- nor does it
          * withdraw a product that is under review.
          */
-        $changes = ProductChanges::of($product);
+        $changes = [
+            ...ProductChanges::of($product),
+            ...$saveTranslations->handle($product, $request->validated('translations', [])),
+        ];
 
         if ($changes !== []) {
             $product->recordEvent(ProductEventType::Updated, $request->user(), $currentOrganization, changes: $changes);
@@ -754,6 +761,27 @@ class ProductController extends Controller
             'safety_instructions' => $product->safety_instructions,
             'additional_notes' => $product->additional_notes,
         ];
+    }
+
+    /**
+     * Transform the product's translated safety texts for the frontend,
+     * keyed by language.
+     *
+     * @return array<string, array{safety_notice: string|null, warning_text: string|null, material_information: string|null, usage_restrictions: string|null, safety_instructions: string|null, source: string, outdated: bool}>
+     */
+    protected function toTranslationArray(Product $product): array
+    {
+        $hash = $product->translationSourceHash();
+
+        return $product->translations
+            ->mapWithKeys(fn (ProductTranslation $translation): array => [
+                $translation->locale->value => [
+                    ...$translation->texts(),
+                    'source' => $translation->source->value,
+                    'outdated' => $translation->source_hash !== $hash,
+                ],
+            ])
+            ->all();
     }
 
     /**

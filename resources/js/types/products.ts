@@ -1,3 +1,4 @@
+import type { Locale } from '@/lib/i18n';
 import type { SupplierConnectionStatus } from './connections';
 
 /** A country's ISO 3166-1 alpha-2 code. */
@@ -516,7 +517,28 @@ export type ProductDetail = Product &
         short_description: string | null;
         long_description: string | null;
         documents: ProductDocument[];
+        /** The language the safety texts above are written in. */
+        text_locale: Locale;
+        /** The same texts in other languages, keyed by language. */
+        translations: Partial<Record<Locale, ProductTranslation>>;
     };
+
+/** The safety texts read by buyers, which are kept in every language. */
+export type TranslatableField =
+    | 'safety_notice'
+    | 'warning_text'
+    | 'material_information'
+    | 'usage_restrictions'
+    | 'safety_instructions';
+
+/**
+ * A product's safety texts in one language other than the original.
+ * Outdated once the original has changed since it was saved.
+ */
+export type ProductTranslation = Record<TranslatableField, string | null> & {
+    source: 'ai' | 'manual';
+    outdated: boolean;
+};
 
 /**
  * Where one AI reading of a product's papers has got to. Mirrors

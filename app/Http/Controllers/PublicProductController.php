@@ -242,7 +242,7 @@ class PublicProductController extends Controller
          * The template and the papers come along because the seal is read
          * partly from the completeness score, which is scored against both.
          */
-        $product->load(['brand', 'template', 'documents', 'organization']);
+        $product->load(['brand', 'template', 'documents', 'organization', 'translations']);
 
         return [
             'product' => [
@@ -260,14 +260,13 @@ class PublicProductController extends Controller
              * What the reader needs to use the article safely. Printed on
              * the packet already, and repeated here because a packet gets
              * thrown away and a warning should not go with it.
+             *
+             * In the reader's language where the product has it, and in
+             * the language it was written in where it does not.
              */
             'safety' => [
                 'age_grading' => $product->age_grading,
-                'warning_text' => $product->warning_text,
-                'safety_notice' => $product->safety_notice,
-                'safety_instructions' => $product->safety_instructions,
-                'material_information' => $product->material_information,
-                'usage_restrictions' => $product->usage_restrictions,
+                ...$product->safetyTextsFor(App::getLocale()),
             ],
             /**
              * The symbols printed beside the warning, shown inside it rather

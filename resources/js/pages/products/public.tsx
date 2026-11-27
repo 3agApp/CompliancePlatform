@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     Barcode,
@@ -124,7 +124,15 @@ export default function PublicProduct({
             <div className="min-h-screen bg-[#F5F4F1] text-gray-900">
                 <PublicHeader
                     locale={locale}
-                    onLocaleChange={setLocale}
+                    onLocaleChange={(next) => {
+                        setLocale(next);
+                        /*
+                         * The labels switch in place; the safety texts are
+                         * the product's own and come from the server, which
+                         * reads the new language off the cookie just set.
+                         */
+                        router.reload({ only: ['safety'] });
+                    }}
                     t={t}
                 />
 

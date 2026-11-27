@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Locale;
 use App\Enums\ProductEventType;
 use App\Enums\ProductRequirement;
 use Carbon\CarbonImmutable;
@@ -145,6 +146,16 @@ class ProductEvent extends Model
      */
     public static function labelForField(string $field): string
     {
+        /**
+         * A translated text is recorded as its column and its language,
+         * "warning_text.fr", and named as the field in that language.
+         */
+        if (str_contains($field, '.')) {
+            [$column, $code] = explode('.', $field, 2);
+
+            return sprintf('%s (%s)', self::labelForField($column), Locale::tryFrom($code)?->label() ?? $code);
+        }
+
         return match ($field) {
             'name' => __('Name'),
             'document' => __('Document'),
@@ -156,6 +167,7 @@ class ProductEvent extends Model
             'is_active' => __('Webshop status'),
             'short_description' => __('Short description'),
             'long_description' => __('Long description'),
+            'text_locale' => __('Written in'),
             default => ProductRequirement::labelForAttribute($field) ?? $field,
         };
     }
