@@ -39,7 +39,7 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
      * could change an answer, so two runs that disagree can be told apart
      * from a run that changed its mind.
      */
-    public const string PROMPT_VERSION = '3';
+    public const string PROMPT_VERSION = '4';
 
     /**
      * The document_index given for a finding about the product as a whole.
@@ -107,8 +107,9 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
           not cover the standards the toy needs is a gap.
         - Certificates: who issued them, for which product, which standards, and
           whether they have expired.
-        - Packaging close-ups (filed as packaging_closeup): photographs of the toy's
-          box or packaging taken up close -- the label, the warnings, the CE mark, the
+        - Packaging close-ups and warning images (filed as packaging_closeup or
+          safety_image): photographs of the toy's box or packaging taken up close, or
+          its warning label and pictograms -- the label, the warnings, the CE mark, the
           batch or article number, the manufacturer's and importer's name and address.
           Check that what is printed on the packaging is what the law requires: the CE
           mark is present and legible; the toy carries a type, batch, serial or model
@@ -121,6 +122,13 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
           warnings match the product details and the other documents. A required
           marking you cannot find on the photos is a gap, unless another photo or
           document shows it; one you cannot read is "unclear".
+        - Where the markings go: the CE mark, the manufacturer's and importer's name
+          and address, and the type, batch or model number belong on the toy, but may
+          be on its packaging, label or an accompanying document where the toy is too
+          small or of a kind that cannot carry them -- building tiles, small pieces,
+          figures. A marking on the packaging of such a toy is met, not missing. A test
+          report's marking table that reads "absent" on the toy and "present" on the
+          packaging confirms the marking is there; it is not a gap.
         - Consistency with the product: compare the documents with the product details
           you are given -- age grading, warnings, materials, country of origin. A toy
           not meant for children under 36 months needs that warning; small parts,
@@ -139,6 +147,11 @@ class DocumentAssessmentAgent implements Agent, HasStructuredOutput
 
         Rules:
 
+        - Before you report that something is missing, look for it in every attached
+          document and photo -- the declaration, every page of the test report, every
+          packaging photo and warning image. Report a gap only when none of them shows
+          the requirement met. A finding whose own evidence says the requirement is met
+          (for example "German is present") is not a finding: leave it out.
         - Say only what the documents show. When you cannot tell -- a page is
           unreadable, a document is in a language you cannot read, the information
           would be somewhere you were not given -- say so as an "unclear" finding

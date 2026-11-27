@@ -352,6 +352,11 @@ class AssessProductDocuments
      * Sort the product's papers into those that can be read and those that
      * cannot.
      *
+     * Product photos are left out altogether. They are taken for the shop,
+     * carry no claim to check, and on a typical product outnumber the
+     * evidence: sent along, they crowd out the packaging close-ups that
+     * answer whether a marking is there.
+     *
      * @return array{0: array<int, array{id: int, name: string, type: string, mime_type: string, size: int}>, 1: array<int, Document|Image>, 2: array<int, array{id: int, name: string, reason: string}>}
      */
     private function attachmentsFor(Product $product): array
@@ -362,6 +367,10 @@ class AssessProductDocuments
         $budget = self::SIZE_BUDGET;
 
         foreach ($product->documents->sortBy('id') as $document) {
+            if (! $document->type->offersAnalysis()) {
+                continue;
+            }
+
             $attachment = self::attachmentFor($document);
 
             $reason = match (true) {
@@ -436,6 +445,14 @@ class AssessProductDocuments
 
         $prompt = "Product details:\n\n{$details}\n\nAttached documents, in this order:\n\n"
             .($documents !== '' ? $documents : '(none)');
+
+        $productPhotos = $product->documents
+            ->filter(fn (ProductDocument $document): bool => ! $document->type->offersAnalysis())
+            ->count();
+
+        if ($productPhotos > 0) {
+            $prompt .= "\n\nProduct photos for the shop are also on file ({$productPhotos}). They are not compliance evidence and are not attached.";
+        }
 
         if ($skipped !== []) {
             $prompt .= "\n\nAlso filed but not attached, so not readable by you:\n\n"
