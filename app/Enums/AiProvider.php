@@ -48,8 +48,9 @@ enum AiProvider: string
      * Get the models an organization may choose from.
      *
      * Taken from the SDK's own cheapest, default and smartest text models
-     * for each provider. Guessing a kind from a filename is a small job, so
-     * the cheapest model is genuinely enough and the list leads with it.
+     * for each provider. The cheapest is enough to guess a kind from a
+     * filename, but not to check a stack of papers and photos: it skims,
+     * and reports gaps the photos it was sent already answer.
      *
      * @return array<array{value: string, label: string}>
      */
@@ -69,13 +70,14 @@ enum AiProvider: string
     }
 
     /**
-     * Get the model chosen for the provider when nobody has chosen one.
+     * Get the model chosen for the provider when nobody has chosen one: the
+     * recommended one, since the same model reads the compliance documents.
      */
     public function defaultModel(): string
     {
         return match ($this) {
-            self::Gemini => 'gemini-3.1-flash-lite',
-            self::OpenAi => 'gpt-5.6-luna',
+            self::Gemini => 'gemini-3.6-flash',
+            self::OpenAi => 'gpt-5.6-terra',
         };
     }
 

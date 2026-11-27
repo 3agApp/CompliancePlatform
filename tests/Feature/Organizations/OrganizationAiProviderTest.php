@@ -243,3 +243,11 @@ test('a guest is sent to log in rather than shown the provider form', function (
 
     connectAiProvider($organization)->assertRedirect(route('login'));
 });
+
+/**
+ * The same model reads the compliance documents, and the cheapest one skims
+ * them, so an organization that never chooses gets the recommended one.
+ */
+test('each provider defaults to its recommended model', function (AiProvider $provider) {
+    expect($provider->modelLabel($provider->defaultModel()))->toContain('recommended');
+})->with(AiProvider::cases());

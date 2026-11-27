@@ -191,6 +191,35 @@ test('close-ups of the packaging are sent to the model as images, and it is told
         && str_contains((string) $prompt->agent->instructions(), 'packaging_closeup'));
 });
 
+/**
+ * Shop photos carry no claim to check and outnumber the evidence, so they are
+ * not sent. The model is told they exist so it does not report them missing.
+ */
+test('product photos are not sent to the model, while warning images and close-ups are', function () {
+    [$user, $organization, $product] = reviewerWithDocumentAnalysis();
+
+    fileAssessedDocument($product, 'front.jpg', 'image/jpeg', ProductDocumentType::ProductImage);
+    fileAssessedDocument($product, 'side.jpg', 'image/jpeg', ProductDocumentType::ProductImage);
+    fileAssessedDocument($product, 'warning.jpg', 'image/jpeg', ProductDocumentType::SafetyImage);
+    fileAssessedDocument($product, 'box-back.jpg', 'image/jpeg', ProductDocumentType::PackagingCloseUp);
+
+    DocumentAssessmentAgent::fake([assessmentAnswer(documentIndex: -1)])->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    startAssessment($organization, $product)->assertSessionHasNoErrors();
+
+    $assessment = $product->assessments()->sole();
+
+    expect(array_column($assessment->documents, 'name'))->toBe(['warning.jpg', 'box-back.jpg'])
+        ->and($assessment->skipped_documents)->toBe([]);
+
+    DocumentAssessmentAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->attachments->count() === 2
+        && $prompt->contains('0. warning.jpg -- filed as: safety_image')
+        && $prompt->contains('Product photos for the shop are also on file (2)')
+        && ! $prompt->contains('front.jpg'));
+});
+
 test('a finding pointed at a document that is not on the list is kept against the product as a whole', function () {
     [$user, $organization, $product] = reviewerWithDocumentAnalysis();
 
