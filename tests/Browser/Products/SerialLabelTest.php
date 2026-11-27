@@ -86,17 +86,21 @@ test('a buyer checking a code someone else checked sees the warning and the hist
         ->assertNoJavaScriptErrors();
 });
 
-test('the public page switches to German, and the server answers in German too', function () {
+test('the public page switches language, and the server answers in that language too', function (string $locale, string $title, string $refusal) {
     $unit = aPacketToScan();
     siteverifyAnswers(false);
 
     visit($unit->url())
-        ->click('@public-locale-toggle')
-        ->assertSee('Ist dieses Produkt echt?')
+        ->select('@public-locale-toggle', $locale)
+        ->assertSee($title)
         ->click('@check-submit')
-        ->assertSee('Wir konnten nicht bestätigen, dass Sie ein Mensch sind.')
+        ->assertSee($refusal)
         ->assertNoJavaScriptErrors();
-});
+})->with([
+    'German' => ['de', 'Ist dieses Produkt echt?', 'Wir konnten nicht bestätigen, dass Sie ein Mensch sind.'],
+    'French' => ['fr', 'Ce produit est-il authentique ?', "Nous n'avons pas pu confirmer que vous êtes une personne."],
+    'Italian' => ['it', 'Questo prodotto è originale?', 'Non è stato possibile confermare che Lei sia una persona.'],
+]);
 
 test('a serial typed on the check page leads to its packet, and an unknown one is warned about', function () {
     $unit = aPacketToScan();

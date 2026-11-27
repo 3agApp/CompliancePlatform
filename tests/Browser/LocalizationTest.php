@@ -24,6 +24,21 @@ test('a member switches the app to German from the user menu, and back to the or
     expect($user->fresh()->locale)->toBe(Locale::German);
 });
 
+test('a member switches the app to Italian from the user menu', function () {
+    [$user, $organization] = newOrganizationMember();
+
+    $this->actingAs($user);
+
+    visit(route('dashboard', ['current_organization' => $organization->slug]))
+        ->click('@sidebar-menu-button')
+        ->click('@language-menu')
+        ->click('@language-it')
+        ->assertSeeIn('@nav-products', 'Prodotti')
+        ->assertNoJavaScriptErrors();
+
+    expect($user->fresh()->locale)->toBe(Locale::Italian);
+});
+
 test('a member who follows the organization reads the app in its default language', function () {
     [$user, $organization] = newOrganizationMember(organizationAttributes: ['locale' => Locale::German]);
 
@@ -34,12 +49,17 @@ test('a member who follows the organization reads the app in its default languag
         ->assertNoJavaScriptErrors();
 });
 
-test('a guest reads the login page in German after one click', function () {
+test('a guest picks the language of the login page from the switch', function () {
     visit(route('login'))
         ->assertSee('Log in to your account')
         ->click('@language-toggle')
+        ->click('@language-toggle-de')
         ->assertSee('Bei Ihrem Konto anmelden')
-        ->assertSeeIn('@language-toggle', 'English')
+        ->assertSeeIn('@language-toggle', 'Deutsch')
+        ->click('@language-toggle')
+        ->click('@language-toggle-fr')
+        ->assertSee('Connectez-vous à votre compte')
+        ->assertSeeIn('@language-toggle', 'Français')
         ->assertNoJavaScriptErrors();
 });
 

@@ -6,12 +6,15 @@ namespace App\Enums;
  * The languages the application speaks.
  *
  * English is the language the source is written in, so its strings are their
- * own translation and only German needs a file.
+ * own translation. German, French and Italian -- Switzerland's three
+ * official languages -- each have a file.
  */
 enum Locale: string
 {
     case English = 'en';
     case German = 'de';
+    case French = 'fr';
+    case Italian = 'it';
 
     /**
      * Get the language's name in that language.
@@ -24,6 +27,8 @@ enum Locale: string
         return match ($this) {
             self::English => 'English',
             self::German => 'Deutsch',
+            self::French => 'Français',
+            self::Italian => 'Italiano',
         };
     }
 

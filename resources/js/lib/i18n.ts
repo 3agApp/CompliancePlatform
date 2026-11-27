@@ -7,8 +7,8 @@ import type { ReactNode } from 'react';
  *
  * Strings are written in English and looked up by that English, the same
  * way Laravel's JSON files work, so `lang/de.json` serves the server and the
- * browser alike and English needs no file at all. A string with no German
- * yet falls back to its English rather than to a key nobody can read.
+ * browser alike and English needs no file at all. A string with no
+ * translation yet falls back to its English rather than to a key nobody can read.
  *
  * The strings are read once, before the first render, from the page the
  * server sent. They are held here rather than in React state because the
@@ -21,7 +21,7 @@ import type { ReactNode } from 'react';
  * `public-i18n.ts`: they are read by buyers, not by anybody's account.
  */
 
-export type Locale = 'en' | 'de';
+export type Locale = 'en' | 'de' | 'fr' | 'it';
 
 type Replacements = Record<string, string | number | null | undefined>;
 
@@ -90,7 +90,7 @@ function replace(text: string, replacements?: Replacements): string {
  * Mark a string as one to translate where it is shown, not where it is
  * written: a page's static layout props are read before the translations
  * load, so the layout translates them when it renders. Returns the key
- * untouched; its only job is to say "this is English that has a German".
+ * untouched; its only job is to say "this is English that has a translation".
  */
 export function tk(key: string): string {
     return key;
@@ -107,7 +107,7 @@ export function t(key: string, replacements?: Replacements): string {
  * Translate a sentence with markup inside it.
  *
  * A name in bold or a link in the middle of a sentence cannot be glued on
- * around a translated fragment, because German puts it somewhere else. So
+ * around a translated fragment, because another language puts it somewhere else. So
  * the whole sentence is translated, and each `:placeholder` in the result
  * is swapped for the element given for it, wherever it ended up.
  */
@@ -161,7 +161,7 @@ function fill(
  * Translate a string that changes with a count.
  *
  * The key holds both forms, `"one|many"`, as Laravel's `trans_choice` reads
- * them; English and German both use the first for exactly one. `:count` is
+ * them; every language offered here uses the first for exactly one. `:count` is
  * filled in for free.
  */
 export function tc(
@@ -185,9 +185,10 @@ export function currentLocale(): Locale {
 /**
  * The locale to format dates and numbers in.
  *
- * German is read in Switzerland here, so its dates come out the Swiss way.
- * English keeps following the browser, which is what it always did.
+ * German, French and Italian are read in Switzerland here, so their dates
+ * come out the Swiss way. English keeps following the browser, which is
+ * what it always did.
  */
 export function formatLocale(): string | undefined {
-    return locale === 'de' ? 'de-CH' : undefined;
+    return locale === 'en' ? undefined : `${locale}-CH`;
 }

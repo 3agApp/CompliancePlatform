@@ -4,14 +4,24 @@ import { useCallback, useState } from 'react';
  * The languages the public pages speak. The server reads the same cookie,
  * so the messages it sends back match the page around them.
  */
-export type PublicLocale = 'en' | 'de';
+export type PublicLocale = 'en' | 'de' | 'fr' | 'it';
+
+/**
+ * Every language, each under its own name, so a reader who cannot read the
+ * current one still finds theirs.
+ */
+export const PUBLIC_LOCALES: { value: PublicLocale; label: string }[] = [
+    { value: 'en', label: 'English' },
+    { value: 'de', label: 'Deutsch' },
+    { value: 'fr', label: 'Français' },
+    { value: 'it', label: 'Italiano' },
+];
 
 const COOKIE = 'public_lang';
 
 const en = {
     productCheck: 'Product check',
-    switchTo: 'DE',
-    switchLabel: 'Auf Deutsch anzeigen',
+    language: 'Language',
 
     sealPill_verified: 'Verified',
     sealPill_in_progress: 'In review',
@@ -116,8 +126,7 @@ type Dictionary = Record<keyof typeof en, string>;
 
 const de: Dictionary = {
     productCheck: 'Produktprüfung',
-    switchTo: 'EN',
-    switchLabel: 'Show in English',
+    language: 'Sprache',
 
     sealPill_verified: 'Verifiziert',
     sealPill_in_progress: 'In Prüfung',
@@ -221,7 +230,218 @@ const de: Dictionary = {
     checkButton: 'Prüfen',
 };
 
-const DICTIONARIES: Record<PublicLocale, Dictionary> = { en, de };
+const fr: Dictionary = {
+    productCheck: 'Contrôle du produit',
+    language: 'Langue',
+
+    sealPill_verified: 'Vérifié',
+    sealPill_in_progress: 'En contrôle',
+    sealPill_not_verified: 'Non vérifié',
+    sealTitle_verified: 'Vérifié',
+    sealTitle_in_progress: 'En cours',
+    sealTitle_not_verified: 'Non vérifié',
+    sealDesc_verified:
+        'Ce produit satisfait aux exigences suisses de conformité.',
+    sealDesc_in_progress: 'Le contrôle de conformité n’est pas encore terminé.',
+    sealDesc_not_verified:
+        'Aucun contrôle de conformité terminé pour l’instant.',
+    approved: 'Approuvé',
+    dataCollected: 'Données de conformité saisies',
+    overridden:
+        'Défini par la personne qui met le produit sur le marché, et non par un contrôle terminé.',
+
+    noPicture: 'Pas encore d’image de cet article',
+    showPicture: 'Afficher l’image',
+    previousPicture: 'Image précédente',
+    nextPicture: 'Image suivante',
+    ean: 'EAN',
+    articleNumber: 'N° d’article',
+
+    checkCardTitle: 'Ce produit est-il authentique ?',
+    checkCardIntro:
+        'Chaque emballage porte son propre numéro de série. Vérifiez-le pour savoir s’il est authentique et si quelqu’un l’a déjà vérifié avant vous.',
+    serial: 'Numéro de série',
+    serialHint: 'Imprimé à côté du code QR sur l’emballage',
+    turnstileUnavailable:
+        'Le contrôle de sécurité n’a pas pu se charger. Rechargez la page pour réessayer.',
+    checkSubmit: 'Vérifier',
+    checkNote:
+        'Chaque vérification est enregistrée : quiconque vérifie ce code après vous peut voir quand il a été vérifié.',
+
+    resultTitle_first_check: 'Produit authentique',
+    resultTitle_checked_before: 'Produit authentique',
+    resultTitle_checked_elsewhere: 'Déjà vérifié',
+    resultTitle_unknown: 'Code non reconnu',
+    resultTitle_revoked: 'Code retiré',
+    resultText_first_check:
+        'Ce code a été émis pour ce produit, et c’est la première fois que quelqu’un le vérifie.',
+    resultText_checked_before:
+        'Ce code a été émis pour ce produit. Il n’a jusqu’ici été vérifié que depuis cet appareil.',
+    resultText_checked_elsewhere:
+        'Ce code a été émis pour ce produit, mais il a déjà été vérifié depuis un autre appareil. Si ce n’était pas vous, il peut s’agir d’un produit d’occasion ou d’une étiquette copiée. Soyez prudent.',
+    resultText_unknown:
+        'Ce code n’est pas enregistré pour ce produit. Le produit n’est peut-être pas authentique. Vérifiez que le numéro de série a été saisi correctement.',
+    resultText_revoked:
+        'L’entreprise qui met ce produit sur le marché a retiré ce code. Ne vous fiez pas à cette étiquette.',
+    historyTitle: 'Vérifications précédentes',
+    historyCount: '{count} vérifications précédentes',
+    historyCountOne: '1 vérification précédente',
+    historyMore: 'et {count} de plus',
+    thisDevice: 'Cet appareil',
+    otherDevice: 'Un autre appareil',
+
+    safetyTitle: 'Informations de sécurité',
+    age_grading: 'Âge recommandé',
+    warning_text: 'Avertissement',
+    safety_notice: 'Avis de sécurité',
+    safety_instructions: 'Consignes de sécurité',
+    material_information: 'Informations sur les matériaux',
+    usage_restrictions: 'Restrictions d’utilisation',
+
+    documentsTitle: 'Documents',
+    documentsIntro:
+        'Mis à la disposition du public par l’entreprise qui met ce produit sur le marché.',
+    preview: 'Aperçu',
+    previewOf: 'Aperçu de {name}',
+    enlargePicture: 'Agrandir l’image',
+    openInNewTab: 'Ouvrir dans un nouvel onglet',
+    pdfNotShown:
+        'Ce navigateur ne peut pas afficher les PDF ici. Ouvrez-le plutôt dans un nouvel onglet.',
+    docType_test_report: 'Rapport d’essai',
+    docType_declaration_of_conformity: 'Déclaration de conformité',
+    docType_manual_or_instructions: 'Mode d’emploi ou instructions',
+    docType_certificate: 'Certificat',
+    docType_product_image: 'Image du produit',
+    docType_safety_image: 'Image d’avertissement',
+    docType_packaging_closeup: 'Détail de l’emballage',
+    docType_regulatory_document: 'Document réglementaire',
+    docType_other: 'Document',
+
+    importedBy: 'Mis sur le marché par',
+    companyDetails: 'Coordonnées de l’entreprise',
+    companyDetailsFor: 'Coordonnées de {name}',
+    companyAddress: 'Adresse',
+    companyPhone: 'Téléphone',
+    companyEmail: 'E-mail',
+    companyWebsite: 'Site web',
+    companyRepresentedBy: 'Représentée par',
+    companyVatNumber: 'Numéro TVA / IDE',
+    openInGoogleMaps: 'Ouvrir dans Google Maps',
+    close: 'Fermer',
+    footer: 'Informations de conformité publiées par l’entreprise qui met ce produit sur le marché.',
+
+    checkTitle: 'Vérifier un produit',
+    checkIntro:
+        'Saisissez le numéro de série imprimé à côté du code QR sur l’emballage. Vous accédez à la page du produit, où vous pouvez le vérifier.',
+    checkButton: 'Vérifier',
+};
+
+const it: Dictionary = {
+    productCheck: 'Verifica del prodotto',
+    language: 'Lingua',
+
+    sealPill_verified: 'Verificato',
+    sealPill_in_progress: 'In verifica',
+    sealPill_not_verified: 'Non verificato',
+    sealTitle_verified: 'Verificato',
+    sealTitle_in_progress: 'In corso',
+    sealTitle_not_verified: 'Non verificato',
+    sealDesc_verified:
+        'Questo prodotto soddisfa i requisiti svizzeri di conformità.',
+    sealDesc_in_progress: 'La verifica di conformità non è ancora conclusa.',
+    sealDesc_not_verified: 'Ancora nessuna verifica di conformità completata.',
+    approved: 'Approvato',
+    dataCollected: 'Dati di conformità raccolti',
+    overridden:
+        'Impostato da chi immette il prodotto sul mercato, non da una verifica completata.',
+
+    noPicture: 'Ancora nessuna immagine di questo articolo',
+    showPicture: 'Mostra immagine',
+    previousPicture: 'Immagine precedente',
+    nextPicture: 'Immagine successiva',
+    ean: 'EAN',
+    articleNumber: 'N. articolo',
+
+    checkCardTitle: 'Questo prodotto è originale?',
+    checkCardIntro:
+        'Ogni confezione ha il proprio numero di serie. Lo verifichi per sapere se è originale e se qualcuno lo ha già verificato prima di Lei.',
+    serial: 'Numero di serie',
+    serialHint: 'Stampato accanto al codice QR sulla confezione',
+    turnstileUnavailable:
+        'Non è stato possibile caricare il controllo di sicurezza. Ricarichi la pagina per riprovare.',
+    checkSubmit: 'Verifica',
+    checkNote:
+        'Ogni verifica viene registrata, così chi verifica questo codice dopo di Lei può vedere quando è stato verificato.',
+
+    resultTitle_first_check: 'Prodotto originale',
+    resultTitle_checked_before: 'Prodotto originale',
+    resultTitle_checked_elsewhere: 'Già verificato',
+    resultTitle_unknown: 'Codice non riconosciuto',
+    resultTitle_revoked: 'Codice ritirato',
+    resultText_first_check:
+        'Questo codice è stato emesso per questo prodotto ed è la prima volta che qualcuno lo verifica.',
+    resultText_checked_before:
+        'Questo codice è stato emesso per questo prodotto. Finora è stato verificato solo da questo dispositivo.',
+    resultText_checked_elsewhere:
+        'Questo codice è stato emesso per questo prodotto, ma è già stato verificato da un altro dispositivo. Se non è stato Lei, potrebbe trattarsi di un prodotto usato o di un’etichetta copiata. Presti attenzione.',
+    resultText_unknown:
+        'Questo codice non è registrato per questo prodotto. Il prodotto potrebbe non essere originale. Controlli di aver digitato correttamente il numero di serie.',
+    resultText_revoked:
+        'L’azienda che immette questo prodotto sul mercato ha ritirato questo codice. Non si affidi a questa etichetta.',
+    historyTitle: 'Verifiche precedenti',
+    historyCount: '{count} verifiche precedenti',
+    historyCountOne: '1 verifica precedente',
+    historyMore: 'e altre {count}',
+    thisDevice: 'Questo dispositivo',
+    otherDevice: 'Un altro dispositivo',
+
+    safetyTitle: 'Informazioni di sicurezza',
+    age_grading: 'Età consigliata',
+    warning_text: 'Avvertenza',
+    safety_notice: 'Avvertenza di sicurezza',
+    safety_instructions: 'Istruzioni di sicurezza',
+    material_information: 'Informazioni sui materiali',
+    usage_restrictions: 'Limitazioni d’uso',
+
+    documentsTitle: 'Documenti',
+    documentsIntro:
+        'Resi pubblici dall’azienda che immette questo prodotto sul mercato.',
+    preview: 'Anteprima',
+    previewOf: 'Anteprima di {name}',
+    enlargePicture: 'Ingrandisci immagine',
+    openInNewTab: 'Apri in una nuova scheda',
+    pdfNotShown:
+        'Questo browser non può mostrare i PDF qui. Lo apra invece in una nuova scheda.',
+    docType_test_report: 'Rapporto di prova',
+    docType_declaration_of_conformity: 'Dichiarazione di conformità',
+    docType_manual_or_instructions: 'Manuale o istruzioni',
+    docType_certificate: 'Certificato',
+    docType_product_image: 'Immagine del prodotto',
+    docType_safety_image: 'Immagine di avvertenza',
+    docType_packaging_closeup: 'Dettaglio dell’imballaggio',
+    docType_regulatory_document: 'Documento normativo',
+    docType_other: 'Documento',
+
+    importedBy: 'Immesso sul mercato da',
+    companyDetails: 'Dati aziendali',
+    companyDetailsFor: 'Dati aziendali di {name}',
+    companyAddress: 'Indirizzo',
+    companyPhone: 'Telefono',
+    companyEmail: 'E-mail',
+    companyWebsite: 'Sito web',
+    companyRepresentedBy: 'Rappresentata da',
+    companyVatNumber: 'Numero IVA / IDI',
+    openInGoogleMaps: 'Apri in Google Maps',
+    close: 'Chiudi',
+    footer: 'Informazioni di conformità pubblicate dall’azienda che immette questo prodotto sul mercato.',
+
+    checkTitle: 'Verificare un prodotto',
+    checkIntro:
+        'Inserisca il numero di serie stampato accanto al codice QR sulla confezione. Arriverà alla pagina del prodotto, dove potrà verificarlo.',
+    checkButton: 'Verifica',
+};
+
+const DICTIONARIES: Record<PublicLocale, Dictionary> = { en, de, fr, it };
 
 export type PublicTranslate = (
     key: keyof typeof en,
@@ -237,7 +457,8 @@ export type PublicTranslate = (
  */
 export function usePublicLocale(initial: string | undefined) {
     const [locale, setLocaleState] = useState<PublicLocale>(
-        initial === 'de' ? 'de' : 'en',
+        PUBLIC_LOCALES.find((option) => option.value === initial)?.value ??
+            'en',
     );
 
     const setLocale = useCallback((next: PublicLocale) => {
@@ -273,7 +494,7 @@ export function formatPublicDate(
     withTime = false,
 ): string {
     const date = new Date(timestamp);
-    const language = locale === 'de' ? 'de-CH' : 'en-GB';
+    const language = locale === 'en' ? 'en-GB' : `${locale}-CH`;
 
     const text = date.toLocaleString(language, {
         day: 'numeric',

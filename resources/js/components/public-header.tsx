@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { Globe } from 'lucide-react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { PUBLIC_LOCALES } from '@/lib/public-i18n';
 import type { PublicLocale, PublicTranslate } from '@/lib/public-i18n';
 
 type Props = {
@@ -30,18 +31,32 @@ export default function PublicHeader({ locale, onLocaleChange, t }: Props) {
                         </span>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={() =>
-                        onLocaleChange(locale === 'de' ? 'en' : 'de')
-                    }
-                    aria-label={t('switchLabel')}
-                    data-test="public-locale-toggle"
-                    className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
-                >
+                {/*
+                 * A plain select rather than a menu: on a phone, where most
+                 * of these pages are read, it opens the system's own picker.
+                 */}
+                <label className="relative flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 transition-all focus-within:ring-2 focus-within:ring-gray-300 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800">
                     <Globe className="size-3" />
-                    {t('switchTo')}
-                </button>
+                    <span className="sr-only">{t('language')}</span>
+                    <select
+                        value={locale}
+                        onChange={(event) =>
+                            onLocaleChange(event.target.value as PublicLocale)
+                        }
+                        data-test="public-locale-toggle"
+                        className="cursor-pointer appearance-none bg-transparent pr-0.5 outline-none"
+                    >
+                        {PUBLIC_LOCALES.map((option) => (
+                            <option
+                                key={option.value}
+                                value={option.value}
+                                lang={option.value}
+                            >
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </label>
             </div>
         </header>
     );
