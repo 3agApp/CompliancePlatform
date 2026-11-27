@@ -2,7 +2,7 @@ import { Form, Link, router } from '@inertiajs/react';
 import { Ban, BarChart3, Printer, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
-import PrintLabelsButton from '@/components/print-labels-button';
+import PrintPdfButton from '@/components/print-pdf-button';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDay } from '@/lib/format';
 import { t, tc } from '@/lib/i18n';
-import { destroy, show, store } from '@/routes/products/label-batches';
+import { destroy, pdf, show, store } from '@/routes/products/label-batches';
 import type { LabelBatchSummary } from '@/types';
 
 type Props = {
@@ -195,12 +195,15 @@ export default function SerialLabelsPanel({
                                     </Button>
                                     {batch.revokedAt ? null : (
                                         <>
-                                            <PrintLabelsButton
-                                                organizationSlug={
-                                                    organizationSlug
+                                            <PrintPdfButton
+                                                url={
+                                                    pdf([
+                                                        organizationSlug,
+                                                        productId,
+                                                        batch.id,
+                                                    ]).url
                                                 }
-                                                productId={productId}
-                                                batchId={batch.id}
+                                                data-test="label-batch-pdf"
                                                 variant="ghost"
                                                 size="sm"
                                                 aria-label={t(

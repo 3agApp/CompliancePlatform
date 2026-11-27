@@ -1138,5 +1138,12 @@
     "Translated by AI — check it": "Traduit par l'IA — à vérifier",
     "Fill in the safety texts in the original language first.": "Remplissez d'abord les textes de sécurité dans la langue d'origine.",
     "Still correct": "Toujours correct",
-    "Saving removes the :language translation, as the original is now in that language.": "L'enregistrement supprime la traduction (:language), car l'original est désormais dans cette langue."
+    "Saving removes the :language translation, as the original is now in that language.": "L'enregistrement supprime la traduction (:language), car l'original est désormais dans cette langue.",
+    "Seal stickers": "Autocollants du sceau",
+    "Sheets": "Feuilles",
+    "Print seals": "Imprimer les sceaux",
+    "1 seal|:count seals": "1 sceau|:count sceaux",
+    "Between 1 and :max sheets.": "Entre 1 et :max feuilles.",
+    "Swiss Product Seal": "Swiss Product Seal",
+    "The round seal on HERMA round 40 mm labels, :count to a sheet. Print at actual size.": "Le sceau rond sur étiquettes rondes HERMA de 40 mm, :count par feuille. Imprimer en taille réelle."
 }

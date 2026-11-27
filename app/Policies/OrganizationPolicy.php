@@ -66,6 +66,18 @@ class OrganizationPolicy
     }
 
     /**
+     * Determine whether the user can print sheets of seal stickers.
+     *
+     * A distributor's stickers, so whoever may work on its products: the
+     * same people who print its serialised labels.
+     */
+    public function printSealStickers(User $user, Organization $organization): bool
+    {
+        return $organization->isDistributor()
+            && $user->hasOrganizationPermission($organization, OrganizationPermission::UpdateProduct);
+    }
+
+    /**
      * Determine whether the user can leave the organization.
      */
     public function leave(User $user, Organization $organization): bool

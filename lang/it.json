@@ -1138,5 +1138,12 @@
     "Translated by AI — check it": "Tradotto dall'IA — da controllare",
     "Fill in the safety texts in the original language first.": "Compili prima i testi di sicurezza nella lingua originale.",
     "Still correct": "Ancora corretto",
-    "Saving removes the :language translation, as the original is now in that language.": "Il salvataggio rimuove la traduzione (:language), perché l'originale è ora in questa lingua."
+    "Saving removes the :language translation, as the original is now in that language.": "Il salvataggio rimuove la traduzione (:language), perché l'originale è ora in questa lingua.",
+    "Seal stickers": "Adesivi del sigillo",
+    "Sheets": "Fogli",
+    "Print seals": "Stampa sigilli",
+    "1 seal|:count seals": "1 sigillo|:count sigilli",
+    "Between 1 and :max sheets.": "Tra 1 e :max fogli.",
+    "Swiss Product Seal": "Swiss Product Seal",
+    "The round seal on HERMA round 40 mm labels, :count to a sheet. Print at actual size.": "Il sigillo rotondo su etichette rotonde HERMA da 40 mm, :count per foglio. Stampare a grandezza reale."
 }

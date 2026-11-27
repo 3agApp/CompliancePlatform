@@ -26,6 +26,7 @@ import ProductReviewPanel, {
     ProductReviewActions,
 } from '@/components/product-review-panel';
 import ProductReviewStatusBadge from '@/components/product-review-status-badge';
+import SealStickersCard from '@/components/seal-stickers-card';
 import SerialLabelsPanel from '@/components/serial-labels-panel';
 import WarningImagesField from '@/components/warning-images-field';
 import { Button } from '@/components/ui/button';
@@ -108,6 +109,7 @@ type Props = {
     completeness: ProductCompleteness;
     reviewNote: string | null;
     seal: ProductSeal;
+    sealStickers: { perSheet: number; maxSheets: number };
     sealOverride: ProductSealOverride | null;
     availableSeals: ProductSealOption[];
     publicUrl: string;
@@ -178,6 +180,7 @@ export default function ProductEdit({
     completeness,
     reviewNote,
     seal,
+    sealStickers,
     sealOverride,
     availableSeals,
     publicUrl,
@@ -889,11 +892,25 @@ export default function ProductEdit({
                         />
 
                         {permissions.canManageSerialLabels ? (
-                            <SerialLabelsPanel
-                                organizationSlug={organizationSlug}
-                                productId={product.id}
-                                batches={labelBatches}
-                            />
+                            <div className="space-y-6">
+                                <SerialLabelsPanel
+                                    organizationSlug={organizationSlug}
+                                    productId={product.id}
+                                    batches={labelBatches}
+                                />
+
+                                {/*
+                                 * The seal is only stuck on a product that
+                                 * has earned it.
+                                 */}
+                                {seal.status === 'verified' ? (
+                                    <SealStickersCard
+                                        organizationSlug={organizationSlug}
+                                        perSheet={sealStickers.perSheet}
+                                        maxSheets={sealStickers.maxSheets}
+                                    />
+                                ) : null}
+                            </div>
                         ) : null}
                     </div>
                 </TabPanel>
