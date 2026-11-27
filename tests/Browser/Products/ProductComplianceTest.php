@@ -219,6 +219,39 @@ test('the documents panel offers the kinds the template is still waiting for', f
         ->assertNoJavaScriptErrors();
 });
 
+/**
+ * A product image goes in the public gallery, so a PDF cannot be filed as
+ * one: the kind is offered but cannot be picked for it.
+ */
+test('a pdf cannot be filed as a product image', function () {
+    [$user, $organization] = newOrganizationMember();
+    $connection = newSupplierConnection($organization);
+
+    $product = Product::factory()->for($organization)->create([
+        'supplier_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'tab' => 'documents',
+    ]))
+        ->click('@upload-documents-button')
+        ->attach('@document-file', aPdfNamed('front.pdf'))
+        ->click('@pending-document-type-0')
+        ->assertScript(
+            "[...document.querySelectorAll('[role=\"option\"]')].find((option) => option.textContent === 'Product image')?.hasAttribute('data-disabled')",
+            true,
+        )
+        ->assertScript(
+            "[...document.querySelectorAll('[role=\"option\"]')].find((option) => option.textContent === 'Test report')?.hasAttribute('data-disabled')",
+            false,
+        )
+        ->assertNoJavaScriptErrors();
+});
+
 test('a member sees the documents without the upload and delete controls', function () {
     [$user, $organization] = newOrganizationMember(OrganizationRole::Member);
     $connection = newSupplierConnection($organization);

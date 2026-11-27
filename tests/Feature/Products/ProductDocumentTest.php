@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
 use App\Models\User;
+use App\Support\HeicImage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
@@ -166,6 +167,85 @@ test('a file larger than ten megabytes is refused', function () {
 
     fileDocument($organization, $product, UploadedFile::fake()->create('report.pdf', 10241, 'application/pdf'))
         ->assertSessionHasErrors(['documents.0.file' => 'File 1 must be no larger than 10 MB.']);
+
+    $this->assertDatabaseCount('product_documents', 0);
+});
+
+test('only a picture can be filed as a product image', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocument($organization, $product, UploadedFile::fake()->create('front.pdf', 10, 'application/pdf'), 'product_image')
+        ->assertSessionHasErrors(['documents.0.file' => 'File 1 must be a PNG, JPEG, WebP or HEIC image to be filed as a product image.']);
+
+    $this->assertDatabaseCount('product_documents', 0);
+});
+
+test('a picture is filed as a product image, and a pdf under another kind in the same batch', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocuments($organization, $product, [
+        ['type' => 'product_image', 'file' => UploadedFile::fake()->image('front.png')],
+        ['type' => 'test_report', 'file' => UploadedFile::fake()->create('report.pdf', 10, 'application/pdf')],
+    ])->assertSessionHasNoErrors();
+
+    expect($product->documents()->pluck('type')->map->value->sort()->values()->all())
+        ->toBe(['product_image', 'test_report']);
+});
+
+/**
+ * A 16x12 HEIC photo, as an iPhone saves one.
+ */
+function aHeicPhoto(string $name = 'IMG_0001.HEIC'): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'heic');
+    file_put_contents($path, base64_decode('AAAAJGZ0eXBoZWl4AAAAAG1pZjFNaVByTWlIQW1pYWZoZWl4AAABiG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAAADnBpdG0AAAAAAAEAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABodmMxAAAAAOhpcHJwAAAAx2lwY28AAAATY29scm5jbHgAAgACAAaAAAAADGNsbGkAywBAAAAAFGlzcGUAAAAAAAAAEAAAAAwAAAAJaXJvdAAAAAAQcGl4aQAAAAADCgoKAAAAc2h2Y0MBAiAAAACwAAAAAAAe8AD8/fr6AAALA6AAAQAYQAEMAf//AiAAAAMAsAAAAwAAAwAeFwJAoQABACRCAQECIAAAAwCwAAADAAADAB6gFCBBwJMNtiBe5FlU3AgIGAKiAAEACUQBwGCcshAUyQAAABlpcG1hAAAAAAAAAAEAAQaBAgMFhoQAAAAeaWxvYwAAAABEAAABAAEAAAABAAABvAAAAEAAAAABbWRhdAAAAAAAAABQAAAAPCgBr6L+d+T4X+H1n//az/f/rIpw/ffAtKl9Yp//7B0h+k9e2/Qtx1x+8w6NqUf/6KwkP2f1Y+i4cTwb+A=='));
+
+    return new UploadedFile($path, $name, 'image/heic', test: true);
+}
+
+test('a heic photo is filed as a jpeg', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocument($organization, $product, aHeicPhoto(), 'product_image')
+        ->assertSessionHasNoErrors();
+
+    $document = $product->documents()->sole();
+
+    expect($document->name)->toBe('IMG_0001.jpg')
+        ->and($document->mime_type)->toBe('image/jpeg')
+        ->and($document->path)->toEndWith('.jpg')
+        ->and(getimagesizefromstring(Storage::disk(ProductDocument::DISK)->get($document->path))['mime'])->toBe('image/jpeg');
+})->skip(fn () => ! app(HeicImage::class)->canConvert(), 'Imagick cannot read HEIC on this machine.');
+
+test('a heic photo is refused where it cannot be converted', function () {
+    Storage::fake(ProductDocument::DISK);
+
+    app()->instance(HeicImage::class, new class extends HeicImage
+    {
+        public function canConvert(): bool
+        {
+            return false;
+        }
+    });
+
+    [$user, $organization, $product] = distributorWithFiledProduct();
+
+    $this->actingAs($user);
+
+    fileDocument($organization, $product, aHeicPhoto(), 'product_image')
+        ->assertSessionHasErrors(['documents.0.file' => 'File 1 is a HEIC photo, which cannot be converted here. Save it as a JPEG and upload it again.']);
 
     $this->assertDatabaseCount('product_documents', 0);
 });

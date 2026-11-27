@@ -147,7 +147,7 @@ test('product photos form a gallery while a scanned certificate stays with the c
         ->assertNoJavaScriptErrors();
 });
 
-test('a close-up of the packaging is shown among the pictures, under its own kind', function () {
+test('a close-up of the packaging is shown among the compliance pictures, under its own kind', function () {
     [$user, $organization, $product] = productWithFiledPaper(
         'box-back-label.png',
         'image/png',
@@ -163,12 +163,61 @@ test('a close-up of the packaging is shown among the pictures, under its own kin
         'tab' => 'documents',
     ]))
         ->assertScript(
-            "[...document.querySelectorAll('[data-test=\"product-document-images\"] [data-test=\"product-document-preview\"]')].map((name) => name.textContent)",
+            "[...document.querySelectorAll('[data-test=\"compliance-document-images\"] [data-test=\"product-document-preview\"]')].map((name) => name.textContent)",
             ['box-back-label.png'],
         )
-        ->assertSeeIn('@product-document-images', 'Packaging close-up')
+        ->assertSeeIn('@compliance-document-images', 'Packaging close-up')
+        ->assertMissing('@product-document-images')
         /* A picture of any kind may be released, to be listed among the papers. */
         ->assertScript("document.querySelector('[data-test=\"product-document-visibility-button\"]').disabled", false)
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * Photos of the article are what buyers see; packaging close-ups are evidence.
+ * Each gets a gallery of its own, and switching all photos at once belongs
+ * with the photos.
+ */
+test('product photos and compliance pictures are shown in separate galleries', function () {
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB/wFbqlPUAAAAAElFTkSuQmCC');
+
+    [$user, $organization, $product] = productWithFiledPaper('front.png', 'image/png', $png, ProductDocumentType::ProductImage);
+
+    foreach (['back.png' => ProductDocumentType::ProductImage, 'box-back-label.png' => ProductDocumentType::PackagingCloseUp] as $name => $type) {
+        $picture = ProductDocument::factory()
+            ->for($product)
+            ->ofType($type)
+            ->create([
+                'name' => $name,
+                'mime_type' => 'image/png',
+                'path' => ProductDocument::directoryFor($product).'/'.$name,
+                'uploaded_by' => $user->id,
+            ]);
+
+        Storage::disk(ProductDocument::DISK)->put($picture->path, $png);
+    }
+
+    $this->actingAs($user);
+
+    visit(route('products.edit', [
+        'current_organization' => $organization->slug,
+        'product' => $product->id,
+        'tab' => 'documents',
+    ]))
+        ->assertScript(
+            "[...document.querySelectorAll('[data-test=\"product-document-images\"] [data-test=\"product-document-preview\"]')].map((name) => name.textContent).sort()",
+            ['back.png', 'front.png'],
+        )
+        ->assertScript(
+            "[...document.querySelectorAll('[data-test=\"compliance-document-images\"] [data-test=\"product-document-preview\"]')].map((name) => name.textContent)",
+            ['box-back-label.png'],
+        )
+        ->assertSeeIn('@product-document-images', 'Product images')
+        ->assertSeeIn('@compliance-document-images', 'Compliance images')
+        ->assertScript(
+            "document.querySelector('[data-test=\"product-document-images\"] [data-test=\"product-images-visibility-all\"]') !== null",
+            true,
+        )
         ->assertNoJavaScriptErrors();
 });
 

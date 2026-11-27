@@ -10,13 +10,17 @@ use App\Http\Requests\Products\SuggestProductDocumentKindsRequest;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductDocument;
+use App\Support\HeicImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -31,7 +35,7 @@ use Throwable;
  */
 class ProductDocumentController extends Controller
 {
-    public function __construct(protected ReviewProduct $review)
+    public function __construct(protected ReviewProduct $review, protected HeicImage $heic)
     {
         //
     }
@@ -54,20 +58,11 @@ class ProductDocumentController extends Controller
             foreach ($request->documents() as $document) {
                 $file = $document['file'];
 
-                /**
-                 * store() names the file on disk itself. The name the
-                 * uploader gave it is kept in a column and handed back on
-                 * download, so a filename is something we show, never
-                 * something that decides a path.
-                 */
                 $rows[] = [
                     'type' => $document['type'],
-                    'name' => $file->getClientOriginalName(),
                     'title' => $document['title'],
-                    'path' => $file->store(ProductDocument::directoryFor($product), ProductDocument::DISK),
-                    'mime_type' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
                     'uploaded_by' => $request->user()->id,
+                    ...$this->storeFile($file, $product),
                 ];
             }
 
@@ -250,6 +245,47 @@ class ProductDocumentController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Document deleted.')]);
 
         return $this->backToProduct($currentOrganization, $product);
+    }
+
+    /**
+     * Write an uploaded file to the disk, a HEIC photo as a JPEG.
+     *
+     * The path on disk is named here, never by the uploader. The name they
+     * gave the file is kept in a column and handed back on download, so a
+     * filename is something we show, never something that decides a path.
+     *
+     * @return array{name: string, path: string, mime_type: string, size: int}
+     */
+    protected function storeFile(UploadedFile $file, Product $product): array
+    {
+        if (! $this->heic->isHeic($file)) {
+            $path = $file->store(ProductDocument::directoryFor($product), ProductDocument::DISK);
+
+            if ($path === false) {
+                throw new RuntimeException('The uploaded file could not be written.');
+            }
+
+            return [
+                'name' => $file->getClientOriginalName(),
+                'path' => $path,
+                'mime_type' => $file->getClientMimeType(),
+                'size' => (int) $file->getSize(),
+            ];
+        }
+
+        $jpeg = $this->heic->toJpeg((string) $file->get());
+        $path = ProductDocument::directoryFor($product).'/'.Str::random(40).'.jpg';
+
+        if (! Storage::disk(ProductDocument::DISK)->put($path, $jpeg)) {
+            throw new RuntimeException('The converted photo could not be written.');
+        }
+
+        return [
+            'name' => $this->heic->jpegName($file->getClientOriginalName()),
+            'path' => $path,
+            'mime_type' => 'image/jpeg',
+            'size' => strlen($jpeg),
+        ];
     }
 
     /**
